@@ -7,8 +7,15 @@ namespace flap {
 
 SoLoud::Soloud gSoloud; // SoLoud engine
 
+void GameFlow::onGameStart() {
+    if (this->titleMusicVoice) {
+        gSoloud.fadeVolume(this->titleMusicVoice, 0, 0.15);
+    }
+}
+
 void GameFlow::resetGame() {
     this->gameState = new GameState;
+    this->gameState->callbacks = this;
     Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
     float birdRelCameraX = mix(visibleExtents.mins.x, visibleExtents.maxs.x, 0.3116f);
     this->gameState->camX[1] = this->gameState->birdPos[1].x - birdRelCameraX;
@@ -17,7 +24,7 @@ void GameFlow::resetGame() {
 
 GameFlow::GameFlow() {
     this->resetGame();
-    gSoloud.play(Assets::instance->titleMusic);
+    this->titleMusicVoice = gSoloud.play(Assets::instance->titleMusic);
 }
 
 void timeStep(TitleRotator* rot, float dt, Random& random) {

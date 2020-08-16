@@ -3,6 +3,7 @@
 #include <flapGame/GLHelpers.h>
 #include <flapGame/GameState.h>
 #include <flapGame/Public.h>
+#include <soloud.h>
 
 namespace flap {
 
@@ -22,7 +23,7 @@ struct TitleRotator {
     float time = 0;
 };
 
-struct GameFlow {
+struct GameFlow : GameState::Callbacks {
     DynamicArrayBuffers dynBuffers;
 
     static constexpr float MaxTimeStep = 0.05f;
@@ -32,9 +33,11 @@ struct GameFlow {
     Owned<GameState> gameState;
     u32 bestScore = 0;
     Owned<TitleRotator> titleRot;
+    SoLoud::handle titleMusicVoice = 0;
 
     GameFlow();
 
+    virtual void onGameStart() override;
     void resetGame();
 };
 

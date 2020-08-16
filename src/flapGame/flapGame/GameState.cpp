@@ -195,6 +195,7 @@ void timeStep(GameState* gs, float dt) {
         gs->buttonPressed = false;
         if (gs->animState == AnimState::Title) {
             gs->animState = AnimState::Playing;
+            gs->callbacks->onGameStart();
         } else if (gs->animState == AnimState::Playing || gs->animState == AnimState::Recovering) {
             if (gs->damage < 2) {
                 gs->animState = AnimState::Playing;

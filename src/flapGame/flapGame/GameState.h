@@ -25,6 +25,11 @@ struct ObstacleSequence {
 };
 
 struct GameState {
+    struct Callbacks {
+        virtual void onGameStart() {
+        }
+    };
+
     // Constants
     static constexpr float Gravity = 118.f;
     static constexpr float LaunchVel = 30.f;
@@ -38,6 +43,7 @@ struct GameState {
     static constexpr float RecoveryTime = 0.5f;
     static constexpr float FlapRate = 4.f;
 
+    Callbacks *callbacks = nullptr;
     Random random;
     bool buttonPressed = false;
 
