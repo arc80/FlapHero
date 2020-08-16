@@ -10,6 +10,7 @@ SoLoud::Soloud gSoloud; // SoLoud engine
 void GameFlow::onGameStart() {
     if (this->titleMusicVoice) {
         gSoloud.fadeVolume(this->titleMusicVoice, 0, 0.15);
+        this->titleMusicVoice = 0;
     }
 }
 

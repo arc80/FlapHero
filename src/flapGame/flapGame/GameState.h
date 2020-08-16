@@ -30,6 +30,11 @@ struct GameState {
         }
     };
 
+    enum class GravityState {
+        Start,
+        Normal,
+    };
+
     // Constants
     static constexpr float Gravity = 118.f;
     static constexpr float LaunchVel = 30.f;
@@ -43,13 +48,13 @@ struct GameState {
     static constexpr float RecoveryTime = 0.5f;
     static constexpr float FlapRate = 4.f;
 
-    Callbacks *callbacks = nullptr;
+    Callbacks* callbacks = nullptr;
     Random random;
     bool buttonPressed = false;
 
     // Bird
     Float3 birdPos[2] = {{0, 0, 0}, {0, 0, 0}};
-    float zVel1 = 0;
+    Float3 birdVel[2] = {{ScrollRate, 0, 0}, {ScrollRate, 0, 0}};
     AnimState animState = AnimState::Title;
     float wingTime = 0;
     u32 eyePos = 0;
@@ -57,7 +62,8 @@ struct GameState {
     float eyeTime = 0;
 
     // Playing state
-    float curGravity = 0;
+    GravityState gravityState = GravityState::Start;
+    float startGravity = 0;
 
     // Damage
     u32 damage = 0;
