@@ -1,4 +1,5 @@
 #pragma once
+#include <flapGame/Config.h>
 #include <ply-math/Base.h>
 #include <ply-runtime/Base.h>
 

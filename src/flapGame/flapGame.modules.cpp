@@ -4,6 +4,8 @@
 void module_flapGame(ModuleArgs* args) {
     args->addSourceFiles("flapGame", false);
     args->addIncludeDir(Visibility::Public, ".");
+    args->addIncludeDir(Visibility::Public,
+                        NativePath::join(args->projInst->env->buildFolderPath, "codegen/flapGame"));
     args->addTarget(Visibility::Public, "runtime");
     args->addTarget(Visibility::Public, "math");
     args->addTarget(Visibility::Private, "image");
@@ -14,6 +16,18 @@ void module_flapGame(ModuleArgs* args) {
     }
     args->addExtern(Visibility::Private, "assimp");
     args->addExtern(Visibility::Private, "soloud");
+    if (args->projInst->env->isGenerating) {
+        String configFile = String::format(
+            R"(#pragma once
+#define FLAPGAME_REPO_FOLDER "{}"
+)",
+            fmt::EscapedString{
+                NativePath::join(PLY_WORKSPACE_FOLDER, "repos", args->targetInst->repo->repoName)});
+        FileSystem::native()->makeDirsAndSaveTextIfDifferent(
+            NativePath::join(args->projInst->env->buildFolderPath,
+                             "codegen/flapGame/flapGame/Config.h"),
+            configFile, TextFormat::platformPreference());
+    }
 }
 
 // [ply extern="soloud" provider="source"]

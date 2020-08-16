@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
     GL_CHECK(BindVertexArray(vao));
 
     // Init game
-    flap::init(NativePath::join(PLY_WORKSPACE_FOLDER, "repos/FlapHero/data"));
+    flap::init(NativePath::join(FLAPGAME_REPO_FOLDER, "data"));
 
     // Create gf
     flap::GameFlow *gf = flap::createGameFlow();
