@@ -23,7 +23,7 @@ struct TitleRotator {
     float time = 0;
 };
 
-struct GameFlow : GameState::Callbacks {
+struct GameFlow final : GameState::Callbacks {
     DynamicArrayBuffers dynBuffers;
 
     static constexpr float MaxTimeStep = 0.05f;
@@ -38,7 +38,7 @@ struct GameFlow : GameState::Callbacks {
     GameFlow();
 
     virtual void onGameStart() override;
-    void resetGame();
+    void resetGame(bool isPlaying);
 };
 
 } // namespace flap

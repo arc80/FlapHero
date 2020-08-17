@@ -110,13 +110,13 @@ struct PipeHit {
 
 void checkPipeCollisions(GameState* gs, const LambdaView<void(const PipeHit&)>& cb) {
     // Check for collision with pipes
-    for (u32 i = 0; i < gs->pipes.numItems(); i++) {
-        const Float3x4& pipeXform = gs->pipes[i];
+    for (u32 i = 0; i < gs->playfield.pipes.numItems(); i++) {
+        const Float3x4& pipeXform = gs->playfield.pipes[i];
 
         // Bottom pipe
         SphCylCollResult result;
         SphCylCollResult::Type ct = sphereCylinderCollisionTest(
-            gs->birdPos[0], GameState::BirdRadius, pipeXform, GameState::PipeRadius, &result);
+            gs->bird.pos[0], GameState::BirdRadius, pipeXform, GameState::PipeRadius, &result);
         if (ct != SphCylCollResult::None) {
             PipeHit ph;
             ph.pos = result.pos;
@@ -149,10 +149,10 @@ struct PipeSequence : ObstacleSequence {
 
             // Add new pipes
             float gapHeight = mix(-4.f, 4.f, gs->random.nextFloat());
-            gs->pipes.append(Float3x4::makeTranslation({pipeX, 0, gapHeight - 4.f}));
-            gs->pipes.append(Float3x4::makeTranslation({pipeX, 0, gapHeight + 4.f}) *
-                             Float3x4::makeRotation({1, 0, 0}, Pi));
-            gs->sortedCheckpoints.append(pipeX);
+            gs->playfield.pipes.append(Float3x4::makeTranslation({pipeX, 0, gapHeight - 4.f}));
+            gs->playfield.pipes.append(Float3x4::makeTranslation({pipeX, 0, gapHeight + 4.f}) *
+                                       Float3x4::makeRotation({1, 0, 0}, Pi));
+            gs->playfield.sortedCheckpoints.append(pipeX);
             this->pipeIndex++;
         }
         return true;
@@ -178,222 +178,281 @@ struct SlantedPipeSequence : ObstacleSequence {
 
             // Add new pipes
             float gapHeight = mix(-4.f, 4.f, gs->random.nextFloat());
-            gs->pipes.append(Float3x4::makeTranslation({pipeX, 0, gapHeight + 4.f}) *
-                             Float3x4::makeRotation({0, 1, 0}, -Pi / 4));
-            gs->sortedCheckpoints.append(pipeX);
+            gs->playfield.pipes.append(Float3x4::makeTranslation({pipeX, 0, gapHeight + 4.f}) *
+                                       Float3x4::makeRotation({0, 1, 0}, -Pi / 4));
+            gs->playfield.sortedCheckpoints.append(pipeX);
             this->pipeIndex++;
         }
         return true;
     }
 };
 
-void timeStep(GameState* gs, float dt) {
-    // Handle inputs
+//---------------------------------------
+// GameState::Modes
+//---------------------------------------
+
+void applyGravity(GameState* gs, float dt, float curGravity) {
+    gs->bird.vel[1].z = max(gs->bird.vel[0].z - curGravity * dt, GameState::TerminalVelocity);
+}
+
+struct UpdateMovementData {
     bool doJump = false;
-    bool cutCamera = false;
-    if (gs->buttonPressed) {
-        gs->buttonPressed = false;
-        if (gs->animState == AnimState::Title) {
-            gs->animState = AnimState::Playing;
-            gs->callbacks->onGameStart();
-        } else if (gs->animState == AnimState::Playing || gs->animState == AnimState::Recovering) {
-            if (gs->damage < 2) {
-                gs->animState = AnimState::Playing;
-                doJump = true;
-            }
-        }
-    }
+};
 
-    if (gs->animState == AnimState::Impact) {
-        gs->impactTime += dt;
-        if (gs->impactTime >= 0.2f) {
-            gs->animState = AnimState::Recovering;
-            gs->segIdx = 0;
-            gs->segTime = 0;
-            gs->flipDirection = 1.f;
-            Float2 startPos = {gs->birdPos[0].x, gs->birdPos[0].z};
-            if ((gs->collisionNorm.z < -0.7f) ||
-                (gs->impactPipe >= 0 && gs->collisionPos.z > gs->pipes[gs->impactPipe][3].y)) {
-                gs->segs.resize(3);
-                float tt = 1.f;
-                gs->segs[0] = {startPos, Float2{-7.f, -8.f} / tt, 0.25f * tt};
-                gs->segs[1] = {startPos + Float2{0, -2.f}, Float2{6.f, -6.f} / tt, 0.5f * tt};
-                gs->segs[2] = {startPos + Float2{3, -1.f}, Float2{5.f, 5.f} / tt, 0.f};
-            } else {
-                gs->segs.resize(3);
-                float tt = 1.f;
-                gs->segs[0] = {startPos, Float2{-7.f, 8.f} / tt, 0.25f * tt};
-                gs->segs[1] = {startPos + Float2{0, 2.f}, Float2{6.f, 6.f} / tt, 0.5f * tt};
-                gs->segs[2] = {startPos + Float2{3, 1.f}, Float2{5.f, 5.f} / tt, 0.f};
-                gs->flipDirection = -1.f;
-            }
-            gs->totalFlipTime = 0.1f;
-            for (const GameState::Segment& seg : gs->segs.view().shortenedBy(1)) {
-                gs->totalFlipTime += seg.dur;
-            }
-            gs->flipTime = 0.f;
-        }
-    } else {
-        if (gs->animState != AnimState::Dead) {
-            // Flap
-            gs->wingTime = wrap(gs->wingTime + dt * GameState::FlapRate * 2.f, 2.f);
+void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
+    if (auto title = gs->mode.title()) {
+        title->birdOrbit[0] = wrap(title->birdOrbit[1], 2 * Pi);
+        title->birdOrbit[1] = title->birdOrbit[0] - dt * 2.f;
 
-            // Move eyes
-            if (gs->eyeMoving) {
-                gs->eyeTime += dt * 4;
-                if (gs->eyeTime >= 1.f) {
-                    gs->eyePos = (gs->eyePos + 1) % 3;
-                    gs->eyeMoving = false;
-                    gs->eyeTime = 0;
-                }
-            } else {
-                gs->eyeTime += dt * 1.5f;
-                if (gs->eyeTime >= 1.f) {
-                    gs->eyeMoving = true;
-                    gs->eyeTime = 0;
-                }
+        title->promptTime += dt;
+        if (title->promptTime >= (title->showPrompt ? 0.4f : 0.16f)) {
+            title->showPrompt = !title->showPrompt;
+            title->promptTime = 0.f;
+        }
+
+        title->risingTime[0] = title->risingTime[1];
+        title->risingTime[1] += (title->birdRising ? 2.5f : 5.f) * dt;
+        if (title->risingTime[1] >= 1.f) {
+            title->birdRising = !title->birdRising;
+            title->risingTime[0] = 0;
+            title->risingTime[1] = 0;
+        }
+    } else if (auto playing = gs->mode.playing()) {
+        // Tend towards scroll rate
+        gs->bird.vel[1].x =
+            approach(gs->bird.vel[0].x, GameState::ScrollRate, dt * GameState::ScrollRate * 1.f);
+
+        // Handle jump
+        if (moveData->doJump) {
+            gs->bird.setVel({GameState::ScrollRate, 0, GameState::LaunchVel});
+            playing->gravityState = GameState::Mode::Playing::Gravity::Normal;
+            playing->startGravity = GameState::NormalGravity;
+        } else {
+            // Fudge gravity based on x velocity
+            float gravityScale = clamp(gs->bird.vel[1].x / GameState::ScrollRate, 0.f, 1.f);
+            float curGravity = GameState::NormalGravity;
+            if (playing->gravityState == GameState::Mode::Playing::Gravity::Start) {
+                // Add gravity gradually at the start
+                playing->startGravity = approach(playing->startGravity, GameState::NormalGravity,
+                                                 dt * gravityScale * 20.f);
+                curGravity = playing->startGravity;
             }
+            // Apply gravity
+            gs->bird.vel[1].z = max(gs->bird.vel[0].z - curGravity * gravityScale * dt,
+                                    GameState::TerminalVelocity);
+        }
+
+        // Check for impacts
+        auto doImpact = [&](const PipeHit& ph) {
+            auto impact = gs->mode.impact().switchTo();
+            impact->pos = ph.pos;
+            impact->pipe = ph.pipeIndex;
+            impact->time = 0;
+            impact->norm = ph.norm;
+            gs->damage++;
+        };
+
+        if (gs->bird.pos[0].z <= GameState::LowestHeight) {
+            // Hit the floor
+            PipeHit ph;
+            ph.pos = {gs->bird.pos[0].x, gs->bird.pos[0].y, GameState::LowestHeight};
+            ph.norm = {0, 0, 1};
+            doImpact(ph);
+        } else {
+            // Check for collision with pipes
+            checkPipeCollisions(gs, doImpact);
         }
 
         // Advance bird
-        gs->birdPos[0] = gs->birdPos[1];
-        gs->angle[0] = gs->angle[1];
-        Float3 birdVel0 = gs->birdVel[1];
-        if (doJump) {
-            birdVel0 = {GameState::ScrollRate, 0, GameState::LaunchVel};
-            gs->gravityState = GameState::GravityState::Normal;
-            gs->startGravity = GameState::Gravity;
-        }
-
-        if (gs->animState == AnimState::Title) {
-            gs->birdOrbit[0] = wrap(gs->birdOrbit[1], 2 * Pi);
-            gs->birdOrbit[1] = gs->birdOrbit[0] - dt * 2.f;
-
-            gs->promptTime += dt;
-            if (gs->promptTime >= (gs->showPrompt ? 0.4f : 0.16f)) {
-                gs->showPrompt = !gs->showPrompt;
-                gs->promptTime = 0.f;
+        Float3 midVel = (gs->bird.vel[0] + gs->bird.vel[1]) * 0.5f;
+        gs->bird.pos[1] = gs->bird.pos[0] + midVel * dt;
+    } else if (auto impact = gs->mode.impact()) {
+        impact->time += dt;
+        if (impact->time >= 0.2f) {
+            Array<GameState::Segment> segs;
+            gs->flip.direction = 1.f;
+            Float2 startPos = {gs->bird.pos[0].x, gs->bird.pos[0].z};
+            if ((impact->norm.z < -0.7f) ||
+                (impact->pipe >= 0 && impact->pos.z > gs->playfield.pipes[impact->pipe][3].y)) {
+                segs.resize(3);
+                float tt = 1.f;
+                segs[0] = {startPos, Float2{-7.f, -8.f} / tt, 0.25f * tt};
+                segs[1] = {startPos + Float2{0, -2.f}, Float2{6.f, -6.f} / tt, 0.5f * tt};
+                segs[2] = {startPos + Float2{3, -1.f}, Float2{5.f, 5.f} / tt, 0.f};
+            } else {
+                segs.resize(3);
+                float tt = 1.f;
+                segs[0] = {startPos, Float2{-7.f, 8.f} / tt, 0.25f * tt};
+                segs[1] = {startPos + Float2{0, 2.f}, Float2{6.f, 6.f} / tt, 0.5f * tt};
+                segs[2] = {startPos + Float2{3, 1.f}, Float2{5.f, 0.f} / tt, 0.f};
+                gs->flip.direction = -1.f;
             }
-
-            gs->risingTime += (gs->birdRising ? 2.5f : 5.f) * dt;
-            if (gs->risingTime >= 1.f) {
-                gs->birdRising = !gs->birdRising;
-                gs->risingTime = 0;
+            auto recovering = gs->mode.recovering().switchTo();
+            recovering->segIdx = 0;
+            recovering->segTime = 0;
+            recovering->segs = std::move(segs);
+            gs->bird.setVel({0, 0, 0}); // vel is not used in recovery mode
+            gs->flip.totalTime = 0.1f;
+            for (const GameState::Segment& seg : recovering->segs.view().shortenedBy(1)) {
+                gs->flip.totalTime += seg.dur;
             }
+            gs->flip.time = 0.f;
         }
-
-        float curGravity = GameState::Gravity;
-        if (gs->gravityState == GameState::GravityState::Start) {
-            // Add gravity gradually at the start
-            gs->startGravity = approach(gs->startGravity, GameState::Gravity, dt * 20.f);
-            curGravity = gs->startGravity;
-        }
-
-        if (gs->animState == AnimState::Recovering) {
-            gs->segTime += dt;
-            for (;;) {
-                const GameState::Segment* seg = &gs->segs[gs->segIdx];
-                if (gs->segTime < seg->dur) {
-                    // sample the curve
-                    Float2 p1 = seg->pos + seg->vel * (seg->dur / 3.f);
-                    Float2 p2 = seg[1].pos - seg[1].vel * (seg->dur / 3.f);
-                    float t = gs->segTime / seg->dur;
-                    Float2 sampled = interpolateCubic(seg->pos, p1, p2, seg[1].pos, t);
-                    gs->birdPos[1] = {sampled.x, 0, sampled.y};
-                    break;
-                } else {
-                    gs->segTime -= seg->dur;
-                    gs->segIdx++;
-                    if (gs->segIdx + 1 >= gs->segs.numItems()) {
-                        Float2 sampled = gs->segs.back().pos;
-                        gs->birdPos[1] = {sampled.x, 0, sampled.y};
-                        if (gs->damage >= 2) {
-                            // die
-                            gs->animState = AnimState::Falling;
-                            gs->fallVel1 = {10.f, 0.f, 20.f};
-                        } else {
-                            // recover
-                            gs->animState = AnimState::Playing;
-                            Float2 exitVel = gs->segs.back().vel;
-                            gs->birdVel[1] = {exitVel.x, 0, exitVel.y};
-                        }
-                        break;
+    } else if (auto recovering = gs->mode.recovering()) {
+        recovering->segTime += dt;
+        for (;;) {
+            const GameState::Segment* seg = &recovering->segs[recovering->segIdx];
+            if (recovering->segTime < seg->dur) {
+                // sample the curve
+                Float2 p1 = seg->pos + seg->vel * (seg->dur / 3.f);
+                Float2 p2 = seg[1].pos - seg[1].vel * (seg->dur / 3.f);
+                float t = recovering->segTime / seg->dur;
+                Float2 sampled = interpolateCubic(seg->pos, p1, p2, seg[1].pos, t);
+                gs->bird.pos[1] = {sampled.x, 0, sampled.y};
+                break;
+            } else {
+                recovering->segTime -= seg->dur;
+                recovering->segIdx++;
+                if (recovering->segIdx + 1 >= recovering->segs.numItems()) {
+                    Float2 sampled = recovering->segs.back().pos;
+                    gs->bird.pos[1] = {sampled.x, 0, sampled.y};
+                    if (gs->damage >= 2) {
+                        // die
+                        gs->mode.falling().switchTo();
+                        gs->bird.setVel({10.f, 0.f, 20.f});
+                    } else {
+                        // recover
+                        Float2 exitVel = recovering->segs.back().vel;
+                        gs->mode.playing().switchTo();
+                        gs->bird.setVel({exitVel.x, 0, exitVel.y});
                     }
+                    break;
                 }
             }
-        } else if (gs->animState == AnimState::Falling) {
-            if (gs->birdPos[0].z <= GameState::LowestHeight) {
-                // Hit the floor
-                gs->animState = AnimState::Dead;
-                gs->birdPos[0].z = GameState::LowestHeight;
-                gs->birdPos[1] = gs->birdPos[0];
-            } else {
-                checkPipeCollisions(gs, [&](const PipeHit& ph) { //
-                    gs->fallVel1.z = 20.f;
-                });
+        }
+    } else if (gs->mode.falling()) {
+        if (gs->bird.pos[0].z <= GameState::LowestHeight) {
+            // Hit the floor
+            gs->mode.dead().switchTo();
+            gs->bird.pos[0].z = GameState::LowestHeight;
+            gs->bird.pos[1] = gs->bird.pos[0];
+        } else {
+            checkPipeCollisions(gs, [&](const PipeHit& ph) { //
+                Float3 newVel = gs->bird.vel[0];
+                newVel.z = 20.f;
+                gs->bird.setVel(newVel);
+            });
+        }
+
+        gs->bird.vel[1].z =
+            max(gs->bird.vel[0].z - GameState::NormalGravity * dt, GameState::TerminalVelocity);
+
+        // Advance bird
+        Float3 midVel = (gs->bird.vel[0] + gs->bird.vel[1]) * 0.5f;
+        gs->bird.pos[1] = gs->bird.pos[0] + midVel * dt;
+    }
+}
+
+void adjustX(GameState* gs, float amount) {
+    gs->bird.pos[0].x -= GameState::WrapAmount;
+    gs->bird.pos[1].x -= GameState::WrapAmount;
+    gs->camX[0] -= GameState::WrapAmount;
+    gs->camX[1] -= GameState::WrapAmount;
+    for (ObstacleSequence* seq : gs->playfield.sequences) {
+        seq->xSeqRelWorld -= GameState::WrapAmount;
+    }
+    for (Float3x4& pipe : gs->playfield.pipes) {
+        pipe[3].x -= GameState::WrapAmount;
+    }
+    for (float& sc : gs->playfield.sortedCheckpoints) {
+        sc -= GameState::WrapAmount;
+    }
+    if (auto impact = gs->mode.impact()) {
+        impact->pos.x += amount;
+    } else if (auto recovering = gs->mode.recovering()) {
+        for (GameState::Segment& seg : recovering->segs) {
+            seg.pos.x -= GameState::WrapAmount;
+        }
+    }
+}
+
+//---------------------------------------
+
+void timeStep(GameState* gs, float dt) {
+    UpdateMovementData moveData;
+
+    // Handle inputs
+    if (gs->buttonPressed) {
+        if (gs->mode.title()) {
+            gs->startPlaying();
+            gs->callbacks->onGameStart();
+        } else {
+            if (gs->mode.recovering() && gs->damage < 2) {
+                gs->mode.playing().switchTo();
             }
-
-            // Apply gravity
-            Float3 fallVel0 = gs->fallVel1;
-            gs->fallVel1.z = max(fallVel0.z - curGravity * dt, GameState::TerminalVelocity);
-            Float3 velMid = (fallVel0 + gs->fallVel1) * 0.5f;
-            gs->birdPos[1] = gs->birdPos[0] + velMid * dt;
-        } else if (gs->animState == AnimState::Playing) {
-            // Pass checkpoints
-            while (!gs->sortedCheckpoints.isEmpty() &&
-                   gs->birdPos[0].x >= gs->sortedCheckpoints[0]) {
-                gs->sortedCheckpoints.erase(0);
-                gs->score++;
+            if (gs->mode.playing()) {
+                moveData.doJump = true;
             }
+        }
+        gs->buttonPressed = false;
+    }
 
-            auto impact = [&](const PipeHit& ph) {
-                gs->collisionPos = ph.pos;
-                gs->impactPipe = ph.pipeIndex;
-                gs->impactTime = 0;
-                gs->collisionNorm = ph.norm;
-                gs->animState = AnimState::Impact;
-                gs->damage++;
-            };
+    // Initialize start of interval
+    gs->bird.pos[0] = gs->bird.pos[1];
+    gs->bird.vel[0] = gs->bird.vel[1];
+    gs->birdAnim.wingTime[0] = gs->birdAnim.wingTime[1];
+    gs->birdAnim.eyeTime[0] = gs->birdAnim.eyeTime[1];
+    gs->flip.angle[0] = gs->flip.angle[1];
+    gs->camX[0] = gs->camX[1];
 
-            if (gs->birdPos[0].z <= GameState::LowestHeight) {
-                // Hit the floor
-                PipeHit ph;
-                ph.pos = {gs->birdPos[0].x, gs->birdPos[0].y, GameState::LowestHeight};
-                ph.norm = {0, 0, 1};
-                impact(ph);
-            } else {
-                // Check for collision with pipes
-                checkPipeCollisions(gs, impact);
+    // Advance bird
+    updateMovement(gs, dt, &moveData);
+
+    bool isPaused = gs->mode.impact() || gs->mode.dead();
+    if (!isPaused) {
+        // Pass checkpoints
+        while (!gs->playfield.sortedCheckpoints.isEmpty() &&
+               gs->bird.pos[0].x >= gs->playfield.sortedCheckpoints[0]) {
+            gs->playfield.sortedCheckpoints.erase(0);
+            gs->score++;
+        }
+
+        // Flap
+        if (gs->birdAnim.wingTime[0] >= 2.f) {
+            gs->birdAnim.wingTime[0] = 0.f;
+        }
+        gs->birdAnim.wingTime[1] =
+            min(gs->birdAnim.wingTime[0] + dt * GameState::FlapRate * 2.f, 2.f);
+
+        // Move eyes
+        if (gs->birdAnim.eyeMoving) {
+            gs->birdAnim.eyeTime[1] = gs->birdAnim.eyeTime[0] + dt * 4;
+            if (gs->birdAnim.eyeTime[1] >= 1.f) {
+                gs->birdAnim.eyePos = (gs->birdAnim.eyePos + 1) % 3;
+                gs->birdAnim.eyeMoving = false;
+                gs->birdAnim.eyeTime[0] = 0;
+                gs->birdAnim.eyeTime[1] = 0;
             }
-
-            if (gs->animState == AnimState::Playing || gs->animState == AnimState::Title) {
-                // Apply forward velocity
-                gs->birdVel[1].x = approach(birdVel0.x, GameState::ScrollRate, dt * GameState::ScrollRate * 1.f);
-                float xVelMid = (birdVel0.x + gs->birdVel[1].x) * 0.5f;
-                gs->birdPos[1].x = gs->birdPos[0].x + xVelMid * dt;
-            }
-
-            if (gs->animState == AnimState::Playing) {
-                // Apply gravity
-                float gravityFrac = clamp(birdVel0.x / GameState::ScrollRate, 0.f, 1.f);
-                gs->birdVel[1].z =
-                    max(birdVel0.z - gravityFrac * curGravity * dt, GameState::TerminalVelocity);
-                float zVelMid = (birdVel0.z + gs->birdVel[1].z) * 0.5f;
-                gs->birdPos[1].z = max(GameState::LowestHeight, gs->birdPos[0].z + gravityFrac * zVelMid * dt);
+        } else {
+            gs->birdAnim.eyeTime[1] = gs->birdAnim.eyeTime[0] + dt * 1.5f;
+            if (gs->birdAnim.eyeTime[1] >= 1.f) {
+                gs->birdAnim.eyeMoving = true;
+                gs->birdAnim.eyeTime[0] = 0;
+                gs->birdAnim.eyeTime[1] = 0;
             }
         }
 
         // Apply flip
-        if (gs->totalFlipTime > 0) {
-            gs->flipTime += dt;
-            if (gs->flipTime >= gs->totalFlipTime) {
-                gs->totalFlipTime = 0.f;
-                gs->angle[0] = 0.f;
-                gs->angle[1] = 0.f;
+        if (gs->flip.totalTime > 0) {
+            gs->flip.time += dt;
+            if (gs->flip.time >= gs->flip.totalTime) {
+                gs->flip.totalTime = 0.f;
+                gs->flip.angle[0] = 0.f;
+                gs->flip.angle[1] = 0.f;
             } else {
-                float t = gs->flipTime / gs->totalFlipTime;
+                float t = gs->flip.time / gs->flip.totalTime;
                 t = interpolateCubic(0.f, 0.5f, 0.9f, 1.f, t);
-                gs->angle[1] = interpolateCubic(0.f, 0.25f, 1.f, 1.f, t);
+                gs->flip.angle[1] = interpolateCubic(0.f, 0.25f, 1.f, 1.f, t);
             }
         }
     }
@@ -401,67 +460,59 @@ void timeStep(GameState* gs, float dt) {
     // Set camera
     Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
     float birdRelCameraX = mix(visibleExtents.mins.x, visibleExtents.maxs.x, 0.3116f);
-    if (cutCamera) {
-        gs->camX[0] = gs->birdPos[0].x - birdRelCameraX;
-    } else {
-        gs->camX[0] = gs->camX[1];
-    }
-    gs->camX[1] = gs->birdPos[1].x - birdRelCameraX;
+    gs->camX[1] = gs->bird.pos[1].x - birdRelCameraX;
 
-    if (gs->animState != AnimState::Title) {
+    // Add obstacles
+    if (!gs->mode.title()) {
         float visibleEdge = gs->camX[1] + visibleExtents.maxs.x + 2.f;
 
         // Add new obstacle sequences
-        if (gs->sequences.isEmpty()) {
-            gs->sequences.append(new PipeSequence{quantizeUp(visibleEdge, 1.f)});
+        if (gs->playfield.sequences.isEmpty()) {
+            gs->playfield.sequences.append(new PipeSequence{quantizeUp(visibleEdge, 1.f)});
         }
 
         // Add new obstacles
-        for (u32 i = 0; i < gs->sequences.numItems();) {
-            if (gs->sequences[i]->advanceTo(gs, visibleEdge)) {
+        for (u32 i = 0; i < gs->playfield.sequences.numItems();) {
+            if (gs->playfield.sequences[i]->advanceTo(gs, visibleEdge)) {
                 i++;
             } else {
-                gs->sequences.eraseQuick(i);
+                gs->playfield.sequences.eraseQuick(i);
             }
         }
 
         // Remove old obstacles
         float leftEdge = gs->camX[1] + visibleExtents.mins.x;
-        while (gs->pipes.numItems() > 1) {
-            if (gs->pipes[0][3].x > leftEdge - 20)
+        while (gs->playfield.pipes.numItems() > 1) {
+            if (gs->playfield.pipes[0][3].x > leftEdge - 20)
                 break;
-            gs->pipes.erase(0);
+            gs->playfield.pipes.erase(0);
         }
     }
 
     // Shift world periodically
     if (gs->camX[1] >= GameState::WrapAmount) {
-        gs->birdPos[0].x -= GameState::WrapAmount;
-        gs->birdPos[1].x -= GameState::WrapAmount;
-        gs->collisionPos -= GameState::WrapAmount;
-        gs->camX[0] -= GameState::WrapAmount;
-        gs->camX[1] -= GameState::WrapAmount;
-        for (ObstacleSequence* seq : gs->sequences) {
-            seq->xSeqRelWorld -= GameState::WrapAmount;
-        }
-        for (Float3x4& pipe : gs->pipes) {
-            pipe[3].x -= GameState::WrapAmount;
-        }
-        for (float& sc : gs->sortedCheckpoints) {
-            sc -= GameState::WrapAmount;
-        }
-        for (GameState::Segment& seg : gs->segs) {
-            seg.pos.x -= GameState::WrapAmount;
-        }
+        adjustX(gs, -GameState::WrapAmount);
     }
-} // namespace flap
+}
+
+void GameState::startPlaying() {
+    auto playing = this->mode.playing().switchTo();
+    playing->gravityState = GameState::Mode::Playing::Gravity::Start;
+    Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
+    float birdRelCameraX = mix(visibleExtents.mins.x, visibleExtents.maxs.x, 0.3116f);
+    this->camX[0] = this->bird.pos[1].x - birdRelCameraX;
+    this->camX[1] = this->camX[0];
+}
 
 void onEndSequence(GameState* gs, float xEndSeqRelWorld, bool wasSlanted) {
     if (wasSlanted) {
-        gs->sequences.append(new PipeSequence{xEndSeqRelWorld + GameState::PipeSpacing});
+        gs->playfield.sequences.append(new PipeSequence{xEndSeqRelWorld + GameState::PipeSpacing});
     } else {
-        gs->sequences.append(new SlantedPipeSequence{xEndSeqRelWorld + GameState::PipeSpacing});
+        gs->playfield.sequences.append(
+            new SlantedPipeSequence{xEndSeqRelWorld + GameState::PipeSpacing});
     }
 }
 
 } // namespace flap
+
+#include "codegen/GameState.inl" //%%

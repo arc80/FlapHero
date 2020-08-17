@@ -30,13 +30,48 @@ struct GameState {
         }
     };
 
-    enum class GravityState {
-        Start,
-        Normal,
+    struct Segment {
+        Float2 pos = {0, 0};
+        Float2 vel = {0, 0};
+        float dur = 1.f;
+    };
+
+    struct Mode {
+        // ply make switch
+        struct Title {
+            float birdOrbit[2] = {0, 0};
+            bool showPrompt = true;
+            float promptTime = 0;
+            bool birdRising = false;
+            float risingTime[2] = {0, 0};
+        };
+        struct Playing {
+            enum class Gravity {
+                Start,
+                Normal,
+            };
+
+            Gravity gravityState = Gravity::Normal;
+            float startGravity = 0;
+        };
+        struct Impact {
+            Float3 pos = {0, 0};
+            float time = 0;
+            s32 pipe = -1; // -1 means floor
+            Float3 norm = {0, 0};
+        };
+        struct Recovering {
+            u32 segIdx = 0;
+            float segTime = 0;
+            Array<GameState::Segment> segs;
+        };
+        struct Falling {};
+        struct Dead {};
+#include "codegen/switch-flap-GameState-Mode.inl" //@@ply
     };
 
     // Constants
-    static constexpr float Gravity = 118.f;
+    static constexpr float NormalGravity = 118.f;
     static constexpr float LaunchVel = 30.f;
     static constexpr float LowestHeight = -10.766f;
     static constexpr float TerminalVelocity = -60.f;
@@ -51,63 +86,54 @@ struct GameState {
     Callbacks* callbacks = nullptr;
     Random random;
     bool buttonPressed = false;
+    Mode mode;
 
-    // Bird
-    Float3 birdPos[2] = {{0, 0, 0}, {0, 0, 0}};
-    Float3 birdVel[2] = {{ScrollRate, 0, 0}, {ScrollRate, 0, 0}};
-    AnimState animState = AnimState::Title;
-    float wingTime = 0;
-    u32 eyePos = 0;
-    bool eyeMoving = false;
-    float eyeTime = 0;
-
-    // Playing state
-    GravityState gravityState = GravityState::Start;
-    float startGravity = 0;
-
-    // Damage
+    // Score
+    u32 score = 0;
     u32 damage = 0;
 
-    // Title state
-    float birdOrbit[2] = {0, 0};
-    bool showPrompt = true;
-    float promptTime = 0;
-    bool birdRising = false;
-    float risingTime = 0;
+    // Bird
+    struct Bird {
+        Float3 pos[2] = {{0, 0, 0}, {0, 0, 0}};
+        Float3 vel[2] = {{ScrollRate, 0, 0}, {ScrollRate, 0, 0}};
 
-    // Impact state
-    Float3 collisionPos = {0, 0};
-    float impactTime = 0;
-    s32 impactPipe = -1; // -1 means floor
-    Float3 collisionNorm = {0, 0};
-
-    // Recovering state
-    struct Segment {
-        Float2 pos = {0, 0};
-        Float2 vel = {0, 0};
-        float dur = 1.f;
+        PLY_INLINE void setVel(const Float3& vel) {
+            this->vel[0] = vel;
+            this->vel[1] = vel;
+        }
     };
-    u32 segIdx = 0;
-    float segTime = 0;
-    Array<Segment> segs;
+    Bird bird;
 
-    float totalFlipTime = 0.f;
-    float flipTime = 0.f;
-    float flipDirection = 1.f;
-    float angle[2] = {0, 0};
+    // Bird animation
+    struct BirdAnim {
+        float wingTime[2] = {0, 0};
+        u32 eyePos = 0;
+        bool eyeMoving = false;
+        float eyeTime[2] = {0, 0};
+    };
+    BirdAnim birdAnim;
 
-    // Falling state
-    Float3 fallVel1 = {0, 0, 0};
+    // Flip
+    struct Flip {
+        float totalTime = 0.f;
+        float time = 0.f;
+        float direction = 1.f;
+        float angle[2] = {0, 0};
+    };
+    Flip flip;
 
     // Camera
     float camX[2] = {0, 0}; // relative to world
 
-    // Pipe state
-    Array<Owned<ObstacleSequence>> sequences;
-    Array<Float3x4> pipes; // relative to world
-    Array<float> sortedCheckpoints;
+    // Playfield
+    struct Playfield {
+        Array<Owned<ObstacleSequence>> sequences;
+        Array<Float3x4> pipes; // relative to world
+        Array<float> sortedCheckpoints;
+    };
+    Playfield playfield;
 
-    u32 score = 0;
+    void startPlaying();
 };
 
 void timeStep(GameState* gs, float dt);

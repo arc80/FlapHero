@@ -19,8 +19,17 @@ ExternResult extern_assimp_vcpkg(ExternCommand cmd, ExternProviderArgs* args) {
 }
 
 // [ply extern="assimp" provider="homebrew"]
-ExternResult extern_libsass_homebrew(ExternCommand cmd, ExternProviderArgs* args) {
+ExternResult extern_assimp_homebrew(ExternCommand cmd, ExternProviderArgs* args) {
     PackageProvider prov{PackageProvider::Homebrew, "assimp", [&](StringView prefix) {
+                             args->dep->includeDirs.append(NativePath::join(prefix, "include"));
+                             args->dep->libs.append(NativePath::join(prefix, "lib/libassimp.dylib"));
+                         }};
+    return prov.handle(cmd, args);
+}
+
+// [ply extern="assimp" provider="macports"]
+ExternResult extern_assimp_macports(ExternCommand cmd, ExternProviderArgs* args) {
+    PackageProvider prov{PackageProvider::MacPorts, "assimp", [&](StringView prefix) {
                              args->dep->includeDirs.append(NativePath::join(prefix, "include"));
                              args->dep->libs.append(NativePath::join(prefix, "lib/libassimp.dylib"));
                          }};

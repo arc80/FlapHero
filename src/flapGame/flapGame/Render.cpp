@@ -102,14 +102,15 @@ ViewportFrustum fitFrustumInViewport(const Rect& viewport, const Rect& frustum) 
     }
 }
 
-Array<Float4x4> composeBirdBones(const GameState* gs) {
+Array<Float4x4> composeBirdBones(const GameState* gs, float intervalFrac) {
     const Assets* a = Assets::instance;
 
     float wingMix;
-    if (gs->wingTime < 1.f) {
-        wingMix = applySimpleCubic(gs->wingTime);
+    float wingTime = mix(gs->birdAnim.wingTime[0], gs->birdAnim.wingTime[1], intervalFrac);
+    if (wingTime < 1.f) {
+        wingMix = applySimpleCubic(wingTime);
     } else {
-        wingMix = applySimpleCubic(2.f - gs->wingTime);
+        wingMix = applySimpleCubic(2.f - wingTime);
     }
     wingMix = clamp(wingMix, 0.f, 1.f);
 
@@ -128,11 +129,12 @@ Array<Float4x4> composeBirdBones(const GameState* gs) {
 
     // Apply eye pose
     {
-        ArrayView<const PoseBone> from = a->bad.eyePoses[gs->eyePos].view();
-        ArrayView<const PoseBone> to = a->bad.eyePoses[(gs->eyePos + 1) % 3].view();
+        ArrayView<const PoseBone> from = a->bad.eyePoses[gs->birdAnim.eyePos].view();
+        ArrayView<const PoseBone> to = a->bad.eyePoses[(gs->birdAnim.eyePos + 1) % 3].view();
         float f = 0;
-        if (gs->eyeMoving) {
-            f = applySimpleCubic(gs->eyeTime);
+        if (gs->birdAnim.eyeMoving) {
+            float eyeTime = mix(gs->birdAnim.eyeTime[0], gs->birdAnim.eyeTime[1], intervalFrac);
+            f = applySimpleCubic(eyeTime);
         }
         for (u32 i = 0; i < from.numItems; i++) {
             PLY_ASSERT(from[i].boneIndex == to[i].boneIndex);
@@ -196,19 +198,21 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
         Float4x4::makeProjection(visibleExtents / worldDistance, 10.f, 100.f);
 
     // Draw bird
-    Float3 birdRelWorld = mix(gs->birdPos[0], gs->birdPos[1], intervalFrac);
+    Float3 birdRelWorld = mix(gs->bird.pos[0], gs->bird.pos[1], intervalFrac);
     Float4x4 w2c = {{{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
     Float4x4 worldToCamera;
-    if (gs->animState == AnimState::Title) {
+    if (auto title = gs->mode.title()) {
         float yRise = 0.f;
-        if (gs->birdRising) {
-            yRise = applySimpleCubic(gs->risingTime);
+        float risingTime = mix(title->risingTime[0], title->risingTime[1], intervalFrac);
+        if (title->birdRising) {
+            yRise = applySimpleCubic(risingTime);
         } else {
-            yRise = 1.f - applySimpleCubic(gs->risingTime);
+            yRise = 1.f - applySimpleCubic(risingTime);
         }
 
         Float3 camRelWorld = {
-            Complex::fromAngle(mix(gs->birdOrbit[0], gs->birdOrbit[1], gf->fracTime)) * 15, 3.5f};
+            Complex::fromAngle(mix(title->birdOrbit[0], title->birdOrbit[1], intervalFrac)) * 15,
+            3.5f};
         Float3x4 cameraToWorld =
             extra::makeBasis(
                 (birdRelWorld + Float3{0, 0, 1.3f + mix(-0.15f, 0.15f, yRise)} - camRelWorld)
@@ -221,24 +225,24 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
         worldToCamera = w2c * Float4x4::makeTranslation(-camRelWorld);
     }
     {
-        float angle = mix(gs->angle[0], gs->angle[1], intervalFrac);
+        float angle = mix(gs->flip.angle[0], gs->flip.angle[1], intervalFrac);
         float base = 0;
-        if (gs->animState != AnimState::Title) {
+        if (!gs->mode.title()) {
             base = 0.1f;
         }
-        Array<Float4x4> boneToModel = composeBirdBones(gs);
+        Array<Float4x4> boneToModel = composeBirdBones(gs, intervalFrac);
         a->skinnedShader->begin(cameraToViewport);
         a->skinnedShader->draw(
             worldToCamera * Float4x4::makeTranslation(birdRelWorld) *
-                Float4x4::makeRotation({0, 1, 0}, -Pi * (angle * gs->flipDirection * 2.f + base)) *
+                Float4x4::makeRotation({0, 1, 0}, -Pi * (angle * gs->flip.direction * 2.f + base)) *
                 Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) * Float4x4::makeScale(1.0833f),
             boneToModel.view(), a->bird.view());
     }
 
     // Draw pipes
     a->matShader->begin(cameraToViewport);
-    for (u32 i = 0; i < gs->pipes.numItems(); i++) {
-        Float3x4 pipeToWorld = gs->pipes[i];
+    for (u32 i = 0; i < gs->playfield.pipes.numItems(); i++) {
+        Float3x4 pipeToWorld = gs->playfield.pipes[i];
         a->matShader->draw(worldToCamera * pipeToWorld, a->pipe.view());
     }
 
@@ -256,14 +260,14 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
         {sRGBToLinear(113.f / 255), sRGBToLinear(200.f / 255), sRGBToLinear(206.f / 255)});
 
     // Draw flash
-    if (gs->animState == AnimState::Impact) {
+    if (auto impact = gs->mode.impact()) {
         a->flashShader->drawQuad(
-            cameraToViewport * worldToCamera * Float4x4::makeTranslation(gs->collisionPos) *
+            cameraToViewport * worldToCamera * Float4x4::makeTranslation(impact->pos) *
                 Float4x4::makeRotation({1, 0, 0}, Pi * 0.5f) * Float4x4::makeScale(2.f),
             {0.25f, -0.25f, 0.75f, 0.25f}, a->flashTexture.id, {1.2f, 1.2f, 0, 0.6f});
     }
 
-    if (gs->animState == AnimState::Title) {
+    if (auto title = gs->mode.title()) {
         // Draw title
         worldDistance = 15.f;
         Float4x4 cameraToViewport =
@@ -277,7 +281,7 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
         a->flatShader->draw(mat, a->outline.view());
         GL_CHECK(DepthMask(GL_TRUE));
         a->flatShader->draw(mat, a->title.view());
-        if (gs->showPrompt) {
+        if (title->showPrompt) {
             TextBuffers tapToPlay = generateTextBuffers(a->sdfFont, "TAP TO PLAY");
             drawText(a->sdfCommon, a->sdfFont, tapToPlay,
                      Float4x4::makeOrtho({{0, 0}, {480, 640}}, -1.f, 1.f) *
@@ -290,7 +294,7 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
                          Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
                      {0.75f, 16.f}, {1.f, 1.f, 1.f, 1.f});
         }
-    } else if (gs->animState == AnimState::Dead) {
+    } else if (gs->mode.dead()) {
         TextBuffers gameOver = generateTextBuffers(a->sdfFont, "GAME OVER");
         drawText(a->sdfCommon, a->sdfFont, gameOver,
                  Float4x4::makeOrtho({{0, 0}, {480, 640}}, -1.f, 1.f) *

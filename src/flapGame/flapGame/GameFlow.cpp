@@ -14,17 +14,19 @@ void GameFlow::onGameStart() {
     }
 }
 
-void GameFlow::resetGame() {
+void GameFlow::resetGame(bool isPlaying) {
     this->gameState = new GameState;
     this->gameState->callbacks = this;
-    Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
-    float birdRelCameraX = mix(visibleExtents.mins.x, visibleExtents.maxs.x, 0.3116f);
-    this->gameState->camX[1] = this->gameState->birdPos[1].x - birdRelCameraX;
+    if (isPlaying) {
+        this->gameState->startPlaying();
+    } else {
+        this->gameState->mode.title().switchTo();
+    }
     this->titleRot = new TitleRotator;
 }
 
 GameFlow::GameFlow() {
-    this->resetGame();
+    this->resetGame(false);
     this->titleMusicVoice = gSoloud.play(Assets::instance->titleMusic);
 }
 
@@ -59,10 +61,9 @@ void update(GameFlow* gf, float dt) {
     // Timestep
     GameState* gs = gf->gameState;
     if (gf->buttonPressed) {
-        if (gs->animState == AnimState::Dead) {
-            gf->resetGame();
+        if (gs->mode.dead()) {
+            gf->resetGame(true);
             gs = gf->gameState;
-            gs->animState = AnimState::Playing;
         } else {
             gs->buttonPressed = true;
         }
