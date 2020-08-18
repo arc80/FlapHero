@@ -157,6 +157,12 @@ Array<Float4x4> composeBirdBones(const GameState* gs, float intervalFrac) {
     return curBoneToModel;
 }
 
+void Pipe::draw(const Obstacle::DrawParams& params) const {
+    const Assets* a = Assets::instance;
+    a->matShader->draw(params.cameraToViewport, params.worldToCamera * this->pipeToWorld,
+                       a->pipe.view());
+}
+
 void render(GameFlow* gf, const IntVec2& fbSize) {
     GameState* gs = gf->gameState;
     PLY_SET_IN_SCOPE(DynamicArrayBuffers::instance, &gf->dynBuffers);
@@ -239,15 +245,17 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
             boneToModel.view(), a->bird.view());
     }
 
-    // Draw pipes
-    a->matShader->begin(cameraToViewport);
-    for (u32 i = 0; i < gs->playfield.pipes.numItems(); i++) {
-        Float3x4 pipeToWorld = gs->playfield.pipes[i];
-        a->matShader->draw(worldToCamera * pipeToWorld, a->pipe.view());
+    // Draw obstacles
+    Obstacle::DrawParams odp;
+    odp.cameraToViewport = cameraToViewport;
+    odp.worldToCamera = worldToCamera;
+    for (const Obstacle* obst : gs->playfield.obstacles) {
+        obst->draw(odp);
     }
 
     // Draw floor
-    a->matShader->draw(worldToCamera *
+    a->matShader->draw(cameraToViewport,
+                       worldToCamera *
                            Float4x4::makeTranslation({worldToCamera.invertedOrtho()[3].x, 0.f,
                                                       visibleExtents.mins.y + 4.f}) *
                            Float4x4::makeRotation({0, 0, 1}, Pi / 2.f),
@@ -262,7 +270,7 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
     // Draw flash
     if (auto impact = gs->mode.impact()) {
         a->flashShader->drawQuad(
-            cameraToViewport * worldToCamera * Float4x4::makeTranslation(impact->pos) *
+            cameraToViewport * worldToCamera * Float4x4::makeTranslation(impact->hit.pos) *
                 Float4x4::makeRotation({1, 0, 0}, Pi * 0.5f) * Float4x4::makeScale(2.f),
             {0.25f, -0.25f, 0.75f, 0.25f}, a->flashTexture.id, {1.2f, 1.2f, 0, 0.6f});
     }

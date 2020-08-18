@@ -15,8 +15,8 @@ struct MaterialShader {
 
     static Owned<MaterialShader> create();
 
-    void begin(const Float4x4& cameraToViewport);
-    void draw(const Float4x4& modelToCamera, ArrayView<const DrawMesh> drawMeshes);
+    void draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
+              ArrayView<const DrawMesh> drawMeshes);
 };
 
 struct SkinnedShader {

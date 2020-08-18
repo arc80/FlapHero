@@ -24,16 +24,50 @@ struct ObstacleSequence {
     virtual bool advanceTo(GameState* gs, float xVisRelWorld) = 0;
 };
 
+struct Obstacle : RefCounted<Obstacle> {
+    PLY_INLINE void onRefCountZero() {
+        delete this;
+    }
+
+    struct Hit {
+        Float3 pos = {0, 0, 0};
+        Float3 norm = {0, 0, 0};
+        Reference<Obstacle> obst;
+        bool recoverClockwise = true;
+    };
+
+    struct DrawParams {
+        Float4x4 cameraToViewport = Float4x4::identity();
+        Float4x4 worldToCamera = Float4x4::identity();
+    };
+
+    virtual bool collisionCheck(GameState* gs, const LambdaView<bool(const Hit&)>& cb) = 0;
+    virtual void adjustX(float amount) = 0;
+    virtual bool canRemove(float leftEdge) = 0;
+    virtual void draw(const DrawParams& params) const = 0;
+};
+
+struct Pipe : Obstacle {
+    Float3x4 pipeToWorld = Float3x4::identity();
+
+    PLY_INLINE Pipe(const Float3x4& pipeToWorld) : pipeToWorld{pipeToWorld} {
+    }
+
+    virtual bool collisionCheck(GameState* gs, const LambdaView<bool(const Hit&)>& cb) override;
+    virtual void adjustX(float amount) override;
+    virtual bool canRemove(float leftEdge) override;
+    virtual void draw(const DrawParams& params) const override;
+};
+
 struct GameState {
     struct Callbacks {
         virtual void onGameStart() {
         }
     };
 
-    struct Segment {
+    struct CurveSegment {
         Float2 pos = {0, 0};
         Float2 vel = {0, 0};
-        float dur = 1.f;
     };
 
     struct Mode {
@@ -46,24 +80,19 @@ struct GameState {
             float risingTime[2] = {0, 0};
         };
         struct Playing {
-            enum class Gravity {
-                Start,
-                Normal,
-            };
-
-            Gravity gravityState = Gravity::Normal;
-            float startGravity = 0;
+            float curGravity = NormalGravity;
+            float gravApproach = NormalGravity; // blended at start & after recovery
+            float xVelApproach = ScrollRate;    // blended after recovery
         };
         struct Impact {
-            Float3 pos = {0, 0};
+            Obstacle::Hit hit;
             float time = 0;
-            s32 pipe = -1; // -1 means floor
-            Float3 norm = {0, 0};
+            bool recoverClockwise = true;
         };
         struct Recovering {
-            u32 segIdx = 0;
-            float segTime = 0;
-            Array<GameState::Segment> segs;
+            float time = 0;
+            float totalTime = 1.f;
+            FixedArray<GameState::CurveSegment, 2> curve;
         };
         struct Falling {};
         struct Dead {};
@@ -128,7 +157,7 @@ struct GameState {
     // Playfield
     struct Playfield {
         Array<Owned<ObstacleSequence>> sequences;
-        Array<Float3x4> pipes; // relative to world
+        Array<Reference<Obstacle>> obstacles;
         Array<float> sortedCheckpoints;
     };
     Playfield playfield;

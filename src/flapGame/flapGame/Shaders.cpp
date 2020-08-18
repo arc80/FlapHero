@@ -60,14 +60,12 @@ PLY_NO_INLINE Owned<MaterialShader> MaterialShader::create() {
     return matShader;
 }
 
-PLY_NO_INLINE void MaterialShader::begin(const Float4x4& cameraToViewport) {
+PLY_NO_INLINE void MaterialShader::draw(const Float4x4& cameraToViewport,
+                                        const Float4x4& modelToCamera,
+                                        ArrayView<const DrawMesh> drawMeshes) {
     GL_CHECK(UseProgram(this->shader.id));
     GL_CHECK(
         UniformMatrix4fv(this->cameraToViewportUniform, 1, GL_FALSE, (GLfloat*) &cameraToViewport));
-}
-
-PLY_NO_INLINE void MaterialShader::draw(const Float4x4& modelToCamera,
-                                        ArrayView<const DrawMesh> drawMeshes) {
     GL_CHECK(UniformMatrix4fv(this->modelToCameraUniform, 1, GL_FALSE, (GLfloat*) &modelToCamera));
     for (const DrawMesh& drawMesh : drawMeshes) {
         // Set remaining uniforms and vertex attributes

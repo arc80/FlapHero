@@ -102,30 +102,36 @@ SphCylCollResult::Type sphereCylinderCollisionTest(const Float3& spherePos, floa
     return type;
 }
 
-struct PipeHit {
-    Float3 pos = {0, 0, 0};
-    Float3 norm = {0, 0, 0};
-    s32 pipeIndex = -1;
-};
-
-void checkPipeCollisions(GameState* gs, const LambdaView<void(const PipeHit&)>& cb) {
-    // Check for collision with pipes
-    for (u32 i = 0; i < gs->playfield.pipes.numItems(); i++) {
-        const Float3x4& pipeXform = gs->playfield.pipes[i];
-
-        // Bottom pipe
-        SphCylCollResult result;
-        SphCylCollResult::Type ct = sphereCylinderCollisionTest(
-            gs->bird.pos[0], GameState::BirdRadius, pipeXform, GameState::PipeRadius, &result);
-        if (ct != SphCylCollResult::None) {
-            PipeHit ph;
-            ph.pos = result.pos;
-            ph.norm = result.norm;
-            ph.pipeIndex = i;
-            cb(ph);
-            break;
+bool Pipe::collisionCheck(GameState* gs, const LambdaView<bool(const Hit&)>& cb) {
+    SphCylCollResult result;
+    SphCylCollResult::Type ct = sphereCylinderCollisionTest(
+        gs->bird.pos[0], GameState::BirdRadius, this->pipeToWorld, GameState::PipeRadius, &result);
+    if (ct != SphCylCollResult::None) {
+        Hit hit;
+        hit.pos = result.pos;
+        hit.norm = result.norm;
+        hit.obst = this;
+        if (result.norm.z > 0.1f) {
+            // hit top
+            hit.recoverClockwise = true;
+        } else if (result.norm.z < -0.1f) {
+            // hit bottom
+            hit.recoverClockwise = false;
+        } else {
+            // hit side; recover clockwise if pipe is rightside-up
+            hit.recoverClockwise = (this->pipeToWorld.asFloat3x3() * Float3{0, 0, 1}).z > 0;
         }
+        return cb(hit);
     }
+    return false;
+}
+
+void Pipe::adjustX(float amount) {
+    this->pipeToWorld[3].x += amount;
+}
+
+bool Pipe::canRemove(float leftEdge) {
+    return this->pipeToWorld[3].x < leftEdge - 20;
 }
 
 void onEndSequence(GameState* gs, float xEndSeqRelWorld, bool wasSlanted);
@@ -147,11 +153,13 @@ struct PipeSequence : ObstacleSequence {
                 return false;
             }
 
-            // Add new pipes
+            // Add new obstacles
             float gapHeight = mix(-4.f, 4.f, gs->random.nextFloat());
-            gs->playfield.pipes.append(Float3x4::makeTranslation({pipeX, 0, gapHeight - 4.f}));
-            gs->playfield.pipes.append(Float3x4::makeTranslation({pipeX, 0, gapHeight + 4.f}) *
-                                       Float3x4::makeRotation({1, 0, 0}, Pi));
+            gs->playfield.obstacles.append(
+                new Pipe{Float3x4::makeTranslation({pipeX, 0, gapHeight - 4.f})});
+            gs->playfield.obstacles.append(
+                new Pipe{Float3x4::makeTranslation({pipeX, 0, gapHeight + 4.f}) *
+                         Float3x4::makeRotation({1, 0, 0}, Pi)});
             gs->playfield.sortedCheckpoints.append(pipeX);
             this->pipeIndex++;
         }
@@ -178,8 +186,9 @@ struct SlantedPipeSequence : ObstacleSequence {
 
             // Add new pipes
             float gapHeight = mix(-4.f, 4.f, gs->random.nextFloat());
-            gs->playfield.pipes.append(Float3x4::makeTranslation({pipeX, 0, gapHeight + 4.f}) *
-                                       Float3x4::makeRotation({0, 1, 0}, -Pi / 4));
+            gs->playfield.obstacles.append(
+                new Pipe{Float3x4::makeTranslation({pipeX, 0, gapHeight + 4.f}) *
+                         Float3x4::makeRotation({0, 1, 0}, -Pi / 4)});
             gs->playfield.sortedCheckpoints.append(pipeX);
             this->pipeIndex++;
         }
@@ -219,51 +228,46 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
         }
     } else if (auto playing = gs->mode.playing()) {
         // Tend towards scroll rate
-        gs->bird.vel[1].x =
-            approach(gs->bird.vel[0].x, GameState::ScrollRate, dt * GameState::ScrollRate * 1.f);
 
         // Handle jump
         if (moveData->doJump) {
             gs->bird.setVel({GameState::ScrollRate, 0, GameState::LaunchVel});
-            playing->gravityState = GameState::Mode::Playing::Gravity::Normal;
-            playing->startGravity = GameState::NormalGravity;
-        } else {
-            // Fudge gravity based on x velocity
-            float gravityScale = clamp(gs->bird.vel[1].x / GameState::ScrollRate, 0.f, 1.f);
-            float curGravity = GameState::NormalGravity;
-            if (playing->gravityState == GameState::Mode::Playing::Gravity::Start) {
-                // Add gravity gradually at the start
-                playing->startGravity = approach(playing->startGravity, GameState::NormalGravity,
-                                                 dt * gravityScale * 20.f);
-                curGravity = playing->startGravity;
-            }
-            // Apply gravity
-            gs->bird.vel[1].z = max(gs->bird.vel[0].z - curGravity * gravityScale * dt,
-                                    GameState::TerminalVelocity);
+            playing->curGravity = GameState::NormalGravity;
         }
 
+        // Advance
+        gs->bird.vel[1].x =
+            approach(gs->bird.vel[0].x, GameState::ScrollRate, dt * playing->xVelApproach);
+        playing->curGravity =
+            approach(playing->curGravity, GameState::NormalGravity, dt * playing->gravApproach);
+        gs->bird.vel[1].z =
+            max(gs->bird.vel[0].z - playing->curGravity * dt, GameState::TerminalVelocity);
+
         // Check for impacts
-        auto doImpact = [&](const PipeHit& ph) {
-            // Only collide if moving toward surface
-            if (dot(gs->bird.vel[0], ph.norm) < 0) {
-                auto impact = gs->mode.impact().switchTo();
-                impact->pos = ph.pos;
-                impact->pipe = ph.pipeIndex;
-                impact->time = 0;
-                impact->norm = ph.norm;
-                gs->damage++;
-            }
+        auto doImpact = [&](const Obstacle::Hit& hit) -> bool {
+            // Don't collide if moving away from surface
+            if (dot(gs->bird.vel[0], hit.norm) >= 0)
+                return false;
+
+            auto impact = gs->mode.impact().switchTo();
+            impact->hit = hit;
+            impact->time = 0;
+            // gs->damage++;
+            return true;
         };
 
         if (gs->bird.pos[0].z <= GameState::LowestHeight) {
             // Hit the floor
-            PipeHit ph;
-            ph.pos = {gs->bird.pos[0].x, gs->bird.pos[0].y, GameState::LowestHeight};
-            ph.norm = {0, 0, 1};
-            doImpact(ph);
+            Obstacle::Hit hit;
+            hit.pos = {gs->bird.pos[0].x, gs->bird.pos[0].y, GameState::LowestHeight};
+            hit.norm = {0, 0, 1};
+            doImpact(hit);
         } else {
-            // Check for collision with pipes
-            checkPipeCollisions(gs, doImpact);
+            // Check for obstacle collisions
+            for (Obstacle* obst : gs->playfield.obstacles) {
+                if (obst->collisionCheck(gs, doImpact))
+                    break;
+            }
         }
 
         // Advance bird
@@ -272,67 +276,47 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
     } else if (auto impact = gs->mode.impact()) {
         impact->time += dt;
         if (impact->time >= 0.2f) {
-            Array<GameState::Segment> segs;
-            gs->flip.direction = 1.f;
-            Float2 startPos = {gs->bird.pos[0].x, gs->bird.pos[0].z};
-            if ((impact->norm.z < -0.7f) ||
-                (impact->pipe >= 0 && impact->pos.z > gs->playfield.pipes[impact->pipe][3].y)) {
-                segs.resize(3);
-                float tt = 1.f;
-                segs[0] = {startPos, Float2{-7.f, -8.f} / tt, 0.25f * tt};
-                segs[1] = {startPos + Float2{0, -2.f}, Float2{6.f, -6.f} / tt, 0.5f * tt};
-                segs[2] = {startPos + Float2{3, -1.f}, Float2{5.f, 0.f} / tt, 0.f};
-            } else {
-                segs.resize(3);
-                float tt = 1.f;
-                segs[0] = {startPos, Float2{-7.f, 8.f} / tt, 0.25f * tt};
-                segs[1] = {startPos + Float2{0, 2.f}, Float2{6.f, 6.f} / tt, 0.5f * tt};
-                segs[2] = {startPos + Float2{3, 1.f}, Float2{5.f, 0.f} / tt, 0.f};
-                gs->flip.direction = -1.f;
-            }
+            // Build recovery motion path
+            Float2 start2D = {gs->bird.pos[0].x, gs->bird.pos[0].z};
+            Float2 norm2D = {impact->hit.norm.x, impact->hit.norm.z};
+            float m = (impact->hit.recoverClockwise ? 1.f : -1.f); // mirror
+
             auto recovering = gs->mode.recovering().switchTo();
-            recovering->segIdx = 0;
-            recovering->segTime = 0;
-            recovering->segs = std::move(segs);
-            gs->bird.setVel({recovering->segs[0].vel.x, 0, recovering->segs[0].vel.y});
-            gs->flip.totalTime = 0.1f;
-            for (const GameState::Segment& seg : recovering->segs.view().shortenedBy(1)) {
-                gs->flip.totalTime += seg.dur;
-            }
+            recovering->time = 0;
+            recovering->totalTime = 0.5f;
+            recovering->curve[0] = {start2D, Complex::mul(norm2D, {10.f, 10.f * m})};
+            recovering->curve[1] = {start2D + Complex::mul(norm2D, {1.2f, -1.5f * m}),
+                                    Complex::mul(norm2D, {0.f, -10.f * m})};
+            gs->bird.setVel({recovering->curve[0].vel.x, 0, recovering->curve[0].vel.y});
+            gs->flip.direction = -m;
+            gs->flip.totalTime = 0.9f;
             gs->flip.time = 0.f;
         }
     } else if (auto recovering = gs->mode.recovering()) {
-        recovering->segTime += dt;
-        for (;;) {
-            const GameState::Segment* seg = &recovering->segs[recovering->segIdx];
-            if (recovering->segTime < seg->dur) {
-                // sample the curve
-                Float2 p1 = seg->pos + seg->vel * (seg->dur / 3.f);
-                Float2 p2 = seg[1].pos - seg[1].vel * (seg->dur / 3.f);
-                float t = recovering->segTime / seg->dur;
-                Float2 sampled = interpolateCubic(seg->pos, p1, p2, seg[1].pos, t);
-                gs->bird.pos[1] = {sampled.x, 0, sampled.y};
-                Float2 vel = derivativeCubic(seg->pos, p1, p2, seg[1].pos, t);
-                gs->bird.vel[1] = {vel.x, 0, vel.y};
-                break;
+        recovering->time += dt;
+        ArrayView<GameState::CurveSegment> c = recovering->curve.view();
+        float dur = recovering->totalTime;
+        float ooDur = 1.f / dur;
+        if (recovering->time < recovering->totalTime) {
+            // sample the curve
+            Float2 p1 = c[0].pos + c[0].vel * (dur / 3.f);
+            Float2 p2 = c[1].pos - c[1].vel * (dur / 3.f);
+            float t = recovering->time * ooDur;
+            Float2 sampled = interpolateCubic(c[0].pos, p1, p2, c[1].pos, t);
+            gs->bird.pos[1] = {sampled.x, 0, sampled.y};
+            Float2 vel = derivativeCubic(c[0].pos, p1, p2, c[1].pos, t) * ooDur;
+            gs->bird.vel[1] = {vel.x, 0, vel.y};
+        } else {
+            gs->bird.pos[1] = {c[1].pos.x, 0, c[1].pos.y};
+            if (gs->damage >= 2) {
+                // die
+                gs->bird.setVel({10.f, 0.f, 20.f});
+                gs->mode.falling().switchTo();
             } else {
-                recovering->segTime -= seg->dur;
-                recovering->segIdx++;
-                if (recovering->segIdx + 1 >= recovering->segs.numItems()) {
-                    Float2 sampled = recovering->segs.back().pos;
-                    gs->bird.pos[1] = {sampled.x, 0, sampled.y};
-                    if (gs->damage >= 2) {
-                        // die
-                        gs->mode.falling().switchTo();
-                        gs->bird.setVel({10.f, 0.f, 20.f});
-                    } else {
-                        // recover
-                        Float2 exitVel = recovering->segs.back().vel;
-                        gs->mode.playing().switchTo();
-                        gs->bird.setVel({exitVel.x, 0, exitVel.y});
-                    }
-                    break;
-                }
+                // recover
+                gs->bird.setVel({c[1].vel.x, 0, c[1].vel.y});
+                auto playing = gs->mode.playing().switchTo();
+                playing->xVelApproach = (GameState::ScrollRate - c[1].vel.x) / 0.1f;
             }
         }
     } else if (gs->mode.falling()) {
@@ -342,11 +326,18 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
             gs->bird.pos[0].z = GameState::LowestHeight;
             gs->bird.pos[1] = gs->bird.pos[0];
         } else {
-            checkPipeCollisions(gs, [&](const PipeHit& ph) { //
+            // Check for obstacle collisions
+            auto bounce = [&](const Obstacle::Hit& hit) { //
                 Float3 newVel = gs->bird.vel[0];
                 newVel.z = 20.f;
                 gs->bird.setVel(newVel);
-            });
+                return true;
+            };
+
+            for (Obstacle* obst : gs->playfield.obstacles) {
+                if (obst->collisionCheck(gs, bounce))
+                    break;
+            }
         }
 
         gs->bird.vel[1].z =
@@ -359,25 +350,24 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
 }
 
 void adjustX(GameState* gs, float amount) {
-    gs->bird.pos[0].x -= GameState::WrapAmount;
-    gs->bird.pos[1].x -= GameState::WrapAmount;
-    gs->camX[0] -= GameState::WrapAmount;
-    gs->camX[1] -= GameState::WrapAmount;
+    gs->bird.pos[0].x += amount;
+    gs->bird.pos[1].x += amount;
+    gs->camX[0] += amount;
+    gs->camX[1] += amount;
     for (ObstacleSequence* seq : gs->playfield.sequences) {
-        seq->xSeqRelWorld -= GameState::WrapAmount;
+        seq->xSeqRelWorld += amount;
     }
-    for (Float3x4& pipe : gs->playfield.pipes) {
-        pipe[3].x -= GameState::WrapAmount;
+    for (Obstacle* obst : gs->playfield.obstacles) {
+        obst->adjustX(amount);
     }
     for (float& sc : gs->playfield.sortedCheckpoints) {
-        sc -= GameState::WrapAmount;
+        sc += amount;
     }
     if (auto impact = gs->mode.impact()) {
-        impact->pos.x += amount;
+        impact->hit.pos.x += amount;
     } else if (auto recovering = gs->mode.recovering()) {
-        for (GameState::Segment& seg : recovering->segs) {
-            seg.pos.x -= GameState::WrapAmount;
-        }
+        recovering->curve[0].pos.x += amount;
+        recovering->curve[1].pos.x += amount;
     }
 }
 
@@ -502,10 +492,10 @@ void timeStep(GameState* gs, float dt) {
 
         // Remove old obstacles
         float leftEdge = gs->camX[1] + visibleExtents.mins.x;
-        while (gs->playfield.pipes.numItems() > 1) {
-            if (gs->playfield.pipes[0][3].x > leftEdge - 20)
+        while (gs->playfield.obstacles.numItems() > 1) {
+            if (!gs->playfield.obstacles[0]->canRemove(leftEdge))
                 break;
-            gs->playfield.pipes.erase(0);
+            gs->playfield.obstacles.erase(0);
         }
     }
 
@@ -517,7 +507,8 @@ void timeStep(GameState* gs, float dt) {
 
 void GameState::startPlaying() {
     auto playing = this->mode.playing().switchTo();
-    playing->gravityState = GameState::Mode::Playing::Gravity::Start;
+    playing->curGravity = 0.f;
+    playing->gravApproach = 20.f;
     Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
     float birdRelCameraX = mix(visibleExtents.mins.x, visibleExtents.maxs.x, 0.3116f);
     this->camX[0] = this->bird.pos[1].x - birdRelCameraX;
