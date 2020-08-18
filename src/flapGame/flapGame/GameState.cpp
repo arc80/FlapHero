@@ -244,12 +244,15 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
 
         // Check for impacts
         auto doImpact = [&](const PipeHit& ph) {
-            auto impact = gs->mode.impact().switchTo();
-            impact->pos = ph.pos;
-            impact->pipe = ph.pipeIndex;
-            impact->time = 0;
-            impact->norm = ph.norm;
-            gs->damage++;
+            // Only collide if moving toward surface
+            if (dot(gs->bird.vel[0], ph.norm) < 0) {
+                auto impact = gs->mode.impact().switchTo();
+                impact->pos = ph.pos;
+                impact->pipe = ph.pipeIndex;
+                impact->time = 0;
+                impact->norm = ph.norm;
+                gs->damage++;
+            }
         };
 
         if (gs->bird.pos[0].z <= GameState::LowestHeight) {
@@ -278,7 +281,7 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
                 float tt = 1.f;
                 segs[0] = {startPos, Float2{-7.f, -8.f} / tt, 0.25f * tt};
                 segs[1] = {startPos + Float2{0, -2.f}, Float2{6.f, -6.f} / tt, 0.5f * tt};
-                segs[2] = {startPos + Float2{3, -1.f}, Float2{5.f, 5.f} / tt, 0.f};
+                segs[2] = {startPos + Float2{3, -1.f}, Float2{5.f, 0.f} / tt, 0.f};
             } else {
                 segs.resize(3);
                 float tt = 1.f;
@@ -291,7 +294,7 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
             recovering->segIdx = 0;
             recovering->segTime = 0;
             recovering->segs = std::move(segs);
-            gs->bird.setVel({0, 0, 0}); // vel is not used in recovery mode
+            gs->bird.setVel({recovering->segs[0].vel.x, 0, recovering->segs[0].vel.y});
             gs->flip.totalTime = 0.1f;
             for (const GameState::Segment& seg : recovering->segs.view().shortenedBy(1)) {
                 gs->flip.totalTime += seg.dur;
@@ -309,6 +312,8 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
                 float t = recovering->segTime / seg->dur;
                 Float2 sampled = interpolateCubic(seg->pos, p1, p2, seg[1].pos, t);
                 gs->bird.pos[1] = {sampled.x, 0, sampled.y};
+                Float2 vel = derivativeCubic(seg->pos, p1, p2, seg[1].pos, t);
+                gs->bird.vel[1] = {vel.x, 0, vel.y};
                 break;
             } else {
                 recovering->segTime -= seg->dur;
@@ -383,18 +388,33 @@ void timeStep(GameState* gs, float dt) {
 
     // Handle inputs
     if (gs->buttonPressed) {
-        if (gs->mode.title()) {
-            gs->startPlaying();
-            gs->callbacks->onGameStart();
-        } else {
-            if (gs->mode.recovering() && gs->damage < 2) {
-                gs->mode.playing().switchTo();
-            }
-            if (gs->mode.playing()) {
-                moveData.doJump = true;
-            }
-        }
         gs->buttonPressed = false;
+        switch (gs->mode.id) {
+            using ID = GameState::Mode::ID;
+            case ID::Title: {
+                gs->startPlaying();
+                gs->callbacks->onGameStart();
+                break;
+            }
+            case ID::Playing: {
+                moveData.doJump = true;
+                break;
+            }
+            case ID::Impact: {
+                // Keep button pressed status until recovering
+                gs->buttonPressed = true;
+                break;
+            }
+            case ID::Recovering: {
+                if (gs->damage < 2) {
+                    gs->mode.playing().switchTo();
+                    moveData.doJump = true;
+                }
+                break;
+            }
+            default:
+                break;
+        }
     }
 
     // Initialize start of interval
