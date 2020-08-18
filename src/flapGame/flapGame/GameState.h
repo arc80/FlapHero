@@ -83,6 +83,7 @@ struct GameState {
             float curGravity = NormalGravity;
             float gravApproach = NormalGravity; // blended at start & after recovery
             float xVelApproach = ScrollRate;    // blended after recovery
+            float timeScale = 1.f;              // temporary slowdown after recovery
         };
         struct Impact {
             Obstacle::Hit hit;
@@ -92,6 +93,7 @@ struct GameState {
         struct Recovering {
             float time = 0;
             float totalTime = 1.f;
+            float timeScale = 1.f; // temporary slowdown after recovery
             FixedArray<GameState::CurveSegment, 2> curve;
         };
         struct Falling {};

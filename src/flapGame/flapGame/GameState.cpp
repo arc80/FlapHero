@@ -144,11 +144,11 @@ struct PipeSequence : ObstacleSequence {
 
     virtual bool advanceTo(GameState* gs, float xVisRelWorld) override {
         float xVisRelSeq = xVisRelWorld - this->xSeqRelWorld;
-        s32 newPipeIndex = min(10, s32(xVisRelSeq / GameState::PipeSpacing));
+        s32 newPipeIndex = s32(xVisRelSeq / GameState::PipeSpacing);
         while ((s32) this->pipeIndex <= newPipeIndex) {
             float pipeX = this->xSeqRelWorld + this->pipeIndex * GameState::PipeSpacing;
 
-            if (this->pipeIndex >= 8) {
+            if (this->pipeIndex >= 10) {
                 onEndSequence(gs, pipeX, false);
                 return false;
             }
@@ -227,21 +227,22 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
             title->risingTime[1] = 0;
         }
     } else if (auto playing = gs->mode.playing()) {
-        // Tend towards scroll rate
-
         // Handle jump
         if (moveData->doJump) {
             gs->bird.setVel({GameState::ScrollRate, 0, GameState::LaunchVel});
             playing->curGravity = GameState::NormalGravity;
+            playing->timeScale = 1.f;
         }
 
         // Advance
+        playing->timeScale = approach(playing->timeScale, 1.f, dt * 2.f);
+        float dtScaled = dt * playing->timeScale;
         gs->bird.vel[1].x =
-            approach(gs->bird.vel[0].x, GameState::ScrollRate, dt * playing->xVelApproach);
-        playing->curGravity =
-            approach(playing->curGravity, GameState::NormalGravity, dt * playing->gravApproach);
+            approach(gs->bird.vel[0].x, GameState::ScrollRate, dtScaled * playing->xVelApproach);
+        playing->curGravity = approach(playing->curGravity, GameState::NormalGravity,
+                                       dtScaled * playing->gravApproach);
         gs->bird.vel[1].z =
-            max(gs->bird.vel[0].z - playing->curGravity * dt, GameState::TerminalVelocity);
+            max(gs->bird.vel[0].z - playing->curGravity * dtScaled, GameState::TerminalVelocity);
 
         // Check for impacts
         auto doImpact = [&](const Obstacle::Hit& hit) -> bool {
@@ -252,7 +253,7 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
             auto impact = gs->mode.impact().switchTo();
             impact->hit = hit;
             impact->time = 0;
-            // gs->damage++;
+            gs->damage++;
             return true;
         };
 
@@ -272,7 +273,7 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
 
         // Advance bird
         Float3 midVel = (gs->bird.vel[0] + gs->bird.vel[1]) * 0.5f;
-        gs->bird.pos[1] = gs->bird.pos[0] + midVel * dt;
+        gs->bird.pos[1] = gs->bird.pos[0] + midVel * dtScaled;
     } else if (auto impact = gs->mode.impact()) {
         impact->time += dt;
         if (impact->time >= 0.2f) {
@@ -293,7 +294,7 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
             gs->flip.time = 0.f;
         }
     } else if (auto recovering = gs->mode.recovering()) {
-        recovering->time += dt;
+        recovering->time += dt * recovering->timeScale;
         ArrayView<GameState::CurveSegment> c = recovering->curve.view();
         float dur = recovering->totalTime;
         float ooDur = 1.f / dur;
@@ -306,6 +307,7 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
             gs->bird.pos[1] = {sampled.x, 0, sampled.y};
             Float2 vel = derivativeCubic(c[0].pos, p1, p2, c[1].pos, t) * ooDur;
             gs->bird.vel[1] = {vel.x, 0, vel.y};
+            recovering->timeScale = mix(1.f, 0.5f, t);
         } else {
             gs->bird.pos[1] = {c[1].pos.x, 0, c[1].pos.y};
             if (gs->damage >= 2) {
@@ -317,6 +319,7 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
                 gs->bird.setVel({c[1].vel.x, 0, c[1].vel.y});
                 auto playing = gs->mode.playing().switchTo();
                 playing->xVelApproach = (GameState::ScrollRate - c[1].vel.x) / 0.1f;
+                playing->timeScale = 0.5f;
             }
         }
     } else if (gs->mode.falling()) {
