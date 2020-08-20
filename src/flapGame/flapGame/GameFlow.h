@@ -26,13 +26,23 @@ struct TitleRotator {
 struct GameFlow final : GameState::Callbacks {
     DynamicArrayBuffers dynBuffers;
 
+    struct Transition {
+        // ply make switch
+        struct Off {
+        };
+        struct On {
+            float frac[2] = {0.f, 0.f};
+            Owned<GameState> oldGameState;
+        };
+#include "codegen/switch-flap-GameFlow-Transition.inl" //@@ply
+    };
+
     static constexpr float MaxTimeStep = 0.05f;
     float simulationTimeStep = 0.005f;
     float fracTime = 0.f;
     bool buttonPressed = false;
     Owned<GameState> gameState;
-    Owned<GameState> oldGameState;
-    float transition = 0;
+    Transition trans;
     u32 bestScore = 0;
     Owned<TitleRotator> titleRot;
     SoLoud::handle titleMusicVoice = 0;

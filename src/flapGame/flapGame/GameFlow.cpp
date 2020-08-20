@@ -62,6 +62,9 @@ void update(GameFlow* gf, float dt) {
     GameState* gs = gf->gameState;
     if (gf->buttonPressed) {
         if (gs->mode.dead()) {
+            // start transition
+            auto trans = gf->trans.on().switchTo();
+            trans->oldGameState = std::move(gf->gameState);
             gf->resetGame(true);
             gs = gf->gameState;
         } else {
@@ -73,6 +76,17 @@ void update(GameFlow* gf, float dt) {
     while (gf->fracTime >= gf->simulationTimeStep) {
         gf->fracTime -= gf->simulationTimeStep;
         timeStep(gs, gf->simulationTimeStep);
+
+        if (auto trans = gf->trans.on()) {
+            trans->frac[0] = trans->frac[1];
+            trans->frac[1] += gf->simulationTimeStep * 2.f;
+            if (trans->frac[1] >= 1.f) {
+                gf->trans.off().switchTo();
+            } else {
+                timeStep(trans->oldGameState, gf->simulationTimeStep);
+            }
+        }
+
         timeStep(gf->titleRot, gf->simulationTimeStep, gs->random);
     }
     if (gs->score >= gf->bestScore) {
@@ -103,3 +117,5 @@ void destroy(GameFlow* gf) {
 }
 
 } // namespace flap
+
+#include "codegen/GameFlow.inl"
