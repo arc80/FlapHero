@@ -195,10 +195,10 @@ PLY_NO_INLINE TextBuffers generateTextBuffers(const SDFFont* sdfFont, StringView
         pos.x += cd.xAdvance;
 
         u32 base = vertices.numItems();
-        vertices.append() = {{r.mins.x, -r.mins.y}, {uv.mins.x, uv.mins.y}};
-        vertices.append() = {{r.maxs.x, -r.mins.y}, {uv.maxs.x, uv.mins.y}};
-        vertices.append() = {{r.maxs.x, -r.maxs.y}, {uv.maxs.x, uv.maxs.y}};
         vertices.append() = {{r.mins.x, -r.maxs.y}, {uv.mins.x, uv.maxs.y}};
+        vertices.append() = {{r.maxs.x, -r.maxs.y}, {uv.maxs.x, uv.maxs.y}};
+        vertices.append() = {{r.maxs.x, -r.mins.y}, {uv.maxs.x, uv.mins.y}};
+        vertices.append() = {{r.mins.x, -r.mins.y}, {uv.mins.x, uv.mins.y}};
         indices.append(safeDemote<u16>(base));
         indices.append(safeDemote<u16>(base + 1));
         indices.append(safeDemote<u16>(base + 2));
@@ -221,6 +221,13 @@ PLY_NO_INLINE void drawText(const SDFCommon* common, const SDFFont* sdfFont, con
                             const Float4x4& modelToViewport, const Float2& sdfParams,
                             const Float4& color) {
     GL_CHECK(UseProgram(common->shader.id));
+    GL_CHECK(Disable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_FALSE));
+    GL_CHECK(Enable(GL_BLEND));
+    // Premultiplied alpha
+    GL_CHECK(BlendEquation(GL_FUNC_ADD));
+    GL_CHECK(BlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA));
+
     GL_CHECK(UniformMatrix4fv(common->modelToViewportUniform, 1, GL_FALSE,
                               (GLfloat*) &modelToViewport));
     GL_CHECK(ActiveTexture(GL_TEXTURE0));
@@ -242,14 +249,6 @@ PLY_NO_INLINE void drawText(const SDFCommon* common, const SDFFont* sdfFont, con
     GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, tb.indices));
 
     // Draw
-    GL_CHECK(Disable(GL_DEPTH_TEST));
-    GL_CHECK(DepthMask(GL_FALSE));
-    GL_CHECK(Disable(GL_CULL_FACE));
-
-    // Premultiplied alpha
-    GL_CHECK(Enable(GL_BLEND));
-    GL_CHECK(BlendEquation(GL_FUNC_ADD));
-    GL_CHECK(BlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA));
     GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) tb.numIndices, GL_UNSIGNED_SHORT, (void*) 0));
 }
 

@@ -31,6 +31,8 @@ struct GameFlow final : GameState::Callbacks {
     float fracTime = 0.f;
     bool buttonPressed = false;
     Owned<GameState> gameState;
+    Owned<GameState> oldGameState;
+    float transition = 0;
     u32 bestScore = 0;
     Owned<TitleRotator> titleRot;
     SoLoud::handle titleMusicVoice = 0;
@@ -38,6 +40,9 @@ struct GameFlow final : GameState::Callbacks {
     GameFlow();
 
     virtual void onGameStart() override;
+    virtual u32 getBestScore() const override {
+        return this->bestScore;
+    }
     void resetGame(bool isPlaying);
 };
 

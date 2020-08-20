@@ -32,9 +32,8 @@ struct SkinnedShader {
 
     static Owned<SkinnedShader> create();
 
-    void begin(const Float4x4& cameraToViewport);
-    void draw(const Float4x4& modelToCamera, ArrayView<const Float4x4> boneToModel,
-              ArrayView<const DrawMesh> drawMeshes);
+    void draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
+              ArrayView<const Float4x4> boneToModel, ArrayView<const DrawMesh> drawMeshes);
 };
 
 struct FlatShader {
@@ -48,7 +47,8 @@ struct FlatShader {
 
     static Owned<FlatShader> create();
 
-    void draw(const Float4x4& modelToViewport, ArrayView<const DrawMesh> drawMeshes);
+    void draw(const Float4x4& modelToViewport, ArrayView<const DrawMesh> drawMeshes,
+              bool writeDepth);
     void drawQuad(const Float4x4& modelToViewport, const Float3& linearColor);
 };
 

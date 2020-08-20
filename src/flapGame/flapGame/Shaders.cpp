@@ -64,9 +64,14 @@ PLY_NO_INLINE void MaterialShader::draw(const Float4x4& cameraToViewport,
                                         const Float4x4& modelToCamera,
                                         ArrayView<const DrawMesh> drawMeshes) {
     GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Enable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_TRUE));
+    GL_CHECK(Disable(GL_BLEND));
+
     GL_CHECK(
         UniformMatrix4fv(this->cameraToViewportUniform, 1, GL_FALSE, (GLfloat*) &cameraToViewport));
     GL_CHECK(UniformMatrix4fv(this->modelToCameraUniform, 1, GL_FALSE, (GLfloat*) &modelToCamera));
+
     for (const DrawMesh& drawMesh : drawMeshes) {
         // Set remaining uniforms and vertex attributes
         GL_CHECK(Uniform3fv(this->colorUniform, 1, (const GLfloat*) &drawMesh.diffuse));
@@ -166,16 +171,19 @@ PLY_NO_INLINE Owned<SkinnedShader> SkinnedShader::create() {
     return skinnedShader;
 }
 
-PLY_NO_INLINE void SkinnedShader::begin(const Float4x4& cameraToViewport) {
-    GL_CHECK(UseProgram(this->shader.id));
-    GL_CHECK(
-        UniformMatrix4fv(this->cameraToViewportUniform, 1, GL_FALSE, (GLfloat*) &cameraToViewport));
-}
-
-PLY_NO_INLINE void SkinnedShader::draw(const Float4x4& modelToCamera,
+PLY_NO_INLINE void SkinnedShader::draw(const Float4x4& cameraToViewport,
+                                       const Float4x4& modelToCamera,
                                        ArrayView<const Float4x4> boneToModel,
                                        ArrayView<const DrawMesh> drawMeshes) {
+    GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Enable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_TRUE));
+    GL_CHECK(Disable(GL_BLEND));
+
+    GL_CHECK(
+        UniformMatrix4fv(this->cameraToViewportUniform, 1, GL_FALSE, (GLfloat*) &cameraToViewport));
     GL_CHECK(UniformMatrix4fv(this->modelToCameraUniform, 1, GL_FALSE, (GLfloat*) &modelToCamera));
+
     for (const DrawMesh& drawMesh : drawMeshes) {
         // Compute boneXforms
         Array<Float4x4> boneXforms;
@@ -266,10 +274,15 @@ PLY_NO_INLINE Owned<FlatShader> FlatShader::create() {
 }
 
 PLY_NO_INLINE void FlatShader::draw(const Float4x4& modelToViewport,
-                                    ArrayView<const DrawMesh> drawMeshes) {
+                                    ArrayView<const DrawMesh> drawMeshes, bool writeDepth) {
     GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Enable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(writeDepth ? GL_TRUE : GL_FALSE));
+    GL_CHECK(Disable(GL_BLEND));
+
     GL_CHECK(
         UniformMatrix4fv(this->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));
+
     for (const DrawMesh& drawMesh : drawMeshes) {
         // Set remaining uniforms and vertex attributes
         Float3 linear = toSRGB(drawMesh.diffuse); // FIXME: Don't convert on load
@@ -290,6 +303,10 @@ PLY_NO_INLINE void FlatShader::draw(const Float4x4& modelToViewport,
 PLY_NO_INLINE void FlatShader::drawQuad(const Float4x4& modelToViewport,
                                         const Float3& linearColor) {
     GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Enable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_TRUE));
+    GL_CHECK(Disable(GL_BLEND));
+
     GL_CHECK(
         UniformMatrix4fv(this->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));
     GL_CHECK(Uniform3fv(this->colorUniform, 1, (const GLfloat*) &linearColor));
@@ -369,6 +386,13 @@ PLY_NO_INLINE Owned<FlashShader> FlashShader::create() {
 void FlashShader::drawQuad(const Float4x4& modelToViewport, const Float4& vertToTexCoord,
                            GLuint textureID, const Float4& color) const {
     GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Disable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_FALSE));
+    GL_CHECK(Enable(GL_BLEND));
+    // Premultiplied alpha
+    GL_CHECK(BlendEquation(GL_FUNC_ADD));
+    GL_CHECK(BlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA));
+
     GL_CHECK(
         UniformMatrix4fv(this->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));
     GL_CHECK(Uniform4fv(this->vertToTexCoordUniform, 1, (GLfloat*) &vertToTexCoord));
@@ -387,14 +411,6 @@ void FlashShader::drawQuad(const Float4x4& modelToViewport, const Float4& vertTo
     GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->indices.id));
 
     // Draw
-    GL_CHECK(Disable(GL_DEPTH_TEST));
-    GL_CHECK(DepthMask(GL_FALSE));
-    GL_CHECK(Disable(GL_CULL_FACE));
-
-    // Premultiplied alpha
-    GL_CHECK(Enable(GL_BLEND));
-    GL_CHECK(BlendEquation(GL_FUNC_ADD));
-    GL_CHECK(BlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA));
     GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) this->numIndices, GL_UNSIGNED_SHORT, (void*) 0));
 }
 
@@ -452,6 +468,13 @@ void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, con
     GLuint indicesID = DynamicArrayBuffers::instance->upload(indices.bufferView());
 
     GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Disable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_FALSE));
+    GL_CHECK(Enable(GL_BLEND));
+    // Premultiplied alpha
+    GL_CHECK(BlendEquation(GL_FUNC_ADD));
+    GL_CHECK(BlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA));
+
     GL_CHECK(
         UniformMatrix4fv(this->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));
     GL_CHECK(ActiveTexture(GL_TEXTURE0));
@@ -471,15 +494,6 @@ void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, con
     // Bind index buffer
     GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesID));
 
-    // Draw
-    GL_CHECK(Disable(GL_DEPTH_TEST));
-    GL_CHECK(DepthMask(GL_FALSE));
-    GL_CHECK(Disable(GL_CULL_FACE));
-
-    // Premultiplied alpha
-    GL_CHECK(Enable(GL_BLEND));
-    GL_CHECK(BlendEquation(GL_FUNC_ADD));
-    GL_CHECK(BlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA));
     GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) indices.numItems, GL_UNSIGNED_SHORT, (void*) 0));
 }
 

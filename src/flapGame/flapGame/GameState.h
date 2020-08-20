@@ -63,6 +63,7 @@ struct GameState {
     struct Callbacks {
         virtual void onGameStart() {
         }
+        virtual u32 getBestScore() const = 0;
     };
 
     struct CurveSegment {
@@ -113,6 +114,7 @@ struct GameState {
     static constexpr float BirdRadius = 1.f;
     static constexpr float RecoveryTime = 0.5f;
     static constexpr float FlapRate = 4.f;
+    static constexpr float WorldDistance = 80.f;
 
     Callbacks* callbacks = nullptr;
     Random random;

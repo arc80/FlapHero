@@ -163,45 +163,19 @@ void Pipe::draw(const Obstacle::DrawParams& params) const {
                        a->pipe.view());
 }
 
-void render(GameFlow* gf, const IntVec2& fbSize) {
-    GameState* gs = gf->gameState;
-    PLY_SET_IN_SCOPE(DynamicArrayBuffers::instance, &gf->dynBuffers);
-    gf->dynBuffers.beginFrame();
-    float intervalFrac = gf->fracTime / gf->simulationTimeStep;
-
-    // Enable depth test
-    GL_CHECK(Enable(GL_DEPTH_TEST));
-    GL_CHECK(DepthMask(GL_TRUE));
-
-    // Clear viewport
-    GL_CHECK(ClearColor(0, 0, 0, 1));
-    GL_CHECK(ClearDepth(1.0));
-    GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
-
-    // Fit frustum in viewport
-    Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
-    float worldDistance = 80.f;
-    ViewportFrustum vf = fitFrustumInViewport({{0, 0}, {(float) fbSize.x, (float) fbSize.y}},
-                                              visibleExtents / worldDistance)
-                             .quantize();
+void render(GameState* gs, const ViewportFrustum& vf, float intervalFrac,
+            const Rect& visibleExtents) {
     GL_CHECK(Viewport((GLint) vf.viewport.mins.x, (GLint) vf.viewport.mins.y,
                       (GLsizei) vf.viewport.width(), (GLsizei) vf.viewport.height()));
-
-    // Disable alpha blend
-    GL_CHECK(Disable(GL_BLEND));
 
     // Enable face culling
     GL_CHECK(Enable(GL_CULL_FACE));
     GL_CHECK(CullFace(GL_BACK));
     GL_CHECK(FrontFace(GL_CCW));
 
-#if !PLY_TARGET_IOS // doesn't exist in OpenGLES 3
-    GL_CHECK(Enable(GL_FRAMEBUFFER_SRGB));
-#endif
-
     const Assets* a = Assets::instance;
     Float4x4 cameraToViewport =
-        Float4x4::makeProjection(visibleExtents / worldDistance, 10.f, 100.f);
+        Float4x4::makeProjection(visibleExtents / GameState::WorldDistance, 10.f, 100.f);
 
     // Draw bird
     Float3 birdRelWorld = mix(gs->bird.pos[0], gs->bird.pos[1], intervalFrac);
@@ -227,7 +201,8 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
                 .toFloat3x4(camRelWorld);
         worldToCamera = cameraToWorld.invertedOrtho().toFloat4x4();
     } else {
-        Float3 camRelWorld = {mix(gs->camX[0], gs->camX[1], intervalFrac), -worldDistance, 0};
+        Float3 camRelWorld = {mix(gs->camX[0], gs->camX[1], intervalFrac),
+                              -GameState::WorldDistance, 0};
         worldToCamera = w2c * Float4x4::makeTranslation(-camRelWorld);
     }
     {
@@ -237,8 +212,8 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
             base = 0.1f;
         }
         Array<Float4x4> boneToModel = composeBirdBones(gs, intervalFrac);
-        a->skinnedShader->begin(cameraToViewport);
         a->skinnedShader->draw(
+            cameraToViewport,
             worldToCamera * Float4x4::makeTranslation(birdRelWorld) *
                 Float4x4::makeRotation({0, 1, 0}, -Pi * (angle * gs->flip.direction * 2.f + base)) *
                 Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) * Float4x4::makeScale(1.0833f),
@@ -275,34 +250,7 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
             {0.25f, -0.25f, 0.75f, 0.25f}, a->flashTexture.id, {1.2f, 1.2f, 0, 0.6f});
     }
 
-    if (auto title = gs->mode.title()) {
-        // Draw title
-        worldDistance = 15.f;
-        Float4x4 cameraToViewport =
-            Float4x4::makeProjection(visibleExtents / worldDistance, 1.f, 40.f);
-        Float3 skewNorm = getNorm(gf->titleRot, gf->fracTime);
-        Float4x4 skewRot = Quaternion::fromUnitVectors(Float3{0, 0, 1}, skewNorm).toFloat4x4();
-        Float4x4 mat = cameraToViewport * w2c * Float4x4::makeTranslation({0, worldDistance, 4.f}) *
-                       Float4x4::makeRotation({1, 0, 0}, Pi / 2.f) * skewRot *
-                       Float4x4::makeTranslation({0, 0, 2.2f}) * Float4x4::makeScale(7.5f);
-        GL_CHECK(DepthMask(GL_FALSE));
-        a->flatShader->draw(mat, a->outline.view());
-        GL_CHECK(DepthMask(GL_TRUE));
-        a->flatShader->draw(mat, a->title.view());
-        if (title->showPrompt) {
-            TextBuffers tapToPlay = generateTextBuffers(a->sdfFont, "TAP TO PLAY");
-            drawText(a->sdfCommon, a->sdfFont, tapToPlay,
-                     Float4x4::makeOrtho({{0, 0}, {480, 640}}, -1.f, 1.f) *
-                         Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
-                         Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
-                     {0.85f, 1.75f}, {0, 0, 0, 0.4f});
-            drawText(a->sdfCommon, a->sdfFont, tapToPlay,
-                     Float4x4::makeOrtho({{0, 0}, {480, 640}}, -1.f, 1.f) *
-                         Float4x4::makeTranslation({240, 24, 0}) * Float4x4::makeScale(0.9f) *
-                         Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
-                     {0.75f, 16.f}, {1.f, 1.f, 1.f, 1.f});
-        }
-    } else if (gs->mode.dead()) {
+    if (gs->mode.dead()) {
         TextBuffers gameOver = generateTextBuffers(a->sdfFont, "GAME OVER");
         drawText(a->sdfCommon, a->sdfFont, gameOver,
                  Float4x4::makeOrtho({{0, 0}, {480, 640}}, -1.f, 1.f) *
@@ -317,7 +265,8 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
         drawScoreSign(Float4x4::makeOrtho({{0, 0}, {480, 640}}, -1.f, 1.f), {240, 380}, 1.f,
                       "SCORE", String::from(gs->score), {1, 1, 1, 1});
         drawScoreSign(Float4x4::makeOrtho({{0, 0}, {480, 640}}, -1.f, 1.f), {240, 250}, 0.5f,
-                      "BEST", String::from(gf->bestScore), {1.f, 0.45f, 0.05f, 1.f});
+                      "BEST", String::from(gs->callbacks->getBestScore()),
+                      {1.f, 0.45f, 0.05f, 1.f});
         TextBuffers playAgain = generateTextBuffers(a->sdfFont, "TAP TO PLAY AGAIN");
         drawText(a->sdfCommon, a->sdfFont, playAgain,
                  Float4x4::makeOrtho({{0, 0}, {480, 640}}, -1.f, 1.f) *
@@ -329,7 +278,9 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
                      Float4x4::makeTranslation({240, 24, 0}) * Float4x4::makeScale(0.9f) *
                      Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
                  {0.75f, 16.f}, {1.f, 1.f, 1.f, 1.f});
-    } else {
+    }
+    
+    if (!gs->mode.dead() && !gs->mode.title()) {
         // Draw score
         TextBuffers tb = generateTextBuffers(a->sdfFont, String::from(gs->score));
         drawText(a->sdfCommon, a->sdfFont, tb,
@@ -342,6 +293,62 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
                      Float4x4::makeTranslation({240, 574, 0}) * Float4x4::makeScale(1.5f) *
                      Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
                  {0.75f, 32.f}, {1.f, 1.f, 1.f, 1.f});
+    }
+}
+
+void render(GameFlow* gf, const IntVec2& fbSize) {
+    PLY_SET_IN_SCOPE(DynamicArrayBuffers::instance, &gf->dynBuffers);
+    gf->dynBuffers.beginFrame();
+
+#if !PLY_TARGET_IOS // doesn't exist in OpenGLES 3
+    GL_CHECK(Enable(GL_FRAMEBUFFER_SRGB));
+#endif
+
+    // Clear viewport
+    GL_CHECK(DepthMask(GL_TRUE));
+    GL_CHECK(ClearColor(0, 0, 0, 1));
+    GL_CHECK(ClearDepth(1.0));
+    GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
+
+    // Fit frustum in viewport
+    Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
+    ViewportFrustum vf = fitFrustumInViewport({{0, 0}, {(float) fbSize.x, (float) fbSize.y}},
+                                              visibleExtents / GameState::WorldDistance)
+                             .quantize();
+
+    float intervalFrac = gf->fracTime / gf->simulationTimeStep;
+    GameState* gs = gf->gameState;
+
+    render(gs, vf, intervalFrac, visibleExtents);
+
+    if (auto title = gs->mode.title()) {
+        const Assets* a = Assets::instance;
+
+        // Draw title
+        Float4x4 w2c = {{{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
+        float worldDistance = 15.f;
+        Float4x4 cameraToViewport =
+            Float4x4::makeProjection(visibleExtents / worldDistance, 1.f, 40.f);
+        Float3 skewNorm = getNorm(gf->titleRot, gf->fracTime);
+        Float4x4 skewRot = Quaternion::fromUnitVectors(Float3{0, 0, 1}, skewNorm).toFloat4x4();
+        Float4x4 mat = cameraToViewport * w2c * Float4x4::makeTranslation({0, worldDistance, 4.f}) *
+                       Float4x4::makeRotation({1, 0, 0}, Pi / 2.f) * skewRot *
+                       Float4x4::makeTranslation({0, 0, 2.2f}) * Float4x4::makeScale(7.5f);
+        a->flatShader->draw(mat, a->outline.view(), false);
+        a->flatShader->draw(mat, a->title.view(), true);
+        if (title->showPrompt) {
+            TextBuffers tapToPlay = generateTextBuffers(a->sdfFont, "TAP TO PLAY");
+            drawText(a->sdfCommon, a->sdfFont, tapToPlay,
+                     Float4x4::makeOrtho({{0, 0}, {480, 640}}, -1.f, 1.f) *
+                         Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
+                         Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
+                     {0.85f, 1.75f}, {0, 0, 0, 0.4f});
+            drawText(a->sdfCommon, a->sdfFont, tapToPlay,
+                     Float4x4::makeOrtho({{0, 0}, {480, 640}}, -1.f, 1.f) *
+                         Float4x4::makeTranslation({240, 24, 0}) * Float4x4::makeScale(0.9f) *
+                         Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
+                     {0.75f, 16.f}, {1.f, 1.f, 1.f, 1.f});
+        }
     }
 }
 
