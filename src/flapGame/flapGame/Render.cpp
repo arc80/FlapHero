@@ -301,6 +301,7 @@ void render(GameState* gs, const ViewportFrustum& vf, float intervalFrac,
 }
 
 void render(GameFlow* gf, const IntVec2& fbSize) {
+    const Assets* a = Assets::instance;
     PLY_SET_IN_SCOPE(DynamicArrayBuffers::instance, &gf->dynBuffers);
     gf->dynBuffers.beginFrame();
     float intervalFrac = gf->fracTime / gf->simulationTimeStep;
@@ -330,8 +331,8 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
         slide = interpolateCubic<float>(0, 0.1f, 0.9f, 1, slide);
 
         // Place divider
-        float divWidth = max(1.f, fullVF.viewport.width() / 60.f);
-        float divRight = (fullVF.viewport.width() + divWidth) * slide;
+        float divWidth = quantizeNearest(max(1.f, fullVF.viewport.width() / 60.f), 1.f);
+        float divRight = fullVF.viewport.mins.x + (fullVF.viewport.width() + divWidth) * slide;
         float divLeft = divRight - divWidth;
 
         // Draw left (new) panel
@@ -342,6 +343,18 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
             leftVF = leftVF.clip(fullVF.viewport).quantize();
             if (!leftVF.viewport.isEmpty()) {
                 render(gf->gameState, leftVF, intervalFrac, visibleExtents);
+            }
+        }
+
+        // Draw vertical bar
+        {
+            Rect barRect = quantizeNearest(
+                intersect(fullVF.viewport, Rect{{divLeft, fullVF.viewport.mins.y},
+                                                {divRight, fullVF.viewport.maxs.y}}), 1.f);
+            if (!barRect.isEmpty()) {
+                GL_CHECK(Viewport((GLint) barRect.mins.x, (GLint) barRect.mins.y,
+                                  (GLsizei) barRect.width(), (GLsizei) barRect.height()));
+                a->flatShader->drawQuad(Float4x4::identity(), {1, 1, 1});
             }
         }
 
@@ -360,8 +373,6 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
     }
 
     if (auto title = gf->gameState->mode.title()) {
-        const Assets* a = Assets::instance;
-
         // Draw title
         Float4x4 w2c = {{{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
         float worldDistance = 15.f;
