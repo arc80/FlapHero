@@ -220,6 +220,43 @@ void extractBirdAnimData(BirdAnimData* bad, const aiScene* scene) {
         extractPose(bad->birdSkel.view(), scene->mAnimations[0], 16, {"Pupil_L", "Pupil_R"});
 }
 
+struct FallAnimFrame {
+    float verticalDrop = 0;
+    float recoilDistance = 0;
+    float rotationAngle = 0;
+};
+
+Array<FallAnimFrame> extractFallAnimation(const aiScene* scene, u32 numFrames) {
+    auto findChannel = [&](StringView name) -> const aiNodeAnim* {
+        PLY_ASSERT(scene->mNumAnimations == 1);
+        const aiAnimation* srcAnim = scene->mAnimations[0];
+        ArrayView<const aiNodeAnim* const> channels = {srcAnim->mChannels, srcAnim->mNumChannels};
+        s32 index = find(channels, [&](const aiNodeAnim* ch) { return toStringView(ch->mNodeName) == name; });
+        PLY_ASSERT(index >= 0);
+        return channels[safeDemote<u32>(index)];
+    };
+    const aiNodeAnim* gravChan = findChannel("GravityAndAngle");
+    const aiNodeAnim* recoilChan = findChannel("Recoil");
+    const aiNodeAnim* birdChan = findChannel("Bird");
+
+    Array<FallAnimFrame> frames;
+    frames.reserve(numFrames);
+    float angle = 0.f;
+    for (u32 i = 0; i < numFrames; i++) {
+        FallAnimFrame& frame = frames.append();
+        frame.verticalDrop = sampleAnimCurve(gravChan, (float) i).pos.z / -100.f;
+        frame.recoilDistance = sampleAnimCurve(recoilChan, (float) i).pos.x / 100.f;
+        Quaternion quat = sampleAnimCurve(birdChan, (float) i).quat;
+        // Expect a z axis rotation:
+        PLY_ASSERT(cross(quat.asFloat3(), {0, 0, 1}).length2() < 1e-6f);
+        float srcAngle = atan2(quat.z, quat.w) * 2.f;
+        float delta = wrap(srcAngle - angle + Pi, 2 * Pi) - Pi;
+        angle += delta;
+        frame.rotationAngle = angle;
+    }
+    return frames;
+}
+
 void Assets::load(StringView assetsPath) {
     PLY_ASSERT(FileSystem::native()->exists(assetsPath) == ExistsResult::Directory);
     Assets* assets = new Assets;
@@ -249,6 +286,12 @@ void Assets::load(StringView assetsPath) {
                               aiProcess_Triangulate);
         assets->title = getMeshes(scene, scene->mRootNode->FindNode("Title"));
         assets->outline = getMeshes(scene, scene->mRootNode->FindNode("Outline"));
+    }
+    {
+        Assimp::Importer importer;
+        const aiScene* scene = importer.ReadFile(
+            NativePath::join(assetsPath, "SideFall.fbx").withNullTerminator().bytes, 0);
+        extractFallAnimation(scene, 41);
     }
     {
         Buffer pngData =
