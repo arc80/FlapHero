@@ -1,5 +1,7 @@
 #pragma once
+#if !PLY_TARGET_IOS
 #include <flapGame/Config.h>
+#endif
 #include <ply-math/Base.h>
 #include <ply-runtime/Base.h>
 
