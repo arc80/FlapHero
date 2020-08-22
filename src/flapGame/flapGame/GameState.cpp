@@ -289,9 +289,10 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
             recovering->curve[1] = {start2D + Complex::mul(norm2D, {1.2f, -1.5f * m}),
                                     Complex::mul(norm2D, {0.f, -10.f * m})};
             gs->bird.setVel({recovering->curve[0].vel.x, 0, recovering->curve[0].vel.y});
-            gs->flip.direction = -m;
-            gs->flip.totalTime = 0.9f;
-            gs->flip.time = 0.f;
+            auto flip = gs->rotator.flip().switchTo();
+            flip->direction = -m;
+            flip->totalTime = 0.9f;
+            flip->time = 0.f;
         }
     } else if (auto recovering = gs->mode.recovering()) {
         recovering->time += dt * recovering->timeScale;
@@ -413,9 +414,9 @@ void timeStep(GameState* gs, float dt) {
     // Initialize start of interval
     gs->bird.pos[0] = gs->bird.pos[1];
     gs->bird.vel[0] = gs->bird.vel[1];
+    gs->bird.rot[0] = gs->bird.rot[1];
     gs->birdAnim.wingTime[0] = gs->birdAnim.wingTime[1];
     gs->birdAnim.eyeTime[0] = gs->birdAnim.eyeTime[1];
-    gs->flip.angle[0] = gs->flip.angle[1];
     gs->camX[0] = gs->camX[1];
 
     // Advance bird
@@ -455,18 +456,22 @@ void timeStep(GameState* gs, float dt) {
             }
         }
 
-        // Apply flip
-        if (gs->flip.totalTime > 0) {
-            gs->flip.time += dt;
-            if (gs->flip.time >= gs->flip.totalTime) {
-                gs->flip.totalTime = 0.f;
-                gs->flip.angle[0] = 0.f;
-                gs->flip.angle[1] = 0.f;
+        // Update rotation
+        if (auto flip = gs->rotator.flip()) {
+            flip->time += dt;
+            if (flip->time >= flip->totalTime) {
+                gs->rotator.fly().switchTo();
             } else {
-                float t = gs->flip.time / gs->flip.totalTime;
+                float t = flip->time / flip->totalTime;
                 t = interpolateCubic(0.f, 0.5f, 0.9f, 1.f, t);
-                gs->flip.angle[1] = interpolateCubic(0.f, 0.25f, 1.f, 1.f, t);
+                float angle = interpolateCubic(0.f, 0.25f, 1.f, 1.f, t);
+                gs->bird.rot[1] =
+                    Quaternion::fromAxisAngle({0, 1, 0}, Pi * (-2 * angle * flip->direction - 0.1f));
             }
+        } else if (auto fly = gs->rotator.fly()) {
+            gs->bird.rot[1] = Quaternion::fromAxisAngle({0, 1, 0}, -0.1f * Pi);
+        } else {
+            PLY_ASSERT(gs->rotator.fromMode());
         }
     }
 
@@ -516,6 +521,9 @@ void GameState::startPlaying() {
     float birdRelCameraX = mix(visibleExtents.mins.x, visibleExtents.maxs.x, 0.3116f);
     this->camX[0] = this->bird.pos[1].x - birdRelCameraX;
     this->camX[1] = this->camX[0];
+    this->rotator.fly().switchTo();
+    this->bird.rot[0] = Quaternion::fromAxisAngle({0, 1, 0}, -0.1 * Pi);
+    this->bird.rot[1] = this->bird.rot[0];
 }
 
 void onEndSequence(GameState* gs, float xEndSeqRelWorld, bool wasSlanted) {

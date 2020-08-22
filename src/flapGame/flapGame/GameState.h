@@ -129,6 +129,7 @@ struct GameState {
     struct Bird {
         Float3 pos[2] = {{0, 0, 0}, {0, 0, 0}};
         Float3 vel[2] = {{ScrollRate, 0, 0}, {ScrollRate, 0, 0}};
+        Quaternion rot[2] = {{0, 0, 0, 1}, {0, 0, 0, 1}};
 
         PLY_INLINE void setVel(const Float3& vel) {
             this->vel[0] = vel;
@@ -147,13 +148,20 @@ struct GameState {
     BirdAnim birdAnim;
 
     // Flip
-    struct Flip {
-        float totalTime = 0.f;
-        float time = 0.f;
-        float direction = 1.f;
-        float angle[2] = {0, 0};
+    struct Rotator {
+        // ply make switch
+        struct FromMode {
+        };
+        struct Fly {
+        };
+        struct Flip {
+            float totalTime = 0.f;
+            float time = 0.f;
+            float direction = 1.f;
+        };
+#include "codegen/switch-flap-GameState-Rotator.inl" //@@ply
     };
-    Flip flip;
+    Rotator rotator;
 
     // Camera
     float camX[2] = {0, 0}; // relative to world

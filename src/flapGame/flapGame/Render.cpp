@@ -211,18 +211,13 @@ void render(GameState* gs, const ViewportFrustum& vf, float intervalFrac,
         worldToCamera = w2c * Float4x4::makeTranslation(-camRelWorld);
     }
     {
-        float angle = mix(gs->flip.angle[0], gs->flip.angle[1], intervalFrac);
-        float base = 0;
-        if (!gs->mode.title()) {
-            base = 0.1f;
-        }
+        Quaternion rot = mix(gs->bird.rot[0], gs->bird.rot[1], intervalFrac);
         Array<Float4x4> boneToModel = composeBirdBones(gs, intervalFrac);
-        a->skinnedShader->draw(
-            cameraToViewport,
-            worldToCamera * Float4x4::makeTranslation(birdRelWorld) *
-                Float4x4::makeRotation({0, 1, 0}, -Pi * (angle * gs->flip.direction * 2.f + base)) *
-                Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) * Float4x4::makeScale(1.0833f),
-            boneToModel.view(), a->bird.view());
+        a->skinnedShader->draw(cameraToViewport,
+                               worldToCamera * Float4x4::makeTranslation(birdRelWorld) *
+                                   rot.toFloat4x4() * Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) *
+                                   Float4x4::makeScale(1.0833f),
+                               boneToModel.view(), a->bird.view());
     }
 
     // Draw obstacles
@@ -350,7 +345,8 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
         {
             Rect barRect = quantizeNearest(
                 intersect(fullVF.viewport, Rect{{divLeft, fullVF.viewport.mins.y},
-                                                {divRight, fullVF.viewport.maxs.y}}), 1.f);
+                                                {divRight, fullVF.viewport.maxs.y}}),
+                1.f);
             if (!barRect.isEmpty()) {
                 GL_CHECK(Viewport((GLint) barRect.mins.x, (GLint) barRect.mins.y,
                                   (GLsizei) barRect.width(), (GLsizei) barRect.height()));
