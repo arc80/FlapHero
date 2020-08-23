@@ -115,6 +115,7 @@ struct GameState {
     static constexpr float RecoveryTime = 0.5f;
     static constexpr float FlapRate = 4.f;
     static constexpr float WorldDistance = 80.f;
+    static constexpr float DefaultAngle = -0.1f * Pi;
 
     Callbacks* callbacks = nullptr;
     Random random;
@@ -152,12 +153,12 @@ struct GameState {
         // ply make switch
         struct FromMode {
         };
-        struct Fly {
-        };
-        struct Flip {
+        struct Angle {
+            float angle = DefaultAngle;
+            bool isFlipping = false;
+            float startAngle = 0.f;
             float totalTime = 0.f;
             float time = 0.f;
-            float direction = 1.f;
         };
 #include "codegen/switch-flap-GameState-Rotator.inl" //@@ply
     };
