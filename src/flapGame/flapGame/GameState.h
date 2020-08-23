@@ -97,7 +97,21 @@ struct GameState {
             float timeScale = 1.f; // temporary slowdown after recovery
             FixedArray<GameState::CurveSegment, 2> curve;
         };
-        struct Falling {};
+        struct Falling {
+            struct Mode {
+                // ply make switch
+                struct Animated {
+                    Float3 startPos = {0, 0, 0};
+                    float frame = 0;
+                    Quaternion startRot = {0, 0, 0, 1};
+                    Float3 rotAxis = {0, 1, 0};
+                };
+                struct Free {
+                };
+#include "codegen/switch-flap-GameState-Mode-Falling-Mode.inl" //@@ply
+            };
+            Mode mode;
+        };
         struct Dead {};
 #include "codegen/switch-flap-GameState-Mode.inl" //@@ply
     };

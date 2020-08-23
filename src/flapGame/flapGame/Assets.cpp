@@ -220,12 +220,6 @@ void extractBirdAnimData(BirdAnimData* bad, const aiScene* scene) {
         extractPose(bad->birdSkel.view(), scene->mAnimations[0], 16, {"Pupil_L", "Pupil_R"});
 }
 
-struct FallAnimFrame {
-    float verticalDrop = 0;
-    float recoilDistance = 0;
-    float rotationAngle = 0;
-};
-
 Array<FallAnimFrame> extractFallAnimation(const aiScene* scene, u32 numFrames) {
     auto findChannel = [&](StringView name) -> const aiNodeAnim* {
         PLY_ASSERT(scene->mNumAnimations == 1);
@@ -245,7 +239,7 @@ Array<FallAnimFrame> extractFallAnimation(const aiScene* scene, u32 numFrames) {
     for (u32 i = 0; i < numFrames; i++) {
         FallAnimFrame& frame = frames.append();
         frame.verticalDrop = sampleAnimCurve(gravChan, (float) i).pos.z / -100.f;
-        frame.recoilDistance = sampleAnimCurve(recoilChan, (float) i).pos.x / 100.f;
+        frame.recoilDistance = sampleAnimCurve(recoilChan, (float) i).pos.x;
         Quaternion quat = sampleAnimCurve(birdChan, (float) i).quat;
         // Expect a z axis rotation:
         PLY_ASSERT(cross(quat.asFloat3(), {0, 0, 1}).length2() < 1e-6f);
@@ -291,7 +285,7 @@ void Assets::load(StringView assetsPath) {
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(
             NativePath::join(assetsPath, "SideFall.fbx").withNullTerminator().bytes, 0);
-        extractFallAnimation(scene, 41);
+        assets->fallAnim = extractFallAnimation(scene, 41);
     }
     {
         Buffer pngData =

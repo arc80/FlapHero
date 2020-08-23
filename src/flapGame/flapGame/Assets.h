@@ -26,6 +26,12 @@ struct BirdAnimData {
     Array<PoseBone> eyePoses[3];
 };
 
+struct FallAnimFrame {
+    float verticalDrop = 0;
+    float recoilDistance = 0;
+    float rotationAngle = 0;
+};
+
 struct Assets {
     String rootPath;
     
@@ -36,6 +42,7 @@ struct Assets {
     Array<DrawMesh> outline;
 
     BirdAnimData bad;
+    Array<FallAnimFrame> fallAnim;
 
     Texture flashTexture;
     Texture speedLimitTexture;

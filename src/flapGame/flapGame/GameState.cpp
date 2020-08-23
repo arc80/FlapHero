@@ -1,5 +1,6 @@
 #include <flapGame/Core.h>
 #include <flapGame/GameState.h>
+#include <flapGame/Assets.h>
 
 namespace flap {
 
@@ -196,19 +197,37 @@ struct SlantedPipeSequence : ObstacleSequence {
     }
 };
 
-//---------------------------------------
-// GameState::Modes
-//---------------------------------------
-
 void applyGravity(GameState* gs, float dt, float curGravity) {
     gs->bird.vel[1].z = max(gs->bird.vel[0].z - curGravity * dt, GameState::TerminalVelocity);
 }
 
 struct UpdateMovementData {
     bool doJump = false;
+    Float3 prevDelta;
+    Quaternion deltaRot;
 };
 
+FallAnimFrame sample(ArrayView<const FallAnimFrame> frames, float t) {
+    PLY_ASSERT(frames.numItems > 0);
+    if (t < 0) {
+        return frames[0];
+    }
+    u32 i = (u32) t;
+    if (i + 1 >= frames.numItems) {
+        return frames.back();
+    } else {
+        float f = t - i;
+        const FallAnimFrame& pose0 = frames[i];
+        const FallAnimFrame& pose1 = frames[i + 1];
+        return {mix(pose0.verticalDrop, pose1.verticalDrop, f),
+                mix(pose0.recoilDistance, pose1.recoilDistance, f),
+                mix(pose0.rotationAngle, pose1.rotationAngle, f)};
+    }
+}
+
 void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
+    const Assets* a = Assets::instance;
+
     if (auto title = gs->mode.title()) {
         title->birdOrbit[0] = wrap(title->birdOrbit[1], 2 * Pi);
         title->birdOrbit[1] = title->birdOrbit[0] - dt * 2.f;
@@ -289,23 +308,32 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
     } else if (auto impact = gs->mode.impact()) {
         impact->time += dt;
         if (impact->time >= 0.2f) {
-            // Build recovery motion path
-            Float2 start2D = {gs->bird.pos[0].x, gs->bird.pos[0].z};
-            Float2 norm2D = {impact->hit.norm.x, impact->hit.norm.z};
-            float m = (impact->hit.recoverClockwise ? 1.f : -1.f); // mirror
+            if (gs->damage < 2) {
+                // Build recovery motion path
+                Float2 start2D = {gs->bird.pos[0].x, gs->bird.pos[0].z};
+                Float2 norm2D = {impact->hit.norm.x, impact->hit.norm.z};
+                float m = (impact->hit.recoverClockwise ? 1.f : -1.f); // mirror
 
-            auto recovering = gs->mode.recovering().switchTo();
-            recovering->time = 0;
-            recovering->totalTime = 0.5f;
-            recovering->curve[0] = {start2D, Complex::mul(norm2D, {10.f, 10.f * m})};
-            recovering->curve[1] = {start2D + Complex::mul(norm2D, {1.2f, -1.5f * m}),
-                                    Complex::mul(norm2D, {0.f, -10.f * m})};
-            gs->bird.setVel({recovering->curve[0].vel.x, 0, recovering->curve[0].vel.y});
-            auto angle = gs->rotator.angle();
-            angle->isFlipping = true;
-            angle->startAngle = GameState::DefaultAngle + 2.f * Pi * m;
-            angle->totalTime = 0.9f;
-            angle->time = 0.f;
+                auto recovering = gs->mode.recovering().switchTo();
+                recovering->time = 0;
+                recovering->totalTime = 0.5f;
+                recovering->curve[0] = {start2D, Complex::mul(norm2D, {10.f, 10.f * m})};
+                recovering->curve[1] = {start2D + Complex::mul(norm2D, {1.2f, -1.5f * m}),
+                                        Complex::mul(norm2D, {0.f, -10.f * m})};
+                gs->bird.setVel({recovering->curve[0].vel.x, 0, recovering->curve[0].vel.y});
+                auto angle = gs->rotator.angle();
+                angle->isFlipping = true;
+                angle->startAngle = GameState::DefaultAngle + 2.f * Pi * m;
+                angle->totalTime = 0.9f;
+                angle->time = 0.f;
+            } else {
+                // Fall to death
+                auto falling = gs->mode.falling().switchTo();
+                auto animated = falling->mode.animated();
+                animated->startPos = gs->bird.pos[0];
+                animated->startRot = gs->bird.rot[0];
+                gs->rotator.fromMode().switchTo();
+            }
         }
     } else if (auto recovering = gs->mode.recovering()) {
         recovering->time += dt * recovering->timeScale;
@@ -324,37 +352,54 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
             recovering->timeScale = mix(1.f, 0.5f, t);
         } else {
             gs->bird.pos[1] = {c[1].pos.x, 0, c[1].pos.y};
-            if (gs->damage >= 2) {
-                // die
-                gs->bird.setVel({10.f, 0.f, 20.f});
-                gs->mode.falling().switchTo();
-            } else {
-                // recover
-                gs->bird.setVel({c[1].vel.x, 0, c[1].vel.y});
-                auto playing = gs->mode.playing().switchTo();
-                playing->xVelApproach = (GameState::ScrollRate - c[1].vel.x) / 0.1f;
-                playing->timeScale = 0.5f;
-            }
+            // recover
+            gs->bird.setVel({c[1].vel.x, 0, c[1].vel.y});
+            auto playing = gs->mode.playing().switchTo();
+            playing->xVelApproach = (GameState::ScrollRate - c[1].vel.x) / 0.1f;
+            playing->timeScale = 0.5f;
         }
-    } else if (gs->mode.falling()) {
+    } else if (auto falling = gs->mode.falling()) {
         if (gs->bird.pos[0].z <= GameState::LowestHeight) {
             // Hit the floor
             gs->mode.dead().switchTo();
             gs->bird.pos[0].z = GameState::LowestHeight;
             gs->bird.pos[1] = gs->bird.pos[0];
-        } else {
-            // Check for obstacle collisions
-            auto bounce = [&](const Obstacle::Hit& hit) { //
-                Float3 newVel = gs->bird.vel[0];
-                newVel.z = 20.f;
-                gs->bird.setVel(newVel);
-                return true;
-            };
+            return;
+        }
 
-            for (Obstacle* obst : gs->playfield.obstacles) {
-                if (obst->collisionCheck(gs, bounce))
-                    break;
+        if (auto animated = falling->mode.animated()) {
+            animated->frame += dt * 60.f;
+            if (animated->frame + 1 < a->fallAnim.numItems()) {
+                FallAnimFrame pose = sample(a->fallAnim.view(), animated->frame);
+                gs->bird.pos[1] =
+                    animated->startPos + Float3{pose.recoilDistance, 0, pose.verticalDrop};
+                gs->bird.rot[1] =
+                    Quaternion::fromAxisAngle(animated->rotAxis, -pose.rotationAngle) *
+                    animated->startRot;
+                return;
             }
+
+            // Animation is complete
+            falling->mode.free().switchTo();
+            // Assumes dt is constant:
+            gs->bird.setVel(moveData->prevDelta / dt);
+        }
+
+        PLY_ASSERT(falling->mode.free());
+        Quaternion dampedDelta = mix(Quaternion::identity(), moveData->deltaRot, 0.99f);
+        gs->bird.rot[1] = (dampedDelta * gs->bird.rot[0]).renormalized();
+
+        // Check for obstacle collisions
+        auto bounce = [&](const Obstacle::Hit& hit) { //
+            Float3 newVel = gs->bird.vel[0];
+            newVel.z = 5.f;
+            gs->bird.setVel(newVel);
+            return true;
+        };
+
+        for (Obstacle* obst : gs->playfield.obstacles) {
+            if (obst->collisionCheck(gs, bounce))
+                break;
         }
 
         gs->bird.vel[1].z =
@@ -425,6 +470,8 @@ void timeStep(GameState* gs, float dt) {
     }
 
     // Initialize start of interval
+    moveData.prevDelta = gs->bird.pos[1] - gs->bird.pos[0];
+    moveData.deltaRot = gs->bird.rot[1] * gs->bird.rot[0].inverted();
     gs->bird.pos[0] = gs->bird.pos[1];
     gs->bird.vel[0] = gs->bird.vel[1];
     gs->bird.rot[0] = gs->bird.rot[1];
