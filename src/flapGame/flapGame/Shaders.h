@@ -52,6 +52,21 @@ struct FlatShader {
     void drawQuad(const Float4x4& modelToViewport, const Float3& linearColor);
 };
 
+struct FlatShaderInstanced {
+    struct InstanceData {
+        Float4x4 modelToViewport;
+        Float4 color;
+    };
+
+    ShaderProgram shader;
+    GLint vertPositionAttrib = 0;
+    GLint instModelToViewportAttrib = 0;
+    GLint instColorAttrib = 0;
+
+    static Owned<FlatShaderInstanced> create();
+    void draw(const DrawMesh& drawMesh, ArrayView<const InstanceData> instanceData);
+};
+
 struct FlashShader {
     ShaderProgram shader;
     GLint positionAttrib = 0;

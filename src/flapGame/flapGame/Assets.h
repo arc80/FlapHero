@@ -40,6 +40,7 @@ struct Assets {
     Array<DrawMesh> pipe;
     Array<DrawMesh> title;
     Array<DrawMesh> outline;
+    Array<DrawMesh> star;
 
     BirdAnimData bad;
     Array<FallAnimFrame> fallAnim;
@@ -53,6 +54,7 @@ struct Assets {
     Owned<MaterialShader> matShader;
     Owned<SkinnedShader> skinnedShader;
     Owned<FlatShader> flatShader;
+    Owned<FlatShaderInstanced> flatShaderInstanced;
     Owned<FlashShader> flashShader;
     Owned<TexturedShader> texturedShader;
     

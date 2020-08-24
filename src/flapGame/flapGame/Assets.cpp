@@ -280,6 +280,7 @@ void Assets::load(StringView assetsPath) {
                               aiProcess_Triangulate);
         assets->title = getMeshes(scene, scene->mRootNode->FindNode("Title"));
         assets->outline = getMeshes(scene, scene->mRootNode->FindNode("Outline"));
+        assets->star = getMeshes(scene, scene->mRootNode->FindNode("Star"));
     }
     {
         Assimp::Importer importer;
@@ -318,6 +319,7 @@ void Assets::load(StringView assetsPath) {
     assets->matShader = MaterialShader::create();
     assets->skinnedShader = SkinnedShader::create();
     assets->flatShader = FlatShader::create();
+    assets->flatShaderInstanced = FlatShaderInstanced::create();
     assets->flashShader = FlashShader::create();
     assets->texturedShader = TexturedShader::create();
 

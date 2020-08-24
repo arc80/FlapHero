@@ -226,7 +226,7 @@ PLY_NO_INLINE void SkinnedShader::draw(const Float4x4& cameraToViewport,
 //---------------------------------------------------------
 
 PLY_NO_INLINE Owned<FlatShader> FlatShader::create() {
-    Owned<FlatShader> matShader = new FlatShader;
+    Owned<FlatShader> flatShader = new FlatShader;
     {
         Shader vertexShader = Shader::compile(
             GL_VERTEX_SHADER, "in vec3 vertPosition;\n"
@@ -245,18 +245,18 @@ PLY_NO_INLINE Owned<FlatShader> FlatShader::create() {
                                                 "}\n");
 
         // Link shader program
-        matShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
+        flatShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
     }
 
     // Get shader program's vertex attribute and uniform locations
-    matShader->vertPositionAttrib =
-        GL_NO_CHECK(GetAttribLocation(matShader->shader.id, "vertPosition"));
-    PLY_ASSERT(matShader->vertPositionAttrib >= 0);
-    matShader->modelToViewportUniform =
-        GL_NO_CHECK(GetUniformLocation(matShader->shader.id, "modelToViewport"));
-    PLY_ASSERT(matShader->modelToViewportUniform >= 0);
-    matShader->colorUniform = GL_NO_CHECK(GetUniformLocation(matShader->shader.id, "color"));
-    PLY_ASSERT(matShader->colorUniform >= 0);
+    flatShader->vertPositionAttrib =
+        GL_NO_CHECK(GetAttribLocation(flatShader->shader.id, "vertPosition"));
+    PLY_ASSERT(flatShader->vertPositionAttrib >= 0);
+    flatShader->modelToViewportUniform =
+        GL_NO_CHECK(GetUniformLocation(flatShader->shader.id, "modelToViewport"));
+    PLY_ASSERT(flatShader->modelToViewportUniform >= 0);
+    flatShader->colorUniform = GL_NO_CHECK(GetUniformLocation(flatShader->shader.id, "color"));
+    PLY_ASSERT(flatShader->colorUniform >= 0);
 
     // Create vertex and index buffers
     Array<Float3> vertices = {
@@ -265,12 +265,12 @@ PLY_NO_INLINE Owned<FlatShader> FlatShader::create() {
         {1.f, 1.f, 0.f},
         {-1.f, 1.f, 0.f},
     };
-    matShader->quadVBO = GLBuffer::create(vertices.view().bufferView());
+    flatShader->quadVBO = GLBuffer::create(vertices.view().bufferView());
     Array<u16> indices = {(u16) 0, 1, 2, 2, 3, 0};
-    matShader->quadIndices = GLBuffer::create(indices.view().bufferView());
-    matShader->quadNumIndices = indices.numItems();
+    flatShader->quadIndices = GLBuffer::create(indices.view().bufferView());
+    flatShader->quadNumIndices = indices.numItems();
 
-    return matShader;
+    return flatShader;
 }
 
 PLY_NO_INLINE void FlatShader::draw(const Float4x4& modelToViewport,
@@ -319,6 +319,85 @@ PLY_NO_INLINE void FlatShader::drawQuad(const Float4x4& modelToViewport,
     GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->quadIndices.id));
     GL_CHECK(
         DrawElements(GL_TRIANGLES, (GLsizei) this->quadNumIndices, GL_UNSIGNED_SHORT, (void*) 0));
+}
+
+//---------------------------------------------------------
+
+PLY_NO_INLINE Owned<FlatShaderInstanced> FlatShaderInstanced::create() {
+    Owned<FlatShaderInstanced> flatShaderInst = new FlatShaderInstanced;
+    {
+        Shader vertexShader = Shader::compile(
+            GL_VERTEX_SHADER, "in vec3 vertPosition;\n"
+                              "in mat4 instModelToViewport;\n"
+                              "in vec4 instColor;\n"
+                              "out vec4 fragColor;\n"
+                              "\n"
+                              "void main() {\n"
+                              "    fragColor = instColor;\n"
+                              "    gl_Position = instModelToViewport * vec4(vertPosition, 1.0);\n"
+                              "}\n");
+
+        Shader fragmentShader = Shader::compile(GL_FRAGMENT_SHADER, "in vec4 fragColor;\n"
+                                                                    "out vec4 outColor;\n"
+                                                                    "\n"
+                                                                    "void main() {\n"
+                                                                    "    outColor = fragColor;\n"
+                                                                    "}\n");
+
+        // Link shader program
+        flatShaderInst->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
+    }
+
+    // Get shader program's vertex attribute and uniform locations
+    flatShaderInst->vertPositionAttrib =
+        GL_NO_CHECK(GetAttribLocation(flatShaderInst->shader.id, "vertPosition"));
+    PLY_ASSERT(flatShaderInst->vertPositionAttrib >= 0);
+    flatShaderInst->instModelToViewportAttrib =
+        GL_NO_CHECK(GetAttribLocation(flatShaderInst->shader.id, "instModelToViewport"));
+    PLY_ASSERT(flatShaderInst->instModelToViewportAttrib >= 0);
+    flatShaderInst->instColorAttrib =
+        GL_NO_CHECK(GetAttribLocation(flatShaderInst->shader.id, "instColor"));
+    PLY_ASSERT(flatShaderInst->instColorAttrib >= 0);
+
+    return flatShaderInst;
+}
+
+PLY_NO_INLINE void FlatShaderInstanced::draw(const DrawMesh& drawMesh,
+                                             ArrayView<const InstanceData> instanceData) {
+    GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Enable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_FALSE));
+    GL_CHECK(Disable(GL_BLEND));
+
+    // Instance attributes
+    GLuint ibo = DynamicArrayBuffers::instance->upload(instanceData.bufferView());
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, ibo));
+    for (u32 c = 0; c < 4; c++) {
+        GL_CHECK(EnableVertexAttribArray(this->instModelToViewportAttrib + c));
+        GL_CHECK(VertexAttribPointer(this->instModelToViewportAttrib + c, 4, GL_FLOAT, GL_FALSE,
+                                     (GLsizei) sizeof(InstanceData),
+                                     (GLvoid*) offsetof(InstanceData, modelToViewport.col[c])));
+        GL_CHECK(VertexAttribDivisor(this->instModelToViewportAttrib + c, 1));
+    }
+    GL_CHECK(EnableVertexAttribArray(this->instColorAttrib));
+    GL_CHECK(VertexAttribPointer(this->instColorAttrib, 4, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(InstanceData),
+                                 (GLvoid*) offsetof(InstanceData, color)));
+    GL_CHECK(VertexAttribDivisor(this->instColorAttrib, 1));
+
+    // Draw
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh.vbo.id));
+    GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPN), (GLvoid*) offsetof(VertexPN, pos)));
+    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh.indexBuffer.id));
+    GL_CHECK(DrawElementsInstanced(GL_TRIANGLES, (GLsizei) drawMesh.numIndices, GL_UNSIGNED_SHORT,
+                                   (void*) 0, instanceData.numItems));
+
+    for (u32 c = 0; c < 4; c++) {
+        GL_CHECK(VertexAttribDivisor(this->instModelToViewportAttrib + c, 0));
+    }
+    GL_CHECK(VertexAttribDivisor(this->instColorAttrib, 0));
 }
 
 //---------------------------------------------------------

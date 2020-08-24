@@ -394,6 +394,24 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
                          Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
                      {0.75f, 16.f}, {1.f, 1.f, 1.f, 1.f});
         }
+
+        {
+            // Draw stars
+            Array<FlatShaderInstanced::InstanceData> insData;
+            static constexpr u32 numStars = 20;
+            insData.reserve(numStars);
+            Float4x4 worldToViewport = Float4x4::makeOrtho(
+                (fullVF.bounds2D - fullVF.bounds2D.mid()) * (2.f / fullVF.bounds2D.width()), -10.f,
+                0.01f);
+            for (u32 i = 0; i < numStars; i++) {
+                auto& ins = insData.append();
+                ins.modelToViewport =
+                    worldToViewport * Float4x4::makeRotation({0, 0, 1}, i * (2 * Pi / numStars)) *
+                    Float4x4::makeTranslation({0, 0.8f, 0}) * Float4x4::makeScale(0.1f);
+                ins.color = {1, 1, 0.2f, 0};
+            }
+            a->flatShaderInstanced->draw(a->star[0], insData.view());
+        }
     }
 }
 
