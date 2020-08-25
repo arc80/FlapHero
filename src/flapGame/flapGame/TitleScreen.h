@@ -39,9 +39,8 @@ struct TitleScreen {
     StarSystem starSys;
     bool showPrompt = true;
     float promptTime = 0;
-    Random random;
 };
 
-void updateTitleScreen(TitleScreen* titleScreen, float dt);
+void updateTitleScreen(TitleScreen* titleScreen);
 
 } // namespace flap

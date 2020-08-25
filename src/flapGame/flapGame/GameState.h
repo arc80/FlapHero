@@ -61,10 +61,14 @@ struct Pipe : Obstacle {
 };
 
 struct GameState {
-    struct Callbacks {
+    struct OuterContext {
         virtual void onGameStart() {
         }
-        virtual u32 getBestScore() const = 0;
+
+        float simulationTimeStep = 0.005f;
+        float fracTime = 0.f;
+        u32 bestScore = 0;
+        bool buttonPressed = false;
     };
 
     struct CurveSegment {
@@ -131,7 +135,7 @@ struct GameState {
     static constexpr float WorldDistance = 80.f;
     static constexpr float DefaultAngle = -0.1f * Pi;
 
-    Callbacks* callbacks = nullptr;
+    OuterContext* outerCtx = nullptr;
     Random random;
     bool buttonPressed = false;
     Mode mode;
@@ -192,6 +196,19 @@ struct GameState {
     void startPlaying();
 };
 
-void timeStep(GameState* gs, float dt);
+struct UpdateContext {
+    GameState* gs = nullptr;
+    bool doJump = false;
+    Float3 prevDelta = {0, 0, 0};
+    Quaternion deltaRot = {0, 0, 0, 1};
+
+    static UpdateContext* instance_;
+    static PLY_INLINE UpdateContext* instance() {
+        PLY_ASSERT(instance_);
+        return instance_;
+    };
+};
+
+void timeStep(UpdateContext* uc);
 
 } // namespace flap

@@ -5,6 +5,8 @@
 
 namespace flap {
 
+UpdateContext* UpdateContext::instance_ = nullptr;
+
 bool Pipe::collisionCheck(GameState* gs, const LambdaView<bool(const Hit&)>& cb) {
     SphCylCollResult result;
     SphCylCollResult::Type ct = sphereCylinderCollisionTest(
@@ -99,16 +101,6 @@ struct SlantedPipeSequence : ObstacleSequence {
     }
 };
 
-void applyGravity(GameState* gs, float dt, float curGravity) {
-    gs->bird.vel[1].z = max(gs->bird.vel[0].z - curGravity * dt, GameState::TerminalVelocity);
-}
-
-struct UpdateMovementData {
-    bool doJump = false;
-    Float3 prevDelta;
-    Quaternion deltaRot;
-};
-
 FallAnimFrame sample(ArrayView<const FallAnimFrame> frames, float t) {
     PLY_ASSERT(frames.numItems > 0);
     if (t < 0) {
@@ -127,8 +119,10 @@ FallAnimFrame sample(ArrayView<const FallAnimFrame> frames, float t) {
     }
 }
 
-void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
+void updateMovement(UpdateContext* uc) {
     const Assets* a = Assets::instance;
+    GameState* gs = uc->gs;
+    float dt = gs->outerCtx->simulationTimeStep;
 
     if (auto title = gs->mode.title()) {
         title->birdOrbit[0] = wrap(title->birdOrbit[1], 2 * Pi);
@@ -142,10 +136,10 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
             title->risingTime[1] = 0;
         }
 
-        updateTitleScreen(title->titleScreen, dt);
+        updateTitleScreen(title->titleScreen);
     } else if (auto playing = gs->mode.playing()) {
         // Handle jump
-        if (moveData->doJump) {
+        if (uc->doJump) {
             gs->bird.setVel({GameState::ScrollRate, 0, GameState::LaunchVel});
             playing->curGravity = GameState::NormalGravity;
             playing->timeScale = 1.f;
@@ -280,11 +274,11 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
             // Animation is complete
             falling->mode.free().switchTo();
             // Assumes dt is constant:
-            gs->bird.setVel(moveData->prevDelta / dt);
+            gs->bird.setVel(uc->prevDelta / dt);
         }
 
         PLY_ASSERT(falling->mode.free());
-        Quaternion dampedDelta = mix(Quaternion::identity(), moveData->deltaRot, 0.99f);
+        Quaternion dampedDelta = mix(Quaternion::identity(), uc->deltaRot, 0.99f);
         gs->bird.rot[1] = (dampedDelta * gs->bird.rot[0]).renormalized();
 
         // Check for obstacle collisions
@@ -333,8 +327,9 @@ void adjustX(GameState* gs, float amount) {
 
 //---------------------------------------
 
-void timeStep(GameState* gs, float dt) {
-    UpdateMovementData moveData;
+void timeStep(UpdateContext* uc) {
+    GameState* gs = uc->gs;
+    float dt = gs->outerCtx->simulationTimeStep;
 
     // Handle inputs
     if (gs->buttonPressed) {
@@ -343,11 +338,11 @@ void timeStep(GameState* gs, float dt) {
             using ID = GameState::Mode::ID;
             case ID::Title: {
                 gs->startPlaying();
-                gs->callbacks->onGameStart();
+                gs->outerCtx->onGameStart();
                 break;
             }
             case ID::Playing: {
-                moveData.doJump = true;
+                uc->doJump = true;
                 break;
             }
             case ID::Impact: {
@@ -358,7 +353,7 @@ void timeStep(GameState* gs, float dt) {
             case ID::Recovering: {
                 if (gs->damage < 2) {
                     gs->mode.playing().switchTo();
-                    moveData.doJump = true;
+                    uc->doJump = true;
                 }
                 break;
             }
@@ -368,8 +363,8 @@ void timeStep(GameState* gs, float dt) {
     }
 
     // Initialize start of interval
-    moveData.prevDelta = gs->bird.pos[1] - gs->bird.pos[0];
-    moveData.deltaRot = gs->bird.rot[1] * gs->bird.rot[0].inverted();
+    uc->prevDelta = gs->bird.pos[1] - gs->bird.pos[0];
+    uc->deltaRot = gs->bird.rot[1] * gs->bird.rot[0].inverted();
     gs->bird.pos[0] = gs->bird.pos[1];
     gs->bird.vel[0] = gs->bird.vel[1];
     gs->bird.rot[0] = gs->bird.rot[1];
@@ -378,7 +373,7 @@ void timeStep(GameState* gs, float dt) {
     gs->camX[0] = gs->camX[1];
 
     // Advance bird
-    updateMovement(gs, dt, &moveData);
+    updateMovement(uc);
 
     bool isPaused = gs->mode.impact() || gs->mode.dead();
     if (!isPaused) {

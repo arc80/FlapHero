@@ -16,7 +16,7 @@ void GameFlow::onGameStart() {
 
 void GameFlow::resetGame(bool isPlaying) {
     this->gameState = new GameState;
-    this->gameState->callbacks = this;
+    this->gameState->outerCtx = this;
     if (isPlaying) {
         this->gameState->startPlaying();
     } else {
@@ -52,9 +52,15 @@ void update(GameFlow* gf, float dt) {
         gf->buttonPressed = false;
     }
     gf->fracTime += dt;
+
     while (gf->fracTime >= gf->simulationTimeStep) {
         gf->fracTime -= gf->simulationTimeStep;
-        timeStep(gs, gf->simulationTimeStep);
+        {
+            UpdateContext uc;
+            PLY_SET_IN_SCOPE(UpdateContext::instance_, &uc);
+            uc.gs = gs;
+            timeStep(&uc);
+        }
 
         if (auto trans = gf->trans.on()) {
             trans->frac[0] = trans->frac[1];
@@ -62,7 +68,10 @@ void update(GameFlow* gf, float dt) {
             if (trans->frac[1] >= 1.f) {
                 gf->trans.off().switchTo();
             } else {
-                timeStep(trans->oldGameState, gf->simulationTimeStep);
+                UpdateContext uc;
+                PLY_SET_IN_SCOPE(UpdateContext::instance_, &uc);
+                uc.gs = trans->oldGameState;
+                timeStep(&uc);
             }
         }
     }

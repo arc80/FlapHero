@@ -7,7 +7,7 @@
 
 namespace flap {
 
-struct GameFlow final : GameState::Callbacks {
+struct GameFlow final : GameState::OuterContext {
     DynamicArrayBuffers dynBuffers;
 
     struct Transition {
@@ -22,20 +22,13 @@ struct GameFlow final : GameState::Callbacks {
     };
 
     static constexpr float MaxTimeStep = 0.05f;
-    float simulationTimeStep = 0.005f;
-    float fracTime = 0.f;
-    bool buttonPressed = false;
     Owned<GameState> gameState;
     Transition trans;
-    u32 bestScore = 0;
     SoLoud::handle titleMusicVoice = 0;
 
     GameFlow();
 
     virtual void onGameStart() override;
-    virtual u32 getBestScore() const override {
-        return this->bestScore;
-    }
     void resetGame(bool isPlaying);
 };
 

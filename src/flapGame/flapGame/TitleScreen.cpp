@@ -1,10 +1,15 @@
 #include <flapGame/Core.h>
 #include <flapGame/TitleScreen.h>
+#include <flapGame/GameState.h>
 #include <soloud.h>
 
 namespace flap {
 
-void timeStep(TitleRotator* rot, float dt, Random& random) {
+void timeStep(TitleRotator* rot) {
+    UpdateContext* uc = UpdateContext::instance();
+    Random& random = uc->gs->random;
+    float dt = uc->gs->outerCtx->simulationTimeStep;
+
     rot->time += dt;
     if (rot->state == TitleRotator::Waiting) {
         if (rot->time >= TitleRotator::WaitTime) {
@@ -25,7 +30,11 @@ void timeStep(TitleRotator* rot, float dt, Random& random) {
     }
 }
 
-void timeStep(StarSystem* starSys, float dt, Random& random) {
+void timeStep(StarSystem* starSys) {
+    UpdateContext* uc = UpdateContext::instance();
+    Random& random = uc->gs->random;
+    float dt = uc->gs->outerCtx->simulationTimeStep;
+
     starSys->countdown -= dt;
     if (starSys->countdown <= 0) {
         StarSystem::Star& star = starSys->stars.append();
@@ -58,14 +67,17 @@ void timeStep(StarSystem* starSys, float dt, Random& random) {
     }
 }
 
-void updateTitleScreen(TitleScreen* titleScreen, float dt) {
+void updateTitleScreen(TitleScreen* titleScreen) {
+    UpdateContext* uc = UpdateContext::instance();
+    float dt = uc->gs->outerCtx->simulationTimeStep;
+
     titleScreen->promptTime += dt;
     if (titleScreen->promptTime >= (titleScreen->showPrompt ? 0.4f : 0.16f)) {
         titleScreen->showPrompt = !titleScreen->showPrompt;
         titleScreen->promptTime = 0.f;
     }
-    timeStep(&titleScreen->titleRot, dt, titleScreen->random);
-    timeStep(&titleScreen->starSys, dt, titleScreen->random);
+    timeStep(&titleScreen->titleRot);
+    timeStep(&titleScreen->starSys);
 }
 
 } // namespace flap

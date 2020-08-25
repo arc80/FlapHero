@@ -320,7 +320,7 @@ void render(GameState* gs, const ViewportFrustum& vf, const ViewportFrustum& ful
         drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 380}, 1.f, "SCORE",
                       String::from(gs->score), {1, 1, 1, 1});
         drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 250}, 0.5f, "BEST",
-                      String::from(gs->callbacks->getBestScore()), {1.f, 0.45f, 0.05f, 1.f});
+                      String::from(gs->outerCtx->bestScore), {1.f, 0.45f, 0.05f, 1.f});
         TextBuffers playAgain = generateTextBuffers(a->sdfFont, "TAP TO PLAY AGAIN");
         drawText(a->sdfCommon, a->sdfFont, playAgain,
                  Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
