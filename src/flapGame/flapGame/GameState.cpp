@@ -232,12 +232,6 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
         title->birdOrbit[0] = wrap(title->birdOrbit[1], 2 * Pi);
         title->birdOrbit[1] = title->birdOrbit[0] - dt * 2.f;
 
-        title->promptTime += dt;
-        if (title->promptTime >= (title->showPrompt ? 0.4f : 0.16f)) {
-            title->showPrompt = !title->showPrompt;
-            title->promptTime = 0.f;
-        }
-
         title->risingTime[0] = title->risingTime[1];
         title->risingTime[1] += (title->birdRising ? 2.5f : 5.f) * dt;
         if (title->risingTime[1] >= 1.f) {
@@ -245,6 +239,8 @@ void updateMovement(GameState* gs, float dt, UpdateMovementData* moveData) {
             title->risingTime[0] = 0;
             title->risingTime[1] = 0;
         }
+
+        updateTitleScreen(title->titleScreen, dt);
     } else if (auto playing = gs->mode.playing()) {
         // Handle jump
         if (moveData->doJump) {

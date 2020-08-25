@@ -169,8 +169,59 @@ void Pipe::draw(const Obstacle::DrawParams& params) const {
                        a->pipe.view());
 }
 
-void render(GameState* gs, const ViewportFrustum& vf, float intervalFrac,
-            const Rect& visibleExtents) {
+void drawTitle(const TitleScreen* titleScreen, float fracTime, const Rect& visibleExtents) {
+    const Assets* a = Assets::instance;
+    Float4x4 w2c = {{{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
+    float worldDistance = 15.f;
+    Float4x4 cameraToViewport = Float4x4::makeProjection(visibleExtents / worldDistance, 1.f, 40.f);
+    Float3 skewNorm = getNorm(&titleScreen->titleRot, fracTime);
+    Float4x4 skewRot = Quaternion::fromUnitVectors(Float3{0, 0, 1}, skewNorm).toFloat4x4();
+    Float4x4 mat = cameraToViewport * w2c * Float4x4::makeTranslation({0, worldDistance, 4.f}) *
+                   Float4x4::makeRotation({1, 0, 0}, Pi / 2.f) * skewRot *
+                   Float4x4::makeTranslation({0, 0, 2.2f}) * Float4x4::makeScale(7.5f);
+    a->flatShader->draw(mat, a->outline.view(), false);
+    a->flatShader->draw(mat, a->title.view(), true);
+}
+
+void drawStars(const TitleScreen* titleScreen, const Rect& fullBounds2D, float intervalFrac) {
+    const Assets* a = Assets::instance;
+
+    {
+        // Draw stars
+        Array<FlatShaderInstanced::InstanceData> insData;
+        insData.reserve(titleScreen->starSys.stars.numItems());
+        Float4x4 worldToViewport = Float4x4::makeOrtho(
+            (fullBounds2D - fullBounds2D.mid()) * (2.f / fullBounds2D.width()), -10.f, 1.01f);
+        for (StarSystem::Star& star : titleScreen->starSys.stars) {
+            auto& ins = insData.append();
+            float angle = mix(star.angle[0], star.angle[1], intervalFrac);
+            Float2 pos = mix(star.pos[0], star.pos[1], intervalFrac);
+            ins.modelToViewport = worldToViewport * Float4x4::makeTranslation({pos, -star.z}) *
+                                  Float4x4::makeRotation({0, 0, 1}, angle) *
+                                  Float4x4::makeScale(0.1f);
+            ins.color = {star.color, 1};
+        }
+        a->flatShaderInstanced->draw(a->star[0], insData.view());
+    }
+
+    // Draw prompt
+    if (titleScreen->showPrompt) {
+        TextBuffers tapToPlay = generateTextBuffers(a->sdfFont, "TAP TO PLAY");
+        drawText(a->sdfCommon, a->sdfFont, tapToPlay,
+                 Float4x4::makeOrtho(fullBounds2D, -1.f, 1.f) *
+                     Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
+                     Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
+                 {0.85f, 1.75f}, {0, 0, 0, 0.8f});
+        drawText(a->sdfCommon, a->sdfFont, tapToPlay,
+                 Float4x4::makeOrtho(fullBounds2D, -1.f, 1.f) *
+                     Float4x4::makeTranslation({240, 24, 0}) * Float4x4::makeScale(0.9f) *
+                     Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
+                 {0.75f, 16.f}, {1.f, 1.f, 1.f, 1.f});
+    }
+}
+
+void render(GameState* gs, const ViewportFrustum& vf, const ViewportFrustum& fullVF, float fracTime,
+            float intervalFrac, const Rect& visibleExtents) {
     GL_CHECK(Viewport((GLint) vf.viewport.mins.x, (GLint) vf.viewport.mins.y,
                       (GLsizei) vf.viewport.width(), (GLsizei) vf.viewport.height()));
 
@@ -178,6 +229,10 @@ void render(GameState* gs, const ViewportFrustum& vf, float intervalFrac,
     GL_CHECK(Enable(GL_CULL_FACE));
     GL_CHECK(CullFace(GL_BACK));
     GL_CHECK(FrontFace(GL_CCW));
+
+    if (auto title = gs->mode.title()) {
+        drawTitle(title->titleScreen, fracTime, visibleExtents);
+    }
 
     const Assets* a = Assets::instance;
     Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum, 10.f, 100.f);
@@ -293,6 +348,10 @@ void render(GameState* gs, const ViewportFrustum& vf, float intervalFrac,
                      Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
                  {0.75f, 32.f}, {1.f, 1.f, 1.f, 1.f});
     }
+
+    if (auto title = gs->mode.title()) {
+        drawStars(title->titleScreen, fullVF.bounds2D, intervalFrac);
+    }
 }
 
 void render(GameFlow* gf, const IntVec2& fbSize) {
@@ -337,7 +396,7 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
             leftVF.viewport.maxs.x = divLeft;
             leftVF = leftVF.clip(fullVF.viewport).quantize();
             if (!leftVF.viewport.isEmpty()) {
-                render(gf->gameState, leftVF, intervalFrac, visibleExtents);
+                render(gf->gameState, leftVF, fullVF, gf->fracTime, intervalFrac, visibleExtents);
             }
         }
 
@@ -361,60 +420,12 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
             rightVF.viewport.maxs.x = divRight + fullVF.viewport.width();
             rightVF = rightVF.clip(fullVF.viewport).quantize();
             if (!rightVF.viewport.isEmpty()) {
-                render(trans->oldGameState, rightVF, intervalFrac, visibleExtents);
+                render(trans->oldGameState, rightVF, fullVF, gf->fracTime, intervalFrac,
+                       visibleExtents);
             }
         }
     } else {
-        render(gf->gameState, fullVF, intervalFrac, visibleExtents);
-    }
-
-    if (auto title = gf->gameState->mode.title()) {
-        // Draw title
-        Float4x4 w2c = {{{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
-        float worldDistance = 15.f;
-        Float4x4 cameraToViewport =
-            Float4x4::makeProjection(visibleExtents / worldDistance, 1.f, 40.f);
-        Float3 skewNorm = getNorm(gf->titleRot, gf->fracTime);
-        Float4x4 skewRot = Quaternion::fromUnitVectors(Float3{0, 0, 1}, skewNorm).toFloat4x4();
-        Float4x4 mat = cameraToViewport * w2c * Float4x4::makeTranslation({0, worldDistance, 4.f}) *
-                       Float4x4::makeRotation({1, 0, 0}, Pi / 2.f) * skewRot *
-                       Float4x4::makeTranslation({0, 0, 2.2f}) * Float4x4::makeScale(7.5f);
-        a->flatShader->draw(mat, a->outline.view(), false);
-        a->flatShader->draw(mat, a->title.view(), true);
-
-        {
-            // Draw stars
-            Array<FlatShaderInstanced::InstanceData> insData;
-            insData.reserve(gf->starSys.stars.numItems());
-            Float4x4 worldToViewport = Float4x4::makeOrtho(
-                (fullVF.bounds2D - fullVF.bounds2D.mid()) * (2.f / fullVF.bounds2D.width()), -10.f,
-                1.01f);
-            for (StarSystem::Star& star : gf->starSys.stars) {
-                auto& ins = insData.append();
-                float angle = mix(star.angle[0], star.angle[1], intervalFrac);
-                Float2 pos = mix(star.pos[0], star.pos[1], intervalFrac);
-                ins.modelToViewport = worldToViewport * Float4x4::makeTranslation({pos, -star.z}) *
-                                      Float4x4::makeRotation({0, 0, 1}, angle) *
-                                      Float4x4::makeScale(0.1f);
-                ins.color = {star.color, 1};
-            }
-            a->flatShaderInstanced->draw(a->star[0], insData.view());
-        }
-
-        // Draw prompt
-        if (title->showPrompt) {
-            TextBuffers tapToPlay = generateTextBuffers(a->sdfFont, "TAP TO PLAY");
-            drawText(a->sdfCommon, a->sdfFont, tapToPlay,
-                     Float4x4::makeOrtho(fullVF.bounds2D, -1.f, 1.f) *
-                         Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
-                         Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
-                     {0.85f, 1.75f}, {0, 0, 0, 0.8f});
-            drawText(a->sdfCommon, a->sdfFont, tapToPlay,
-                     Float4x4::makeOrtho(fullVF.bounds2D, -1.f, 1.f) *
-                         Float4x4::makeTranslation({240, 24, 0}) * Float4x4::makeScale(0.9f) *
-                         Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
-                     {0.75f, 16.f}, {1.f, 1.f, 1.f, 1.f});
-        }
+        render(gf->gameState, fullVF, fullVF, gf->fracTime, intervalFrac, visibleExtents);
     }
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <flapGame/Core.h>
+#include <flapGame/TitleScreen.h>
 
 namespace flap {
 
@@ -75,10 +76,9 @@ struct GameState {
         // ply make switch
         struct Title {
             float birdOrbit[2] = {0, 0};
-            bool showPrompt = true;
-            float promptTime = 0;
             bool birdRising = false;
             float risingTime[2] = {0, 0};
+            Owned<TitleScreen> titleScreen;
         };
         struct Playing {
             float curGravity = NormalGravity;
