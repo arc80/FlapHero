@@ -1,7 +1,7 @@
 #include <flapGame/Core.h>
 #include <flapGame/Shaders.h>
 
-namespace ply {
+namespace flap {
 
 //---------------------------------------------------------
 
@@ -576,4 +576,4 @@ void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, con
     GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) indices.numItems, GL_UNSIGNED_SHORT, (void*) 0));
 }
 
-} // namespace ply
+} // namespace flap

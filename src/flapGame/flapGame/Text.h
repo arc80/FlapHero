@@ -2,7 +2,7 @@
 #include <flapGame/Core.h>
 #include <flapGame/GLHelpers.h>
 
-namespace ply {
+namespace flap {
 
 struct SDFCommon {
     ShaderProgram shader;
@@ -48,4 +48,4 @@ TextBuffers generateTextBuffers(const SDFFont* sdfFont, StringView text);
 void drawText(const SDFCommon* common, const SDFFont* sdfFont, const TextBuffers& tb,
               const Float4x4& modelToViewport, const Float2& sdfParams, const Float4& color);
 
-} // namespace ply
+} // namespace flap

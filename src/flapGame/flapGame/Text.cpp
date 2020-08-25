@@ -13,7 +13,7 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb/stb_truetype.h"
 
-namespace ply {
+namespace flap {
 
 void copy8Bit(image::Image& dst, const image::Image& src) {
     PLY_ASSERT(dst.bytespp == 1);

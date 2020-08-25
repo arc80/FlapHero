@@ -1,7 +1,7 @@
 #include <flapGame/Core.h>
 #include <flapGame/GLHelpers.h>
 
-namespace ply {
+namespace flap {
 
 PLY_NO_INLINE GLBuffer GLBuffer::create(ConstBufferView data) {
     GLBuffer result;
@@ -120,22 +120,22 @@ PLY_NO_INLINE ShaderProgram ShaderProgram::link(std::initializer_list<GLuint> sh
         PLY_ASSERT(0);
     }
 
-/*
-    GL_CHECK(ValidateProgram(progID));
-    GLint status;
-    GL_CHECK(GetProgramiv(progID, GL_VALIDATE_STATUS, &status));
-    if (status != GL_TRUE) {
-        GLint lengthIncludingNullTerm;
-        GL_CHECK(GetProgramiv(progID, GL_INFO_LOG_LENGTH, &lengthIncludingNullTerm));
-        if (lengthIncludingNullTerm > 0) {
-            char* buf = new char[lengthIncludingNullTerm];
-            GL_CHECK(GetProgramInfoLog(progID, lengthIncludingNullTerm, NULL, buf));
-            StdErr::createStringWriter().format("Error linking shader:\n{}\n", buf);
-            delete[] buf;
+    /*
+        GL_CHECK(ValidateProgram(progID));
+        GLint status;
+        GL_CHECK(GetProgramiv(progID, GL_VALIDATE_STATUS, &status));
+        if (status != GL_TRUE) {
+            GLint lengthIncludingNullTerm;
+            GL_CHECK(GetProgramiv(progID, GL_INFO_LOG_LENGTH, &lengthIncludingNullTerm));
+            if (lengthIncludingNullTerm > 0) {
+                char* buf = new char[lengthIncludingNullTerm];
+                GL_CHECK(GetProgramInfoLog(progID, lengthIncludingNullTerm, NULL, buf));
+                StdErr::createStringWriter().format("Error linking shader:\n{}\n", buf);
+                delete[] buf;
+            }
+            PLY_ASSERT(0);
         }
-        PLY_ASSERT(0);
-    }
-*/
+    */
     for (GLuint shaderID : shaderIDs) {
         GL_CHECK(DetachShader(progID, shaderID));
     }
@@ -245,4 +245,4 @@ PLY_NO_INLINE void Texture::upload(const image::Image& im) {
     GL_CHECK(BindTexture(GL_TEXTURE_2D, 0));
 }
 
-} // namespace ply
+} // namespace flap

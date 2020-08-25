@@ -13,7 +13,7 @@
     } while (0)
 #define GL_NO_CHECK(call) (gl##call)
 
-namespace ply {
+namespace flap {
 
 struct GLBuffer {
     GLuint id = 0;
@@ -165,4 +165,4 @@ struct Texture {
     }
 };
 
-} // namespace ply
+} // namespace flap

@@ -3,7 +3,7 @@
 #include <flapGame/GLHelpers.h>
 #include <flapGame/VertexFormats.h>
 
-namespace ply {
+namespace flap {
 
 struct MaterialShader {
     ShaderProgram shader;
@@ -96,4 +96,4 @@ struct TexturedShader {
               ArrayView<VertexPT> vertices, ArrayView<u16> indices) const;
 };
 
-} // namespace ply
+} // namespace flap

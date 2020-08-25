@@ -1,8 +1,8 @@
 #pragma once
 #include <flapGame/Core.h>
 
-namespace ply {
+namespace flap {
 
 image::OwnImage loadPNG(ConstBufferView src);
 
-} // namespace ply
+} // namespace flap

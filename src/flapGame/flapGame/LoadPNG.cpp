@@ -11,7 +11,7 @@
 #define STBI_ONLY_PNG
 #include "stb/stb_image.h"
 
-namespace ply {
+namespace flap {
 
 void premultiplySRGB(image::Image& dst) {
     PLY_ASSERT(dst.stride >= dst.width * 4);

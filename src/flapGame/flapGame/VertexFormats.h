@@ -2,7 +2,7 @@
 #include <flapGame/Core.h>
 #include <flapGame/GLHelpers.h>
 
-namespace ply {
+namespace flap {
 
 struct VertexPN {
     Float3 pos = {0, 0, 0};
@@ -45,4 +45,4 @@ struct DrawMesh {
     Array<Bone> bones;
 };
 
-} // namespace ply
+} // namespace flap
