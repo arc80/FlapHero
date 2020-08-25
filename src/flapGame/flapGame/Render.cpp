@@ -5,6 +5,60 @@
 
 namespace flap {
 
+struct ViewportFrustum {
+    Rect viewport;
+    Rect frustum; // 3D
+    Rect bounds2D;
+
+    PLY_NO_DISCARD ViewportFrustum quantize() const {
+        Rect qvp = {quantizeDown(this->viewport.mins + 0.5f, 1.f),
+                    quantizeDown(this->viewport.maxs + 0.5f, 1.f)};
+        Rect fracs = this->viewport.unmix(qvp);
+        return {qvp, this->frustum.mix(fracs), this->bounds2D.mix(fracs)};
+    }
+
+    PLY_NO_DISCARD ViewportFrustum clip(const Rect& clipViewport) const {
+        Rect clipped = intersect(this->viewport, clipViewport);
+        Rect fracs = this->viewport.unmix(clipped);
+        return {clipped, this->frustum.mix(fracs), this->bounds2D.mix(fracs)};
+    }
+};
+
+ViewportFrustum fitFrustumInViewport(const Rect& viewport, const Rect& frustum,
+                                     const Rect& bounds2D) {
+    PLY_ASSERT(!frustum.isEmpty());
+    PLY_ASSERT(!viewport.isEmpty());
+
+    if (frustum.width() * viewport.height() >= frustum.height() * viewport.width()) {
+        // Frustum aspect is wider than (or equal to) viewport aspct
+        float fitViewportHeight = viewport.width() * frustum.height() / frustum.width();
+        float halfExcess = (viewport.height() - fitViewportHeight) * 0.5f;
+        return {expand(viewport, {0, -halfExcess}), frustum, bounds2D};
+    } else {
+        // Frustum aspect is taller than viewport aspect
+        float fitViewportWidth = viewport.height() * frustum.width() / frustum.height();
+        float halfExcess = (viewport.width() - fitViewportWidth) * 0.5f;
+        return {expand(viewport, {-halfExcess, 0}), frustum, bounds2D};
+    }
+}
+
+struct DrawContext {
+    const GameState* gs = nullptr;
+    ViewportFrustum vf;
+    ViewportFrustum fullVF;
+    float fracTime = 0;
+    float intervalFrac = 0;
+    Rect visibleExtents = {{0, 0}, {0, 0}};
+
+    static DrawContext* instance_;
+    static PLY_INLINE DrawContext* instance() {
+        PLY_ASSERT(instance_);
+        return instance_;
+    };
+};
+
+DrawContext* DrawContext::instance_ = nullptr;
+
 void drawRoundedRect(const TexturedShader* shader, const Float4x4& modelToViewport,
                      GLuint textureID, const Float4 color, const Rect& bounds, float r) {
     Array<VertexPT> verts;
@@ -71,43 +125,6 @@ Float3 getNorm(const TitleRotator* rot, float relTime) {
     return mix(rot->startNorm, rot->endNorm, t);
 }
 
-struct ViewportFrustum {
-    Rect viewport;
-    Rect frustum; // 3D
-    Rect bounds2D;
-
-    PLY_NO_DISCARD ViewportFrustum quantize() const {
-        Rect qvp = {quantizeDown(this->viewport.mins + 0.5f, 1.f),
-                    quantizeDown(this->viewport.maxs + 0.5f, 1.f)};
-        Rect fracs = this->viewport.unmix(qvp);
-        return {qvp, this->frustum.mix(fracs), this->bounds2D.mix(fracs)};
-    }
-
-    PLY_NO_DISCARD ViewportFrustum clip(const Rect& clipViewport) const {
-        Rect clipped = intersect(this->viewport, clipViewport);
-        Rect fracs = this->viewport.unmix(clipped);
-        return {clipped, this->frustum.mix(fracs), this->bounds2D.mix(fracs)};
-    }
-};
-
-ViewportFrustum fitFrustumInViewport(const Rect& viewport, const Rect& frustum,
-                                     const Rect& bounds2D) {
-    PLY_ASSERT(!frustum.isEmpty());
-    PLY_ASSERT(!viewport.isEmpty());
-
-    if (frustum.width() * viewport.height() >= frustum.height() * viewport.width()) {
-        // Frustum aspect is wider than (or equal to) viewport aspct
-        float fitViewportHeight = viewport.width() * frustum.height() / frustum.width();
-        float halfExcess = (viewport.height() - fitViewportHeight) * 0.5f;
-        return {expand(viewport, {0, -halfExcess}), frustum, bounds2D};
-    } else {
-        // Frustum aspect is taller than viewport aspect
-        float fitViewportWidth = viewport.height() * frustum.width() / frustum.height();
-        float halfExcess = (viewport.width() - fitViewportWidth) * 0.5f;
-        return {expand(viewport, {-halfExcess, 0}), frustum, bounds2D};
-    }
-}
-
 Array<Float4x4> composeBirdBones(const GameState* gs, float intervalFrac) {
     const Assets* a = Assets::instance;
 
@@ -169,12 +186,15 @@ void Pipe::draw(const Obstacle::DrawParams& params) const {
                        a->pipe.view());
 }
 
-void drawTitle(const TitleScreen* titleScreen, float fracTime, const Rect& visibleExtents) {
+void drawTitle(const TitleScreen* titleScreen) {
     const Assets* a = Assets::instance;
+    const DrawContext* dc = DrawContext::instance();
+
     Float4x4 w2c = {{{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
     float worldDistance = 15.f;
-    Float4x4 cameraToViewport = Float4x4::makeProjection(visibleExtents / worldDistance, 1.f, 40.f);
-    Float3 skewNorm = getNorm(&titleScreen->titleRot, fracTime);
+    Float4x4 cameraToViewport =
+        Float4x4::makeProjection(dc->visibleExtents / worldDistance, 1.f, 40.f);
+    Float3 skewNorm = getNorm(&titleScreen->titleRot, dc->fracTime);
     Float4x4 skewRot = Quaternion::fromUnitVectors(Float3{0, 0, 1}, skewNorm).toFloat4x4();
     Float4x4 mat = cameraToViewport * w2c * Float4x4::makeTranslation({0, worldDistance, 4.f}) *
                    Float4x4::makeRotation({1, 0, 0}, Pi / 2.f) * skewRot *
@@ -183,8 +203,10 @@ void drawTitle(const TitleScreen* titleScreen, float fracTime, const Rect& visib
     a->flatShader->draw(mat, a->title.view(), true);
 }
 
-void drawStars(const TitleScreen* titleScreen, const Rect& fullBounds2D, float intervalFrac) {
+void drawStars(const TitleScreen* titleScreen) {
     const Assets* a = Assets::instance;
+    const DrawContext* dc = DrawContext::instance();
+    const Rect& fullBounds2D = dc->fullVF.bounds2D;
 
     {
         // Draw stars
@@ -194,8 +216,8 @@ void drawStars(const TitleScreen* titleScreen, const Rect& fullBounds2D, float i
             (fullBounds2D - fullBounds2D.mid()) * (2.f / fullBounds2D.width()), -10.f, 1.01f);
         for (StarSystem::Star& star : titleScreen->starSys.stars) {
             auto& ins = insData.append();
-            float angle = mix(star.angle[0], star.angle[1], intervalFrac);
-            Float2 pos = mix(star.pos[0], star.pos[1], intervalFrac);
+            float angle = mix(star.angle[0], star.angle[1], dc->intervalFrac);
+            Float2 pos = mix(star.pos[0], star.pos[1], dc->intervalFrac);
             ins.modelToViewport = worldToViewport * Float4x4::makeTranslation({pos, -star.z}) *
                                   Float4x4::makeRotation({0, 0, 1}, angle) *
                                   Float4x4::makeScale(0.1f);
@@ -220,8 +242,10 @@ void drawStars(const TitleScreen* titleScreen, const Rect& fullBounds2D, float i
     }
 }
 
-void render(GameState* gs, const ViewportFrustum& vf, const ViewportFrustum& fullVF, float fracTime,
-            float intervalFrac, const Rect& visibleExtents) {
+void renderGamePanel(const DrawContext* dc) {
+    const ViewportFrustum& vf = dc->vf;
+    const GameState* gs = dc->gs;
+
     GL_CHECK(Viewport((GLint) vf.viewport.mins.x, (GLint) vf.viewport.mins.y,
                       (GLsizei) vf.viewport.width(), (GLsizei) vf.viewport.height()));
 
@@ -231,19 +255,19 @@ void render(GameState* gs, const ViewportFrustum& vf, const ViewportFrustum& ful
     GL_CHECK(FrontFace(GL_CCW));
 
     if (auto title = gs->mode.title()) {
-        drawTitle(title->titleScreen, fracTime, visibleExtents);
+        drawTitle(title->titleScreen);
     }
 
     const Assets* a = Assets::instance;
     Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum, 10.f, 100.f);
 
     // Draw bird
-    Float3 birdRelWorld = mix(gs->bird.pos[0], gs->bird.pos[1], intervalFrac);
+    Float3 birdRelWorld = mix(gs->bird.pos[0], gs->bird.pos[1], dc->intervalFrac);
     Float4x4 w2c = {{{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
     Float4x4 worldToCamera;
     if (auto title = gs->mode.title()) {
         float yRise = 0.f;
-        float risingTime = mix(title->risingTime[0], title->risingTime[1], intervalFrac);
+        float risingTime = mix(title->risingTime[0], title->risingTime[1], dc->intervalFrac);
         if (title->birdRising) {
             yRise = applySimpleCubic(risingTime);
         } else {
@@ -251,7 +275,8 @@ void render(GameState* gs, const ViewportFrustum& vf, const ViewportFrustum& ful
         }
 
         Float3 camRelWorld = {
-            Complex::fromAngle(mix(title->birdOrbit[0], title->birdOrbit[1], intervalFrac)) * 15,
+            Complex::fromAngle(mix(title->birdOrbit[0], title->birdOrbit[1], dc->intervalFrac)) *
+                15,
             3.5f};
         Float3x4 cameraToWorld =
             extra::makeBasis(
@@ -261,13 +286,13 @@ void render(GameState* gs, const ViewportFrustum& vf, const ViewportFrustum& ful
                 .toFloat3x4(camRelWorld);
         worldToCamera = cameraToWorld.invertedOrtho().toFloat4x4();
     } else {
-        Float3 camRelWorld = {mix(gs->camX[0], gs->camX[1], intervalFrac),
+        Float3 camRelWorld = {mix(gs->camX[0], gs->camX[1], dc->intervalFrac),
                               -GameState::WorldDistance, 0};
         worldToCamera = w2c * Float4x4::makeTranslation(-camRelWorld);
     }
     {
-        Quaternion rot = mix(gs->bird.rot[0], gs->bird.rot[1], intervalFrac);
-        Array<Float4x4> boneToModel = composeBirdBones(gs, intervalFrac);
+        Quaternion rot = mix(gs->bird.rot[0], gs->bird.rot[1], dc->intervalFrac);
+        Array<Float4x4> boneToModel = composeBirdBones(gs, dc->intervalFrac);
         a->skinnedShader->draw(cameraToViewport,
                                worldToCamera * Float4x4::makeTranslation(birdRelWorld) *
                                    rot.toFloat4x4() * Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) *
@@ -287,7 +312,7 @@ void render(GameState* gs, const ViewportFrustum& vf, const ViewportFrustum& ful
     a->matShader->draw(cameraToViewport,
                        worldToCamera *
                            Float4x4::makeTranslation({worldToCamera.invertedOrtho()[3].x, 0.f,
-                                                      visibleExtents.mins.y + 4.f}) *
+                                                      dc->visibleExtents.mins.y + 4.f}) *
                            Float4x4::makeRotation({0, 0, 1}, Pi / 2.f),
                        a->floor.view());
 
@@ -350,7 +375,7 @@ void render(GameState* gs, const ViewportFrustum& vf, const ViewportFrustum& ful
     }
 
     if (auto title = gs->mode.title()) {
-        drawStars(title->titleScreen, fullVF.bounds2D, intervalFrac);
+        drawStars(title->titleScreen);
     }
 }
 
@@ -377,6 +402,18 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
                              visibleExtents / GameState::WorldDistance, Rect{{0, 0}, {480, 640}})
             .quantize();
 
+    auto renderPanel = [&](const GameState* gs, const ViewportFrustum& vf) {
+        DrawContext dc;
+        PLY_SET_IN_SCOPE(DrawContext::instance_, &dc);
+        dc.gs = gs;
+        dc.vf = vf;
+        dc.fullVF = fullVF;
+        dc.fracTime = gf->fracTime;
+        dc.intervalFrac = intervalFrac;
+        dc.visibleExtents = visibleExtents;
+        renderGamePanel(&dc);
+    };
+
     // Screen wipe transition
     if (auto trans = gf->trans.on()) {
         // Apply slide motion curve
@@ -395,8 +432,9 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
             leftVF.viewport.mins.x = divLeft - fullVF.viewport.width();
             leftVF.viewport.maxs.x = divLeft;
             leftVF = leftVF.clip(fullVF.viewport).quantize();
+
             if (!leftVF.viewport.isEmpty()) {
-                render(gf->gameState, leftVF, fullVF, gf->fracTime, intervalFrac, visibleExtents);
+                renderPanel(gf->gameState, leftVF);
             }
         }
 
@@ -420,12 +458,11 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
             rightVF.viewport.maxs.x = divRight + fullVF.viewport.width();
             rightVF = rightVF.clip(fullVF.viewport).quantize();
             if (!rightVF.viewport.isEmpty()) {
-                render(trans->oldGameState, rightVF, fullVF, gf->fracTime, intervalFrac,
-                       visibleExtents);
+                renderPanel(trans->oldGameState, rightVF);
             }
         }
     } else {
-        render(gf->gameState, fullVF, fullVF, gf->fracTime, intervalFrac, visibleExtents);
+        renderPanel(gf->gameState, fullVF);
     }
 }
 
