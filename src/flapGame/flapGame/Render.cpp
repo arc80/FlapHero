@@ -381,36 +381,39 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
                        Float4x4::makeTranslation({0, 0, 2.2f}) * Float4x4::makeScale(7.5f);
         a->flatShader->draw(mat, a->outline.view(), false);
         a->flatShader->draw(mat, a->title.view(), true);
+
+        {
+            // Draw stars
+            Array<FlatShaderInstanced::InstanceData> insData;
+            insData.reserve(gf->starSys.stars.numItems());
+            Float4x4 worldToViewport = Float4x4::makeOrtho(
+                (fullVF.bounds2D - fullVF.bounds2D.mid()) * (2.f / fullVF.bounds2D.width()), -10.f,
+                1.01f);
+            for (StarSystem::Star& star : gf->starSys.stars) {
+                auto& ins = insData.append();
+                float angle = mix(star.angle[0], star.angle[1], intervalFrac);
+                Float2 pos = mix(star.pos[0], star.pos[1], intervalFrac);
+                ins.modelToViewport = worldToViewport * Float4x4::makeTranslation({pos, -star.z}) *
+                                      Float4x4::makeRotation({0, 0, 1}, angle) *
+                                      Float4x4::makeScale(0.1f);
+                ins.color = {star.color, 1};
+            }
+            a->flatShaderInstanced->draw(a->star[0], insData.view());
+        }
+
+        // Draw prompt
         if (title->showPrompt) {
             TextBuffers tapToPlay = generateTextBuffers(a->sdfFont, "TAP TO PLAY");
             drawText(a->sdfCommon, a->sdfFont, tapToPlay,
                      Float4x4::makeOrtho(fullVF.bounds2D, -1.f, 1.f) *
                          Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
                          Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
-                     {0.85f, 1.75f}, {0, 0, 0, 0.4f});
+                     {0.85f, 1.75f}, {0, 0, 0, 0.8f});
             drawText(a->sdfCommon, a->sdfFont, tapToPlay,
                      Float4x4::makeOrtho(fullVF.bounds2D, -1.f, 1.f) *
                          Float4x4::makeTranslation({240, 24, 0}) * Float4x4::makeScale(0.9f) *
                          Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
                      {0.75f, 16.f}, {1.f, 1.f, 1.f, 1.f});
-        }
-
-        {
-            // Draw stars
-            Array<FlatShaderInstanced::InstanceData> insData;
-            static constexpr u32 numStars = 20;
-            insData.reserve(numStars);
-            Float4x4 worldToViewport = Float4x4::makeOrtho(
-                (fullVF.bounds2D - fullVF.bounds2D.mid()) * (2.f / fullVF.bounds2D.width()), -10.f,
-                0.01f);
-            for (u32 i = 0; i < numStars; i++) {
-                auto& ins = insData.append();
-                ins.modelToViewport =
-                    worldToViewport * Float4x4::makeRotation({0, 0, 1}, i * (2 * Pi / numStars)) *
-                    Float4x4::makeTranslation({0, 0.8f, 0}) * Float4x4::makeScale(0.1f);
-                ins.color = {1, 1, 0.2f, 0};
-            }
-            a->flatShaderInstanced->draw(a->star[0], insData.view());
         }
     }
 }

@@ -366,7 +366,7 @@ PLY_NO_INLINE void FlatShaderInstanced::draw(const DrawMesh& drawMesh,
                                              ArrayView<const InstanceData> instanceData) {
     GL_CHECK(UseProgram(this->shader.id));
     GL_CHECK(Enable(GL_DEPTH_TEST));
-    GL_CHECK(DepthMask(GL_FALSE));
+    GL_CHECK(DepthMask(GL_TRUE));
     GL_CHECK(Disable(GL_BLEND));
 
     // Instance attributes

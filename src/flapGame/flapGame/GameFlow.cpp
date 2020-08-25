@@ -55,6 +55,42 @@ void doInput(GameFlow* gf) {
     gf->buttonPressed = true;
 }
 
+void timeStep(StarSystem* starSys, float dt) {
+    starSys->countdown -= dt;
+    if (starSys->countdown <= 0) {
+        StarSystem::Star& star = starSys->stars.append();
+        star.pos[0] = {mix(-0.5f, 0.5f, starSys->random.nextFloat()), -1.6f};
+        star.pos[1] = star.pos[0];
+        star.z = starSys->random.nextFloat();
+        star.vel = Float2{mix(-1.f, 1.f, starSys->random.nextFloat()),
+                          mix(3.0f, 3.0f, starSys->random.nextFloat())} *
+                   mix(0.4f, 1.f, star.z);
+        star.angle[0] = mix(0.f, 2.f * Pi, starSys->random.nextFloat());
+        star.angle[1] = star.angle[0];
+        star.avel =
+            mix(2.f, 3.5f, starSys->random.nextFloat()) * (s32(starSys->random.next32() & 2) - 1);
+        star.color = Float3{mix(0.6f, 1.f, starSys->random.nextFloat()),
+                            mix(0.6f, 1.f, starSys->random.nextFloat()),
+                            mix(0.3f, 0.7f, starSys->random.nextFloat())};
+        starSys->countdown = 0.015f;
+    }
+    for (u32 i = 0; i < starSys->stars.numItems();) {
+        StarSystem::Star& star = starSys->stars[i];
+        star.vel.y -= dt * 1.5f;
+        star.pos[0] = star.pos[1];
+        star.pos[1] = star.pos[0] + star.vel * dt;
+        star.angle[0] = star.angle[1];
+        float a1 = star.angle[0] + star.avel * dt;
+        star.angle[1] = wrap(a1, 2 * Pi);
+        star.angle[0] += (star.angle[1] - a1);
+        if (star.pos[1].y < -2.f) {
+            starSys->stars.eraseQuick(i);
+        } else {
+            i++;
+        }
+    }
+}
+
 void update(GameFlow* gf, float dt) {
     dt = min(dt, GameFlow::MaxTimeStep);
 
@@ -88,6 +124,9 @@ void update(GameFlow* gf, float dt) {
         }
 
         timeStep(gf->titleRot, gf->simulationTimeStep, gs->random);
+        if (gf->gameState->mode.title()) {
+            timeStep(&gf->starSys, gf->simulationTimeStep);
+        }
     }
     if (gs->score >= gf->bestScore) {
         gf->bestScore = gs->score;

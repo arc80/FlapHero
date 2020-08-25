@@ -23,6 +23,21 @@ struct TitleRotator {
     float time = 0;
 };
 
+struct StarSystem {
+    struct Star {
+        Float2 pos[2] = {{0, 0}, {0, 0}};
+        Float2 vel = {0, 0};
+        float angle[2] = {0, 0};
+        float avel = 0;
+        float z = 0.f;
+        Float3 color = {1, 1, 1};
+    };
+
+    Array<Star> stars;
+    float countdown = 0.f;
+    Random random;
+};
+
 struct GameFlow final : GameState::Callbacks {
     DynamicArrayBuffers dynBuffers;
 
@@ -46,6 +61,8 @@ struct GameFlow final : GameState::Callbacks {
     u32 bestScore = 0;
     Owned<TitleRotator> titleRot;
     SoLoud::handle titleMusicVoice = 0;
+
+    StarSystem starSys;
 
     GameFlow();
 
