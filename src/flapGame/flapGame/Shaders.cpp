@@ -576,4 +576,130 @@ void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, con
     GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) indices.numItems, GL_UNSIGNED_SHORT, (void*) 0));
 }
 
+PLY_NO_INLINE Owned<HypnoShader> HypnoShader::create() {
+    Owned<HypnoShader> result = new HypnoShader;
+
+    {
+        Shader vertexShader = Shader::compile(
+            GL_VERTEX_SHADER,
+            "in vec2 vertPosition;\n"
+            "in vec4 instPlacement;\n"
+            "out vec4 fragTexCoord;\n"
+            "uniform mat4 modelToViewport;\n"
+            "\n"
+            "void main() {\n"
+            "    float angle = mod(vertPosition.x + instPlacement.x, 24.0) "
+            "* (3.1415926 * 2.0 / 24.0);\n"
+            "    vec2 warped = vec2(cos(angle), -sin(angle));\n"
+            "    float scale = mix(instPlacement.y, instPlacement.z, vertPosition.y);\n"
+            "    vec2 modelPos = warped * scale;\n"
+            "    fragTexCoord = vec4(vertPosition.x, 1.0 - vertPosition.y, scale, "
+            "instPlacement.w);\n"
+            "    gl_Position = modelToViewport * vec4(modelPos, 0.0, 1.0);\n"
+            "}\n");
+
+        Shader fragmentShader = Shader::compile(
+            GL_FRAGMENT_SHADER,
+            "in vec4 fragTexCoord;\n"
+            "uniform sampler2D texImage;\n"
+            "uniform sampler2D palette;\n"
+            "uniform float paletteSize;\n"
+            "out vec4 fragColor;\n"
+            "\n"
+            "void main() {\n"
+            "    vec4 sam = texture(texImage, fragTexCoord.xy);\n"
+            "    float c = sam.b;\n"
+            "    float i = fragTexCoord.w + float(int(sam.r > sam.g));\n"
+            "    vec4 palColor = texture(palette, vec2((0.5 - i) / paletteSize, 0.5));\n"
+            "    fragColor = vec4(mix(palColor.rgb, vec3(1.0), c), 1.0);\n"
+            "}\n");
+
+        // Link shader program
+        result->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
+    }
+
+    // Get shader program's vertex attribute and uniform locations
+    result->positionAttrib = GL_NO_CHECK(GetAttribLocation(result->shader.id, "vertPosition"));
+    PLY_ASSERT(result->positionAttrib >= 0);
+    result->instPlacementAttrib =
+        GL_NO_CHECK(GetAttribLocation(result->shader.id, "instPlacement"));
+    PLY_ASSERT(result->instPlacementAttrib >= 0);
+    result->modelToViewportUniform =
+        GL_NO_CHECK(GetUniformLocation(result->shader.id, "modelToViewport"));
+    PLY_ASSERT(result->modelToViewportUniform >= 0);
+    result->textureUniform = GL_NO_CHECK(GetUniformLocation(result->shader.id, "texImage"));
+    PLY_ASSERT(result->textureUniform >= 0);
+    result->paletteUniform = GL_NO_CHECK(GetUniformLocation(result->shader.id, "palette"));
+    PLY_ASSERT(result->paletteUniform >= 0);
+    result->paletteSizeUniform = GL_NO_CHECK(GetUniformLocation(result->shader.id, "paletteSize"));
+    PLY_ASSERT(result->paletteSizeUniform >= 0);
+
+    // Make grid
+    Array<Float2> vertices;
+    Array<u16> indices;
+    static constexpr u32 GridSize = 4;
+    for (u32 y = 0; y <= GridSize; y++) {
+        for (u32 x = 0; x <= GridSize; x++) {
+            vertices.append({(float) x / GridSize, (float) y / GridSize});
+            if (y < GridSize && x < GridSize) {
+                u32 r0 = y * (GridSize + 1) + x;
+                u32 r1 = r0 + (GridSize + 1);
+                indices.extend({u16(r0), u16(r0 + 1), u16(r1 + 1), u16(r1 + 1), u16(r1), u16(r0)});
+            }
+        }
+    }
+    result->vbo = GLBuffer::create(vertices.view().bufferView());
+    result->indices = GLBuffer::create(indices.view().bufferView());
+    result->numIndices = indices.numItems();
+
+    return result;
+}
+
+PLY_NO_INLINE void HypnoShader::draw(const Float4x4& modelToViewport, GLuint textureID,
+                                     const Texture& palette) const {
+    Array<Float4> instPlacement;
+    for (u32 v = 0; v < 18; v++) {
+        float s0 = powf(1.3f, float(v) - 9.f);
+        float s1 = powf(1.3f, float(v) - 8.f);
+        for (u32 u = 0; u < 24; u++) {
+            instPlacement.append({(float) u, s0, s1, (float) v});
+        }
+    }
+    GLuint ibo = DynamicArrayBuffers::instance->upload(instPlacement.view().bufferView());
+
+    GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Enable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_FALSE));
+    GL_CHECK(Disable(GL_BLEND));
+
+    // Uniforms
+    GL_CHECK(
+        UniformMatrix4fv(this->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));
+    GL_CHECK(ActiveTexture(GL_TEXTURE0));
+    GL_CHECK(BindTexture(GL_TEXTURE_2D, textureID));
+    GL_CHECK(Uniform1i(this->textureUniform, 0));
+    GL_CHECK(ActiveTexture(GL_TEXTURE1));
+    GL_CHECK(BindTexture(GL_TEXTURE_2D, palette.id));
+    GL_CHECK(Uniform1i(this->paletteUniform, 1));
+    GL_CHECK(Uniform1f(this->paletteSizeUniform, (GLfloat) palette.width));
+
+    // Instance attributes
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, ibo));
+    GL_CHECK(EnableVertexAttribArray(this->instPlacementAttrib));
+    GL_CHECK(VertexAttribPointer(this->instPlacementAttrib, 4, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(Float4), (GLvoid*) 0));
+    GL_CHECK(VertexAttribDivisor(this->instPlacementAttrib, 1));
+
+    // Draw
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, this->vbo.id));
+    GL_CHECK(EnableVertexAttribArray(this->positionAttrib));
+    GL_CHECK(VertexAttribPointer(this->positionAttrib, 2, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(Float2), (GLvoid*) 0));
+    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->indices.id));
+    GL_CHECK(DrawElementsInstanced(GL_TRIANGLES, (GLsizei) this->numIndices, GL_UNSIGNED_SHORT,
+                                   (void*) 0, instPlacement.numItems()));
+
+    GL_CHECK(VertexAttribDivisor(this->instPlacementAttrib, 0));
+}
+
 } // namespace flap

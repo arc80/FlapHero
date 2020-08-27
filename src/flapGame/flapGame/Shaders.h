@@ -96,4 +96,20 @@ struct TexturedShader {
               ArrayView<VertexPT> vertices, ArrayView<u16> indices) const;
 };
 
+struct HypnoShader {
+    ShaderProgram shader;
+    GLint positionAttrib = 0;
+    GLint instPlacementAttrib = 0;
+    GLint modelToViewportUniform = 0;
+    GLint textureUniform = 0;
+    GLint paletteUniform = 0;
+    GLint paletteSizeUniform = 0;
+    GLBuffer vbo;
+    GLBuffer indices;
+    u32 numIndices = 0;
+
+    static PLY_NO_INLINE Owned<HypnoShader> create();
+    void draw(const Float4x4& modelToViewport, GLuint textureID, const Texture& palette) const;
+};
+
 } // namespace flap

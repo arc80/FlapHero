@@ -225,7 +225,8 @@ Array<FallAnimFrame> extractFallAnimation(const aiScene* scene, u32 numFrames) {
         PLY_ASSERT(scene->mNumAnimations == 1);
         const aiAnimation* srcAnim = scene->mAnimations[0];
         ArrayView<const aiNodeAnim* const> channels = {srcAnim->mChannels, srcAnim->mNumChannels};
-        s32 index = find(channels, [&](const aiNodeAnim* ch) { return toStringView(ch->mNodeName) == name; });
+        s32 index = find(channels,
+                         [&](const aiNodeAnim* ch) { return toStringView(ch->mNodeName) == name; });
         PLY_ASSERT(index >= 0);
         return channels[safeDemote<u32>(index)];
     };
@@ -305,6 +306,26 @@ void Assets::load(StringView assetsPath) {
         params.repeatY = false;
         assets->speedLimitTexture.init(im, 3, params);
     }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "wave.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        SamplerParams params;
+        params.repeatY = false;
+        params.sRGB = false;
+        assets->waveTexture.init(im, 5, params);
+    }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "hypno-palette.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        SamplerParams params;
+        params.minFilter = false;
+        params.magFilter = false;
+        assets->hypnoPaletteTexture.init(im, 5, params);
+    }
 
     // Load font resources
     assets->sdfCommon = SDFCommon::create();
@@ -322,6 +343,7 @@ void Assets::load(StringView assetsPath) {
     assets->flatShaderInstanced = FlatShaderInstanced::create();
     assets->flashShader = FlashShader::create();
     assets->texturedShader = TexturedShader::create();
+    assets->hypnoShader = HypnoShader::create();
 
     // Load sounds
     assets->titleMusic.load(

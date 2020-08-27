@@ -67,6 +67,14 @@ void timeStep(StarSystem* starSys) {
     }
 }
 
+void wrapInterval(ArrayView<float> arr, float delta, float positiveRange) {
+    arr[0] = arr[1];
+    arr[1] += delta;
+    float w = wrap(arr[1], positiveRange);
+    arr[0] += (w - arr[1]);
+    arr[1] = w;
+}
+
 void updateTitleScreen(TitleScreen* titleScreen) {
     UpdateContext* uc = UpdateContext::instance();
     float dt = uc->gs->outerCtx->simulationTimeStep;
@@ -78,6 +86,8 @@ void updateTitleScreen(TitleScreen* titleScreen) {
     }
     timeStep(&titleScreen->titleRot);
     timeStep(&titleScreen->starSys);
+    wrapInterval({titleScreen->hypnoAngle, 2}, dt * 0.5f, Pi * 2.f);
+    wrapInterval({titleScreen->hypnoZoom, 2}, dt * 1.5f, 6.f);
 }
 
 } // namespace flap

@@ -47,6 +47,8 @@ struct Assets {
 
     Texture flashTexture;
     Texture speedLimitTexture;
+    Texture waveTexture;
+    Texture hypnoPaletteTexture;
 
     Owned<SDFCommon> sdfCommon;
     Owned<SDFFont> sdfFont;
@@ -57,6 +59,7 @@ struct Assets {
     Owned<FlatShaderInstanced> flatShaderInstanced;
     Owned<FlashShader> flashShader;
     Owned<TexturedShader> texturedShader;
+    Owned<HypnoShader> hypnoShader;
     
     // Sounds
     SoLoud::Wav titleMusic;

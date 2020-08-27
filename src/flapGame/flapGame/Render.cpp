@@ -254,10 +254,6 @@ void renderGamePanel(const DrawContext* dc) {
     GL_CHECK(CullFace(GL_BACK));
     GL_CHECK(FrontFace(GL_CCW));
 
-    if (auto title = gs->mode.title()) {
-        drawTitle(title->titleScreen);
-    }
-
     const Assets* a = Assets::instance;
     Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum, 10.f, 100.f);
 
@@ -317,10 +313,20 @@ void renderGamePanel(const DrawContext* dc) {
                        a->floor.view());
 
     // Draw background
-    GL_CHECK(DepthMask(GL_FALSE));
-    a->flatShader->drawQuad(
-        Float4x4::makeTranslation({0, 0, 0.999f}),
-        {sRGBToLinear(113.f / 255), sRGBToLinear(200.f / 255), sRGBToLinear(206.f / 255)});
+    if (auto title = gs->mode.title()) {
+        const TitleScreen* ts = title->titleScreen;
+        float hypnoAngle = mix(ts->hypnoAngle[0], ts->hypnoAngle[1], dc->intervalFrac);
+        float hypnoScale = powf(1.3f, mix(ts->hypnoZoom[0], ts->hypnoZoom[1], dc->intervalFrac));
+        a->hypnoShader->draw(Float4x4::makeOrtho({{-3.f, -4.f}, {3.f, 4.f}}, -1.f, 0.01f) *
+                                 Float4x4::makeTranslation({0, -1.7f, 0}) *
+                                 Float4x4::makeRotation({0, 0, 1}, hypnoAngle) *
+                                 Float4x4::makeScale(hypnoScale),
+                             a->waveTexture.id, a->hypnoPaletteTexture);
+    } else {
+        a->flatShader->drawQuad(
+            Float4x4::makeTranslation({0, 0, 0.999f}),
+            {sRGBToLinear(113.f / 255), sRGBToLinear(200.f / 255), sRGBToLinear(206.f / 255)});
+    }
 
     // Draw flash
     if (auto impact = gs->mode.impact()) {
@@ -376,6 +382,7 @@ void renderGamePanel(const DrawContext* dc) {
 
     if (auto title = gs->mode.title()) {
         drawStars(title->titleScreen);
+        drawTitle(title->titleScreen);
     }
 }
 
