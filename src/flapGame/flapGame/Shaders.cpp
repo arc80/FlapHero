@@ -656,14 +656,21 @@ PLY_NO_INLINE Owned<HypnoShader> HypnoShader::create() {
 }
 
 PLY_NO_INLINE void HypnoShader::draw(const Float4x4& modelToViewport, GLuint textureID,
-                                     const Texture& palette) const {
+                                     const Texture& palette, float atScale) const {
+    static constexpr float base = 1.3f;
+    static constexpr float minScale = 0.5f;
+    static constexpr float maxScale = 6.5f;
+
     Array<Float4> instPlacement;
-    for (u32 v = 0; v < 18; v++) {
-        float s0 = powf(1.3f, float(v) - 9.f);
-        float s1 = powf(1.3f, float(v) - 8.f);
+    float exp = quantizeUp((logf(minScale) - logf(atScale)) / logf(base), 1.f);
+    float maxExp = quantizeDown((logf(maxScale) - logf(atScale)) / logf(base), 1.f);
+    while (exp <= maxExp) {
+        float s0 = powf(1.3f, exp);
+        float s1 = powf(1.3f, exp + 1);
         for (u32 u = 0; u < 24; u++) {
-            instPlacement.append({(float) u, s0, s1, (float) v});
+            instPlacement.append({(float) u, s0, s1, exp});
         }
+        exp += 1;
     }
     GLuint ibo = DynamicArrayBuffers::instance->upload(instPlacement.view().bufferView());
 

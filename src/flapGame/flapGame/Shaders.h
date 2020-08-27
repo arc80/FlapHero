@@ -109,7 +109,8 @@ struct HypnoShader {
     u32 numIndices = 0;
 
     static PLY_NO_INLINE Owned<HypnoShader> create();
-    void draw(const Float4x4& modelToViewport, GLuint textureID, const Texture& palette) const;
+    void draw(const Float4x4& modelToViewport, GLuint textureID, const Texture& palette,
+              float atScale) const;
 };
 
 } // namespace flap

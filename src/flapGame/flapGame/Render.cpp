@@ -321,7 +321,7 @@ void renderGamePanel(const DrawContext* dc) {
                                  Float4x4::makeTranslation({0, -1.7f, 0}) *
                                  Float4x4::makeRotation({0, 0, 1}, hypnoAngle) *
                                  Float4x4::makeScale(hypnoScale),
-                             a->waveTexture.id, a->hypnoPaletteTexture);
+                             a->waveTexture.id, a->hypnoPaletteTexture, hypnoScale);
     } else {
         a->flatShader->drawQuad(
             Float4x4::makeTranslation({0, 0, 0.999f}),
