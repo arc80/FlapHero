@@ -346,6 +346,7 @@ void Assets::load(StringView assetsPath) {
     assets->flashShader = FlashShader::create();
     assets->texturedShader = TexturedShader::create();
     assets->hypnoShader = HypnoShader::create();
+    assets->copyShader = CopyShader::create();
 
     // Load sounds
     assets->titleMusic.load(

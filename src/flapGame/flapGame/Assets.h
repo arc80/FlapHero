@@ -62,6 +62,7 @@ struct Assets {
     Owned<FlashShader> flashShader;
     Owned<TexturedShader> texturedShader;
     Owned<HypnoShader> hypnoShader;
+    Owned<CopyShader> copyShader;
     
     // Sounds
     SoLoud::Wav titleMusic;

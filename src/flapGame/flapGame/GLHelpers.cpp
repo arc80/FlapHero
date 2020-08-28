@@ -245,4 +245,38 @@ PLY_NO_INLINE void Texture::upload(const image::Image& im) {
     GL_CHECK(BindTexture(GL_TEXTURE_2D, 0));
 }
 
+PLY_NO_INLINE void RenderToTexture::destroy() {
+    if (this->fboID) {
+        GL_CHECK(DeleteFramebuffers(1, &this->fboID));
+        this->fboID = 0;
+    }
+    if (this->depthRBID) {
+        GL_CHECK(DeleteRenderbuffers(1, &this->depthRBID));
+        this->depthRBID = 0;
+    }
+}
+
+PLY_NO_INLINE void RenderToTexture::init(const Texture& tex, bool withDepth) {
+    PLY_ASSERT(this->fboID == 0);
+    PLY_ASSERT(this->depthRBID == 0);
+    if (withDepth) {
+        glGenRenderbuffers(1, &this->depthRBID);
+        glBindRenderbuffer(GL_RENDERBUFFER, (GLuint) this->depthRBID);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, tex.width, tex.height);
+        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    }
+    GLint prevFBO;
+    GL_CHECK(GetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO));
+    GL_CHECK(GenFramebuffers(1, &this->fboID));
+    GL_CHECK(BindFramebuffer(GL_FRAMEBUFFER, this->fboID));
+    GL_CHECK(FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex.id, 0));
+    if (withDepth) {
+        GL_CHECK(FramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, this->depthRBID));
+    }
+    GLenum status = GL_NO_CHECK(CheckFramebufferStatus(GL_FRAMEBUFFER));
+    PLY_ASSERT(status == GL_FRAMEBUFFER_COMPLETE);
+    PLY_UNUSED(status);
+    GL_CHECK(BindFramebuffer(GL_FRAMEBUFFER, prevFBO));
+}
+
 } // namespace flap

@@ -35,6 +35,8 @@ struct StarSystem {
 };
 
 struct TitleScreen {
+    Texture tempTex;
+    RenderToTexture tempRTT;
     TitleRotator titleRot;
     StarSystem starSys;
     bool showPrompt = true;

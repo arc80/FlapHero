@@ -576,6 +576,8 @@ void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, con
     GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) indices.numItems, GL_UNSIGNED_SHORT, (void*) 0));
 }
 
+//---------------------------------------------------------
+
 PLY_NO_INLINE Owned<HypnoShader> HypnoShader::create() {
     Owned<HypnoShader> result = new HypnoShader;
 
@@ -707,6 +709,88 @@ PLY_NO_INLINE void HypnoShader::draw(const Float4x4& modelToViewport, GLuint tex
                                    (void*) 0, instPlacement.numItems()));
 
     GL_CHECK(VertexAttribDivisor(this->instPlacementAttrib, 0));
+}
+
+//---------------------------------------------------------
+
+PLY_NO_INLINE Owned<CopyShader> CopyShader::create() {
+    Owned<CopyShader> copyShader = new CopyShader;
+    {
+        Shader vertexShader = Shader::compile(
+            GL_VERTEX_SHADER, "in vec3 vertPosition;\n"
+                              "in vec2 vertTexCoord;\n"
+                              "uniform mat4 modelToViewport;\n"
+                              "out vec2 fragTexCoord; \n"
+                              "\n"
+                              "void main() {\n"
+                              "    gl_Position = modelToViewport * vec4(vertPosition, 1.0);\n"
+                              "    fragTexCoord = vertTexCoord;\n"
+                              "}\n");
+
+        Shader fragmentShader =
+            Shader::compile(GL_FRAGMENT_SHADER, "in vec2 fragTexCoord;\n"
+                                                "uniform sampler2D texImage;\n"
+                                                "out vec4 fragColor;\n"
+                                                "\n"
+                                                "void main() {\n"
+                                                "    fragColor = texture(texImage, fragTexCoord);\n"
+                                                "}\n");
+
+        // Link shader program
+        copyShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
+    }
+
+    // Get shader program's vertex attribute and uniform locations
+    copyShader->vertPositionAttrib =
+        GL_NO_CHECK(GetAttribLocation(copyShader->shader.id, "vertPosition"));
+    PLY_ASSERT(copyShader->vertPositionAttrib >= 0);
+    copyShader->vertTexCoordAttrib =
+        GL_NO_CHECK(GetAttribLocation(copyShader->shader.id, "vertTexCoord"));
+    PLY_ASSERT(copyShader->vertTexCoordAttrib >= 0);
+    copyShader->modelToViewportUniform =
+        GL_NO_CHECK(GetUniformLocation(copyShader->shader.id, "modelToViewport"));
+    PLY_ASSERT(copyShader->modelToViewportUniform >= 0);
+    copyShader->textureUniform = GL_NO_CHECK(GetUniformLocation(copyShader->shader.id, "texImage"));
+    PLY_ASSERT(copyShader->textureUniform >= 0);
+
+    // Create vertex and index buffers
+    Array<VertexPT> vertices = {
+        {{-1.f, -1.f, 0.f}, {0.f, 0.f}},
+        {{1.f, -1.f, 0.f}, {1.f, 0.f}},
+        {{1.f, 1.f, 0.f}, {1.f, 1.f}},
+        {{-1.f, 1.f, 0.f}, {0.f, 1.f}},
+    };
+    copyShader->quadVBO = GLBuffer::create(vertices.view().bufferView());
+    Array<u16> indices = {(u16) 0, 1, 2, 2, 3, 0};
+    copyShader->quadIndices = GLBuffer::create(indices.view().bufferView());
+    copyShader->quadNumIndices = indices.numItems();
+
+    return copyShader;
+}
+
+PLY_NO_INLINE void CopyShader::drawQuad(const Float4x4& modelToViewport, GLuint textureID) const {
+    GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Enable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_TRUE));
+    GL_CHECK(Disable(GL_BLEND));
+
+    GL_CHECK(
+        UniformMatrix4fv(this->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));
+    GL_CHECK(ActiveTexture(GL_TEXTURE0));
+    GL_CHECK(BindTexture(GL_TEXTURE_2D, textureID));
+    GL_CHECK(Uniform1i(this->textureUniform, 0));
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, this->quadVBO.id));
+    GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPT), (GLvoid*) offsetof(VertexPT, pos)));
+    GL_CHECK(EnableVertexAttribArray(this->vertTexCoordAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertTexCoordAttrib, 2, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPT), (GLvoid*) offsetof(VertexPT, uv)));
+
+    // Draw quad
+    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->quadIndices.id));
+    GL_CHECK(
+        DrawElements(GL_TRIANGLES, (GLsizei) this->quadNumIndices, GL_UNSIGNED_SHORT, (void*) 0));
 }
 
 } // namespace flap

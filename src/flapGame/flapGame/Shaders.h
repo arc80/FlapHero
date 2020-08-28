@@ -113,4 +113,18 @@ struct HypnoShader {
               float atScale) const;
 };
 
+struct CopyShader {
+    ShaderProgram shader;
+    GLint vertPositionAttrib = 0;
+    GLint vertTexCoordAttrib = 0;
+    GLint modelToViewportUniform = 0;
+    GLint textureUniform = 0;
+    GLBuffer quadVBO;
+    GLBuffer quadIndices;
+    u32 quadNumIndices = 0;
+
+    static PLY_NO_INLINE Owned<CopyShader> create();
+    void drawQuad(const Float4x4& modelToViewport, GLuint textureID) const;
+};
+
 } // namespace flap

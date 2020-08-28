@@ -199,9 +199,11 @@ void drawTitle(const TitleScreen* titleScreen) {
     Float4x4 mat = cameraToViewport * w2c * Float4x4::makeTranslation({0, worldDistance, 4.f}) *
                    Float4x4::makeRotation({1, 0, 0}, Pi / 2.f) * skewRot *
                    Float4x4::makeTranslation({0, 0, 2.2f}) * Float4x4::makeScale(7.5f);
-    a->flatShader->draw(mat, a->blackOutline.view(), false);
-    a->flatShader->draw(mat, a->outline.view(), false);
+    GL_CHECK(DepthRange(0.0, 0.5));
     a->flatShader->draw(mat, a->title.view(), true);
+    GL_CHECK(DepthRange(0.5, 0.5));
+    a->flatShader->draw(mat, a->outline.view(), true);
+    a->flatShader->draw(mat, a->blackOutline.view(), true);
 }
 
 void drawStars(const TitleScreen* titleScreen) {
@@ -209,46 +211,29 @@ void drawStars(const TitleScreen* titleScreen) {
     const DrawContext* dc = DrawContext::instance();
     const Rect& fullBounds2D = dc->fullVF.bounds2D;
 
-    {
-        // Draw stars
-        Array<FlatShaderInstanced::InstanceData> insData;
-        insData.reserve(titleScreen->starSys.stars.numItems());
-        Float4x4 worldToViewport = Float4x4::makeOrtho(
-            (fullBounds2D - fullBounds2D.mid()) * (2.f / fullBounds2D.width()), -10.f, 1.01f);
-        for (StarSystem::Star& star : titleScreen->starSys.stars) {
-            auto& ins = insData.append();
-            float angle = mix(star.angle[0], star.angle[1], dc->intervalFrac);
-            Float2 pos = mix(star.pos[0], star.pos[1], dc->intervalFrac);
-            ins.modelToViewport = worldToViewport * Float4x4::makeTranslation({pos, -star.z}) *
-                                  Float4x4::makeRotation({0, 0, 1}, angle) *
-                                  Float4x4::makeScale(0.1f);
-            ins.color = {star.color, 1};
-        }
-        a->flatShaderInstanced->draw(a->star[0], insData.view());
+    // Draw stars
+    Array<FlatShaderInstanced::InstanceData> insData;
+    insData.reserve(titleScreen->starSys.stars.numItems());
+    Float4x4 worldToViewport = Float4x4::makeOrtho(
+        (fullBounds2D - fullBounds2D.mid()) * (2.f / fullBounds2D.width()), -10.f, 1.01f);
+    for (StarSystem::Star& star : titleScreen->starSys.stars) {
+        auto& ins = insData.append();
+        float angle = mix(star.angle[0], star.angle[1], dc->intervalFrac);
+        Float2 pos = mix(star.pos[0], star.pos[1], dc->intervalFrac);
+        ins.modelToViewport = worldToViewport * Float4x4::makeTranslation({pos, -star.z}) *
+                              Float4x4::makeRotation({0, 0, 1}, angle) * Float4x4::makeScale(0.1f);
+        ins.color = {star.color, 1};
     }
-
-    // Draw prompt
-    if (titleScreen->showPrompt) {
-        TextBuffers tapToPlay = generateTextBuffers(a->sdfFont, "TAP TO PLAY");
-        drawText(a->sdfCommon, a->sdfFont, tapToPlay,
-                 Float4x4::makeOrtho(fullBounds2D, -1.f, 1.f) *
-                     Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
-                     Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
-                 {0.85f, 1.75f}, {0, 0, 0, 0.8f});
-        drawOutlinedText(a->sdfOutline, a->sdfFont, tapToPlay,
-                         Float4x4::makeOrtho(fullBounds2D, -1.f, 1.f) *
-                             Float4x4::makeTranslation({240, 24, 0}) * Float4x4::makeScale(0.9f) *
-                             Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
-                         {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.6f, 16.f}, {0.75f, 12.f}});
-    }
+    GL_CHECK(DepthRange(0.5, 1.0));
+    a->flatShaderInstanced->draw(a->star[0], insData.view());
 }
 
 void renderGamePanel(const DrawContext* dc) {
     const ViewportFrustum& vf = dc->vf;
-    const GameState* gs = dc->gs;
     const Assets* a = Assets::instance;
-    Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum, 10.f, 100.f);
+    const GameState* gs = dc->gs;
 
+    Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum, 10.f, 100.f);
     GL_CHECK(Viewport((GLint) vf.viewport.mins.x, (GLint) vf.viewport.mins.y,
                       (GLsizei) vf.viewport.width(), (GLsizei) vf.viewport.height()));
 
@@ -291,25 +276,125 @@ void renderGamePanel(const DrawContext* dc) {
                                boneToModel.view(), a->bird.view());
     }
 
-    // Draw obstacles
-    Obstacle::DrawParams odp;
-    odp.cameraToViewport = cameraToViewport;
-    odp.worldToCamera = worldToCamera;
-    for (const Obstacle* obst : gs->playfield.obstacles) {
-        obst->draw(odp);
+    if (!gs->mode.title()) {
+        // Draw obstacles
+        Obstacle::DrawParams odp;
+        odp.cameraToViewport = cameraToViewport;
+        odp.worldToCamera = worldToCamera;
+        for (const Obstacle* obst : gs->playfield.obstacles) {
+            obst->draw(odp);
+        }
+
+        // Draw floor
+        a->matShader->draw(cameraToViewport,
+                           worldToCamera *
+                               Float4x4::makeTranslation({worldToCamera.invertedOrtho()[3].x, 0.f,
+                                                          dc->visibleExtents.mins.y + 4.f}) *
+                               Float4x4::makeRotation({0, 0, 1}, Pi / 2.f),
+                           a->floor.view());
+
+        // Draw background
+        a->flatShader->drawQuad(
+            Float4x4::makeTranslation({0, 0, 0.999f}),
+            {sRGBToLinear(113.f / 255), sRGBToLinear(200.f / 255), sRGBToLinear(206.f / 255)});
+
+        // Draw flash
+        if (auto impact = gs->mode.impact()) {
+            a->flashShader->drawQuad(
+                cameraToViewport * worldToCamera * Float4x4::makeTranslation(impact->hit.pos) *
+                    Float4x4::makeRotation({1, 0, 0}, Pi * 0.5f) * Float4x4::makeScale(2.f),
+                {0.25f, -0.25f, 0.75f, 0.25f}, a->flashTexture.id, {1.2f, 1.2f, 0, 0.6f});
+        }
+
+        if (auto dead = gs->mode.dead()) {
+            TextBuffers gameOver = generateTextBuffers(a->sdfFont, "GAME OVER");
+            drawText(a->sdfCommon, a->sdfFont, gameOver,
+                     Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
+                         Float4x4::makeTranslation({244, 520, 0}) * Float4x4::makeScale(1.8f) *
+                         Float4x4::makeTranslation({-gameOver.xMid(), 0, 0}),
+                     {0.85f, 1.75f}, {0, 0, 0, 0.4f});
+            drawOutlinedText(a->sdfOutline, a->sdfFont, gameOver,
+                             Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
+                                 Float4x4::makeTranslation({240, 524, 0}) *
+                                 Float4x4::makeScale(1.8f) *
+                                 Float4x4::makeTranslation({-gameOver.xMid(), 0, 0}),
+                             {1, 0.3f, 0.3f, 0.f}, {0, 0, 0, 0}, {{0.65f, 24.f}, {0.75f, 24.f}});
+            drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 380}, 1.f, "SCORE",
+                          String::from(gs->score), {1, 1, 1, 1});
+            drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 250}, 0.5f, "BEST",
+                          String::from(gs->outerCtx->bestScore), {1.f, 0.45f, 0.05f, 1.f});
+
+            if (dead->showPrompt) {
+                TextBuffers playAgain = generateTextBuffers(a->sdfFont, "TAP TO PLAY AGAIN");
+                drawText(a->sdfCommon, a->sdfFont, playAgain,
+                         Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
+                             Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
+                             Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
+                         {0.85f, 1.75f}, {0, 0, 0, 0.4f});
+                drawOutlinedText(a->sdfOutline, a->sdfFont, playAgain,
+                                 Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
+                                     Float4x4::makeTranslation({240, 24, 0}) *
+                                     Float4x4::makeScale(0.9f) *
+                                     Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
+                                 {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.6f, 16.f}, {0.75f, 12.f}});
+            }
+        }
+
+        if (!gs->mode.dead() && !gs->mode.title()) {
+            // Draw score
+            TextBuffers tb = generateTextBuffers(a->sdfFont, String::from(gs->score));
+            drawText(a->sdfCommon, a->sdfFont, tb,
+                     Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
+                         Float4x4::makeTranslation({244, 570, 0}) * Float4x4::makeScale(1.5f) *
+                         Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
+                     {0.85f, 1.75f}, {0, 0, 0, 0.4f});
+            drawOutlinedText(a->sdfOutline, a->sdfFont, tb,
+                             Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
+                                 Float4x4::makeTranslation({240, 574, 0}) *
+                                 Float4x4::makeScale(1.5f) *
+                                 Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
+                             {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.65f, 20.f}, {0.75f, 20.f}});
+        }
+    } else {
+        auto title = gs->mode.title();
+        const TitleScreen* ts = title->titleScreen;
+        a->copyShader->drawQuad(Float4x4::makeTranslation({0, 0, 0.995f}), ts->tempTex.id);
+    }
+}
+
+void drawTitleScreenToTemp(TitleScreen* ts) {
+    const Assets* a = Assets::instance;
+    const DrawContext* dc = DrawContext::instance();
+
+    Float2 vpSize = dc->fullVF.viewport.size();
+    if (!ts->tempTex.id || ts->tempTex.dims() != vpSize) {
+        // Create temporary buffer
+        ts->tempRTT.destroy();
+        ts->tempTex.destroy();
+        SamplerParams params;
+        params.minFilter = false;
+        params.magFilter = false;
+        params.repeatX = false;
+        params.repeatY = false;
+        params.sRGB = false;
+        PLY_ASSERT(isQuantized(vpSize, 1.f));
+        ts->tempTex.init((u32) vpSize.x, (u32) vpSize.y, image::Format::RGBA, 1, params);
+        ts->tempRTT.init(ts->tempTex, true);
     }
 
-    // Draw floor
-    a->matShader->draw(cameraToViewport,
-                       worldToCamera *
-                           Float4x4::makeTranslation({worldToCamera.invertedOrtho()[3].x, 0.f,
-                                                      dc->visibleExtents.mins.y + 4.f}) *
-                           Float4x4::makeRotation({0, 0, 1}, Pi / 2.f),
-                       a->floor.view());
-
-    // Draw background
-    if (auto title = gs->mode.title()) {
-        const TitleScreen* ts = title->titleScreen;
+    // Render to it
+    GLint prevFBO;
+    GL_CHECK(GetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO));
+    GL_CHECK(BindFramebuffer(GL_FRAMEBUFFER, ts->tempRTT.fboID));
+    GL_CHECK(Viewport(0, 0, (u32) vpSize.x, (u32) vpSize.y));
+    GL_CHECK(DepthMask(GL_TRUE));
+    GL_CHECK(ClearColor(0, 0, 0, 1));
+    GL_CHECK(ClearDepth(1.0));
+    GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
+    drawTitle(ts);
+    drawStars(ts);
+    {
+        // Draw background
         float hypnoAngle = mix(ts->hypnoAngle[0], ts->hypnoAngle[1], dc->intervalFrac);
         float hypnoScale = powf(1.3f, mix(ts->hypnoZoom[0], ts->hypnoZoom[1], dc->intervalFrac));
         a->hypnoShader->draw(Float4x4::makeOrtho({{-3.f, -4.f}, {3.f, 4.f}}, -1.f, 0.01f) *
@@ -317,72 +402,23 @@ void renderGamePanel(const DrawContext* dc) {
                                  Float4x4::makeRotation({0, 0, 1}, hypnoAngle) *
                                  Float4x4::makeScale(hypnoScale),
                              a->waveTexture.id, a->hypnoPaletteTexture, hypnoScale);
-    } else {
-        a->flatShader->drawQuad(
-            Float4x4::makeTranslation({0, 0, 0.999f}),
-            {sRGBToLinear(113.f / 255), sRGBToLinear(200.f / 255), sRGBToLinear(206.f / 255)});
+    }
+    // Draw prompt
+    if (ts->showPrompt) {
+        TextBuffers tapToPlay = generateTextBuffers(a->sdfFont, "TAP TO PLAY");
+        drawText(a->sdfCommon, a->sdfFont, tapToPlay,
+                 Float4x4::makeOrtho({{0, 0}, vpSize}, -1.f, 1.f) *
+                     Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
+                     Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
+                 {0.85f, 1.75f}, {0, 0, 0, 0.8f});
+        drawOutlinedText(a->sdfOutline, a->sdfFont, tapToPlay,
+                         Float4x4::makeOrtho({{0, 0}, vpSize}, -1.f, 1.f) *
+                             Float4x4::makeTranslation({240, 24, 0}) * Float4x4::makeScale(0.9f) *
+                             Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
+                         {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.6f, 16.f}, {0.75f, 12.f}});
     }
 
-    // Draw flash
-    if (auto impact = gs->mode.impact()) {
-        a->flashShader->drawQuad(
-            cameraToViewport * worldToCamera * Float4x4::makeTranslation(impact->hit.pos) *
-                Float4x4::makeRotation({1, 0, 0}, Pi * 0.5f) * Float4x4::makeScale(2.f),
-            {0.25f, -0.25f, 0.75f, 0.25f}, a->flashTexture.id, {1.2f, 1.2f, 0, 0.6f});
-    }
-
-    if (auto dead = gs->mode.dead()) {
-        TextBuffers gameOver = generateTextBuffers(a->sdfFont, "GAME OVER");
-        drawText(a->sdfCommon, a->sdfFont, gameOver,
-                 Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                     Float4x4::makeTranslation({244, 520, 0}) * Float4x4::makeScale(1.8f) *
-                     Float4x4::makeTranslation({-gameOver.xMid(), 0, 0}),
-                 {0.85f, 1.75f}, {0, 0, 0, 0.4f});
-        drawOutlinedText(a->sdfOutline, a->sdfFont, gameOver,
-                         Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                             Float4x4::makeTranslation({240, 524, 0}) * Float4x4::makeScale(1.8f) *
-                             Float4x4::makeTranslation({-gameOver.xMid(), 0, 0}),
-                         {1, 0.3f, 0.3f, 0.f}, {0, 0, 0, 0}, {{0.65f, 24.f}, {0.75f, 24.f}});
-        drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 380}, 1.f, "SCORE",
-                      String::from(gs->score), {1, 1, 1, 1});
-        drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 250}, 0.5f, "BEST",
-                      String::from(gs->outerCtx->bestScore), {1.f, 0.45f, 0.05f, 1.f});
-
-        if (dead->showPrompt) {
-            TextBuffers playAgain = generateTextBuffers(a->sdfFont, "TAP TO PLAY AGAIN");
-            drawText(a->sdfCommon, a->sdfFont, playAgain,
-                     Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                         Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
-                         Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
-                     {0.85f, 1.75f}, {0, 0, 0, 0.4f});
-            drawOutlinedText(a->sdfOutline, a->sdfFont, playAgain,
-                             Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                                 Float4x4::makeTranslation({240, 24, 0}) *
-                                 Float4x4::makeScale(0.9f) *
-                                 Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
-                             {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.6f, 16.f}, {0.75f, 12.f}});
-        }
-    }
-
-    if (!gs->mode.dead() && !gs->mode.title()) {
-        // Draw score
-        TextBuffers tb = generateTextBuffers(a->sdfFont, String::from(gs->score));
-        drawText(a->sdfCommon, a->sdfFont, tb,
-                 Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                     Float4x4::makeTranslation({244, 570, 0}) * Float4x4::makeScale(1.5f) *
-                     Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
-                 {0.85f, 1.75f}, {0, 0, 0, 0.4f});
-        drawOutlinedText(a->sdfOutline, a->sdfFont, tb,
-                         Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                             Float4x4::makeTranslation({240, 574, 0}) * Float4x4::makeScale(1.5f) *
-                             Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
-                         {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.65f, 20.f}, {0.75f, 20.f}});
-    }
-
-    if (auto title = gs->mode.title()) {
-        drawStars(title->titleScreen);
-        drawTitle(title->titleScreen);
-    }
+    GL_CHECK(BindFramebuffer(GL_FRAMEBUFFER, prevFBO));
 }
 
 void render(GameFlow* gf, const IntVec2& fbSize) {
@@ -396,13 +432,6 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
     GL_CHECK(Enable(GL_FRAMEBUFFER_SRGB));
 #endif
 
-    // Clear viewport
-    GL_CHECK(Viewport(0, 0, fbSize.x, fbSize.y));
-    GL_CHECK(DepthMask(GL_TRUE));
-    GL_CHECK(ClearColor(0, 0, 0, 1));
-    GL_CHECK(ClearDepth(1.0));
-    GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
-
     // Enable face culling
     GL_CHECK(Enable(GL_CULL_FACE));
     GL_CHECK(CullFace(GL_BACK));
@@ -415,6 +444,28 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
                              visibleExtents / GameState::WorldDistance, Rect{{0, 0}, {480, 640}})
             .quantize();
 
+    // Before drawing the panels, draw the title screen (if any) to a temporary buffer
+    if (auto title = gf->gameState->mode.title()) {
+        DrawContext dc;
+        PLY_SET_IN_SCOPE(DrawContext::instance_, &dc);
+        dc.gs = gf->gameState;
+        dc.vf = fullVF;
+        dc.fullVF = fullVF;
+        dc.fracTime = gf->fracTime;
+        dc.intervalFrac = intervalFrac;
+        dc.visibleExtents = visibleExtents;
+        drawTitleScreenToTemp(title->titleScreen);
+    }
+
+    // Clear viewport
+    GL_CHECK(Viewport(0, 0, fbSize.x, fbSize.y));
+    GL_CHECK(DepthRange(0.0, 1.0));
+    GL_CHECK(DepthMask(GL_TRUE));
+    GL_CHECK(ClearColor(0, 0, 0, 1));
+    GL_CHECK(ClearDepth(1.0));
+    GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
+
+    // Screen wipe transition
     auto renderPanel = [&](const GameState* gs, const ViewportFrustum& vf) {
         DrawContext dc;
         PLY_SET_IN_SCOPE(DrawContext::instance_, &dc);
@@ -427,7 +478,6 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
         renderGamePanel(&dc);
     };
 
-    // Screen wipe transition
     if (auto trans = gf->trans.on()) {
         // Apply slide motion curve
         float slide = mix(trans->frac[0], trans->frac[1], intervalFrac);
@@ -471,6 +521,7 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
             rightVF.viewport.maxs.x = divRight + fullVF.viewport.width();
             rightVF = rightVF.clip(fullVF.viewport).quantize();
             if (!rightVF.viewport.isEmpty()) {
+                PLY_ASSERT(!trans->oldGameState->mode.title());
                 renderPanel(trans->oldGameState, rightVF);
             }
         }

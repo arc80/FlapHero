@@ -165,4 +165,22 @@ struct Texture {
     }
 };
 
+class RenderToTexture {
+public:
+    GLuint fboID = 0;
+    GLuint depthRBID = 0;
+
+    RenderToTexture() = default;
+    RenderToTexture(RenderToTexture&& other) : fboID{other.fboID}, depthRBID{other.depthRBID} {
+        other.fboID = 0;
+        other.depthRBID = 0;
+    }
+    void destroy();
+    PLY_INLINE ~RenderToTexture() {
+        this->destroy();
+    }
+
+    void init(const Texture& tex, bool withDepth = false);
+};
+
 } // namespace flap
