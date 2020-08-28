@@ -52,6 +52,7 @@ struct Assets {
     Texture hypnoPaletteTexture;
 
     Owned<SDFCommon> sdfCommon;
+    Owned<SDFOutline> sdfOutline;
     Owned<SDFFont> sdfFont;
 
     Owned<MaterialShader> matShader;

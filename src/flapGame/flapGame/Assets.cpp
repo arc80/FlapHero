@@ -330,6 +330,7 @@ void Assets::load(StringView assetsPath) {
 
     // Load font resources
     assets->sdfCommon = SDFCommon::create();
+    assets->sdfOutline = SDFOutline::create();
     {
         Buffer ttfBuffer = FileSystem::native()->loadBinary(
             NativePath::join(assetsPath, "poppins-bold-694-webfont.ttf"));

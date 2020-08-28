@@ -6,7 +6,7 @@
 #define STBI_MALLOC(sz)         PLY_HEAP.alloc(sz)
 #define STBI_REALLOC(p, newsz)  PLY_HEAP.realloc(p, newsz)
 #define STBI_FREE(p)            PLY_HEAP.free(p)
-// clang-format om
+// clang-format on
 
 #define STB_RECT_PACK_IMPLEMENTATION
 #include "stb/stb_rect_pack.h"
@@ -67,23 +67,76 @@ PLY_NO_INLINE Owned<SDFCommon> SDFCommon::create() {
     }
 
     // Get shader program's vertex attribute and uniform locations
-    common->positionAttrib =
-        GL_NO_CHECK(GetAttribLocation(common->shader.id, "vertPosition"));
+    common->positionAttrib = GL_NO_CHECK(GetAttribLocation(common->shader.id, "vertPosition"));
     PLY_ASSERT(common->positionAttrib >= 0);
-    common->texCoordAttrib =
-        GL_NO_CHECK(GetAttribLocation(common->shader.id, "vertTexCoord"));
+    common->texCoordAttrib = GL_NO_CHECK(GetAttribLocation(common->shader.id, "vertTexCoord"));
     PLY_ASSERT(common->texCoordAttrib >= 0);
     common->modelToViewportUniform =
         GL_NO_CHECK(GetUniformLocation(common->shader.id, "modelToViewport"));
     PLY_ASSERT(common->modelToViewportUniform >= 0);
     common->textureUniform = GL_NO_CHECK(GetUniformLocation(common->shader.id, "texImage"));
     PLY_ASSERT(common->textureUniform >= 0);
-    common->sdfParamsUniform =
-        GL_NO_CHECK(GetUniformLocation(common->shader.id, "sdfParams"));
+    common->sdfParamsUniform = GL_NO_CHECK(GetUniformLocation(common->shader.id, "sdfParams"));
     PLY_ASSERT(common->sdfParamsUniform >= 0);
     common->colorUniform = GL_NO_CHECK(GetUniformLocation(common->shader.id, "color"));
     PLY_ASSERT(common->colorUniform >= 0);
     return common;
+}
+
+PLY_NO_INLINE Owned<SDFOutline> SDFOutline::create() {
+    Owned<SDFOutline> outline = new SDFOutline;
+
+    // Outline shader
+    {
+        Shader vertexShader = Shader::compile(
+            GL_VERTEX_SHADER, "in vec2 vertPosition;\n"
+                              "in vec2 vertTexCoord;\n"
+                              "out vec2 fragTexCoord\n;"
+                              "uniform mat4 modelToViewport;\n"
+                              "\n"
+                              "void main() {\n"
+                              "    fragTexCoord = vertTexCoord;\n"
+                              "    gl_Position = modelToViewport * vec4(vertPosition, 0.0, 1.0);\n"
+                              "}\n");
+
+        Shader fragmentShader = Shader::compile(
+            GL_FRAGMENT_SHADER,
+            "in vec2 fragTexCoord;\n"
+            "uniform sampler2D texImage;\n"
+            "uniform vec4 colors[3];\n"
+            "uniform vec2 centerSlope[2];\n"
+            "uniform float separator;\n"
+            "out vec4 fragColor;\n"
+            "\n"
+            "void main() {\n"
+            "    float c = texture(texImage, fragTexCoord).r;\n"
+            "    int i = int(c > separator);\n"
+            "    float f = clamp((c - centerSlope[i].x) * centerSlope[i].y, 0.0, 1.0);\n"
+            "    fragColor = mix(colors[i], colors[i + 1], f);\n"
+            "}\n");
+
+        // Link shader program
+        outline->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
+    }
+
+    // Get shader program's vertex attribute and uniform locations
+    outline->positionAttrib = GL_NO_CHECK(GetAttribLocation(outline->shader.id, "vertPosition"));
+    PLY_ASSERT(outline->positionAttrib >= 0);
+    outline->texCoordAttrib = GL_NO_CHECK(GetAttribLocation(outline->shader.id, "vertTexCoord"));
+    PLY_ASSERT(outline->texCoordAttrib >= 0);
+    outline->modelToViewportUniform =
+        GL_NO_CHECK(GetUniformLocation(outline->shader.id, "modelToViewport"));
+    PLY_ASSERT(outline->modelToViewportUniform >= 0);
+    outline->textureUniform = GL_NO_CHECK(GetUniformLocation(outline->shader.id, "texImage"));
+    PLY_ASSERT(outline->textureUniform >= 0);
+    outline->colorsUniform = GL_NO_CHECK(GetUniformLocation(outline->shader.id, "colors"));
+    PLY_ASSERT(outline->colorsUniform >= 0);
+    outline->centerSlopeUniform =
+        GL_NO_CHECK(GetUniformLocation(outline->shader.id, "centerSlope"));
+    PLY_ASSERT(outline->centerSlopeUniform >= 0);
+    outline->separatorUniform = GL_NO_CHECK(GetUniformLocation(outline->shader.id, "separator"));
+    PLY_ASSERT(outline->separatorUniform >= 0);
+    return outline;
 }
 
 PLY_NO_INLINE Owned<SDFFont> SDFFont::bake(ConstBufferView ttfBuffer, float pixelHeight) {
@@ -228,8 +281,8 @@ PLY_NO_INLINE void drawText(const SDFCommon* common, const SDFFont* sdfFont, con
     GL_CHECK(BlendEquation(GL_FUNC_ADD));
     GL_CHECK(BlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA));
 
-    GL_CHECK(UniformMatrix4fv(common->modelToViewportUniform, 1, GL_FALSE,
-                              (GLfloat*) &modelToViewport));
+    GL_CHECK(
+        UniformMatrix4fv(common->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));
     GL_CHECK(ActiveTexture(GL_TEXTURE0));
     GL_CHECK(BindTexture(GL_TEXTURE_2D, sdfFont->fontTexture.id));
     GL_CHECK(Uniform1i(common->textureUniform, 0));
@@ -252,4 +305,43 @@ PLY_NO_INLINE void drawText(const SDFCommon* common, const SDFFont* sdfFont, con
     GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) tb.numIndices, GL_UNSIGNED_SHORT, (void*) 0));
 }
 
-} // namespace ply
+PLY_NO_INLINE void drawOutlinedText(const SDFOutline* outline, const SDFFont* sdfFont,
+                                    const TextBuffers& tb, const Float4x4& modelToViewport,
+                                    const Float4& fillColor, const Float4& outlineColor,
+                                    ArrayView<const Float2> centerSlope) {
+    GL_CHECK(UseProgram(outline->shader.id));
+    GL_CHECK(Disable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_FALSE));
+    GL_CHECK(Enable(GL_BLEND));
+    // Premultiplied alpha
+    GL_CHECK(BlendEquation(GL_FUNC_ADD));
+    GL_CHECK(BlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA));
+
+    GL_CHECK(UniformMatrix4fv(outline->modelToViewportUniform, 1, GL_FALSE,
+                              (GLfloat*) &modelToViewport));
+    GL_CHECK(ActiveTexture(GL_TEXTURE0));
+    GL_CHECK(BindTexture(GL_TEXTURE_2D, sdfFont->fontTexture.id));
+    GL_CHECK(Uniform1i(outline->textureUniform, 0));
+    Float4 colors[3] = {{0, 0, 0, 1}, outlineColor, fillColor};
+    GL_CHECK(Uniform4fv(outline->colorsUniform, 3, (const GLfloat*) colors));
+    PLY_ASSERT(centerSlope.numItems == 2);
+    GL_CHECK(Uniform2fv(outline->centerSlopeUniform, 2, (const GLfloat*) centerSlope.items));
+    GL_CHECK(Uniform1f(outline->separatorUniform, mix(centerSlope[0].x, centerSlope[1].x, 0.5f)));
+
+    // Bind VBO
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, tb.vbo));
+    GL_CHECK(EnableVertexAttribArray(outline->positionAttrib));
+    GL_CHECK(VertexAttribPointer(outline->positionAttrib, 2, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexP2T), (GLvoid*) offsetof(VertexP2T, pos)));
+    GL_CHECK(EnableVertexAttribArray(outline->texCoordAttrib));
+    GL_CHECK(VertexAttribPointer(outline->texCoordAttrib, 2, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexP2T), (GLvoid*) offsetof(VertexP2T, uv)));
+
+    // Bind index buffer
+    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, tb.indices));
+
+    // Draw
+    GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) tb.numIndices, GL_UNSIGNED_SHORT, (void*) 0));
+}
+
+} // namespace flap

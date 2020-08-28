@@ -42,13 +42,13 @@ void timeStep(StarSystem* starSys) {
         star.pos[1] = star.pos[0];
         star.z = random.nextFloat();
         star.vel = Float2{mix(-1.f, 1.f, random.nextFloat()), mix(3.0f, 3.0f, random.nextFloat())} *
-                   mix(0.4f, 1.f, star.z);
+                   mix(0.4f, 1.f, powf(star.z, 0.5f));
         star.angle[0] = mix(0.f, 2.f * Pi, random.nextFloat());
         star.angle[1] = star.angle[0];
         star.avel = mix(2.f, 3.5f, random.nextFloat()) * (s32(random.next32() & 2) - 1);
-        star.color = Float3{mix(0.6f, 1.f, random.nextFloat()), mix(0.6f, 1.f, random.nextFloat()),
-                            mix(0.3f, 0.7f, random.nextFloat())};
-        starSys->countdown = 0.015f;
+        star.color = Float3{mix(0.8f, 1.f, random.nextFloat()), mix(0.8f, 1.f, random.nextFloat()),
+                            mix(0.3f, 0.8f, random.nextFloat())};
+        starSys->countdown = 0.02f;
     }
     for (u32 i = 0; i < starSys->stars.numItems();) {
         StarSystem::Star& star = starSys->stars[i];

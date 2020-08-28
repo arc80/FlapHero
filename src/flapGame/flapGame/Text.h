@@ -16,6 +16,19 @@ struct SDFCommon {
     static Owned<SDFCommon> create();
 };
 
+struct SDFOutline {
+    ShaderProgram shader;
+    GLint positionAttrib = 0;
+    GLint texCoordAttrib = 0;
+    GLint modelToViewportUniform = 0;
+    GLint textureUniform = 0;
+    GLint colorsUniform = 0;
+    GLint centerSlopeUniform = 0;
+    GLint separatorUniform = 0;
+
+    static Owned<SDFOutline> create();
+};
+
 struct SDFFont {
     struct Char {
         Box<Int2<s16>> atlasCoords;
@@ -47,5 +60,7 @@ struct TextBuffers {
 TextBuffers generateTextBuffers(const SDFFont* sdfFont, StringView text);
 void drawText(const SDFCommon* common, const SDFFont* sdfFont, const TextBuffers& tb,
               const Float4x4& modelToViewport, const Float2& sdfParams, const Float4& color);
-
+void drawOutlinedText(const SDFOutline* outline, const SDFFont* sdfFont, const TextBuffers& tb,
+                      const Float4x4& modelToViewport, const Float4& fillColor,
+                      const Float4& outlineColor, ArrayView<const Float2> centerSlope);
 } // namespace flap
