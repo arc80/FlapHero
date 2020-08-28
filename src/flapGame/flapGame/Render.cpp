@@ -246,17 +246,11 @@ void drawStars(const TitleScreen* titleScreen) {
 void renderGamePanel(const DrawContext* dc) {
     const ViewportFrustum& vf = dc->vf;
     const GameState* gs = dc->gs;
+    const Assets* a = Assets::instance;
+    Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum, 10.f, 100.f);
 
     GL_CHECK(Viewport((GLint) vf.viewport.mins.x, (GLint) vf.viewport.mins.y,
                       (GLsizei) vf.viewport.width(), (GLsizei) vf.viewport.height()));
-
-    // Enable face culling
-    GL_CHECK(Enable(GL_CULL_FACE));
-    GL_CHECK(CullFace(GL_BACK));
-    GL_CHECK(FrontFace(GL_CCW));
-
-    const Assets* a = Assets::instance;
-    Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum, 10.f, 100.f);
 
     // Draw bird
     Float3 birdRelWorld = mix(gs->bird.pos[0], gs->bird.pos[1], dc->intervalFrac);
@@ -408,6 +402,11 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
     GL_CHECK(ClearColor(0, 0, 0, 1));
     GL_CHECK(ClearDepth(1.0));
     GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
+
+    // Enable face culling
+    GL_CHECK(Enable(GL_CULL_FACE));
+    GL_CHECK(CullFace(GL_BACK));
+    GL_CHECK(FrontFace(GL_CCW));
 
     // Fit frustum in viewport
     Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
