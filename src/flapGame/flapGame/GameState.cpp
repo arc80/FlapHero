@@ -465,6 +465,15 @@ void timeStep(UpdateContext* uc) {
     if (gs->camX[1] >= GameState::WrapAmount) {
         adjustX(gs, -GameState::WrapAmount);
     }
+
+    // Update blinking prompt
+    if (auto dead = gs->mode.dead()) {
+        dead->promptTime += dt;
+        if (dead->promptTime >= (dead->showPrompt ? 0.4f : 0.16f)) {
+            dead->showPrompt = !dead->showPrompt;
+            dead->promptTime = 0.f;
+        }
+    }
 }
 
 void GameState::startPlaying() {

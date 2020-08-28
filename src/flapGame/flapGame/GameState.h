@@ -110,13 +110,15 @@ struct GameState {
                     Quaternion startRot = {0, 0, 0, 1};
                     Float3 rotAxis = {0, 1, 0};
                 };
-                struct Free {
-                };
+                struct Free {};
 #include "codegen/switch-flap-GameState-Mode-Falling-Mode.inl" //@@ply
             };
             Mode mode;
         };
-        struct Dead {};
+        struct Dead {
+            bool showPrompt = false;
+            float promptTime = 0;
+        };
 #include "codegen/switch-flap-GameState-Mode.inl" //@@ply
     };
 
@@ -169,8 +171,7 @@ struct GameState {
     // Flip
     struct Rotator {
         // ply make switch
-        struct FromMode {
-        };
+        struct FromMode {};
         struct Angle {
             float angle = DefaultAngle;
             bool isFlipping = false;

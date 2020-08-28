@@ -337,7 +337,7 @@ void renderGamePanel(const DrawContext* dc) {
             {0.25f, -0.25f, 0.75f, 0.25f}, a->flashTexture.id, {1.2f, 1.2f, 0, 0.6f});
     }
 
-    if (gs->mode.dead()) {
+    if (auto dead = gs->mode.dead()) {
         TextBuffers gameOver = generateTextBuffers(a->sdfFont, "GAME OVER");
         drawText(a->sdfCommon, a->sdfFont, gameOver,
                  Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
@@ -353,17 +353,21 @@ void renderGamePanel(const DrawContext* dc) {
                       String::from(gs->score), {1, 1, 1, 1});
         drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 250}, 0.5f, "BEST",
                       String::from(gs->outerCtx->bestScore), {1.f, 0.45f, 0.05f, 1.f});
-        TextBuffers playAgain = generateTextBuffers(a->sdfFont, "TAP TO PLAY AGAIN");
-        drawText(a->sdfCommon, a->sdfFont, playAgain,
-                 Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                     Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
-                     Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
-                 {0.85f, 1.75f}, {0, 0, 0, 0.4f});
-        drawOutlinedText(a->sdfOutline, a->sdfFont, playAgain,
-                         Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                             Float4x4::makeTranslation({240, 24, 0}) * Float4x4::makeScale(0.9f) *
-                             Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
-                         {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.6f, 16.f}, {0.75f, 12.f}});
+
+        if (dead->showPrompt) {
+            TextBuffers playAgain = generateTextBuffers(a->sdfFont, "TAP TO PLAY AGAIN");
+            drawText(a->sdfCommon, a->sdfFont, playAgain,
+                     Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
+                         Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
+                         Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
+                     {0.85f, 1.75f}, {0, 0, 0, 0.4f});
+            drawOutlinedText(a->sdfOutline, a->sdfFont, playAgain,
+                             Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
+                                 Float4x4::makeTranslation({240, 24, 0}) *
+                                 Float4x4::makeScale(0.9f) *
+                                 Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
+                             {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.6f, 16.f}, {0.75f, 12.f}});
+        }
     }
 
     if (!gs->mode.dead() && !gs->mode.title()) {
