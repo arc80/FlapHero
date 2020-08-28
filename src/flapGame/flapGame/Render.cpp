@@ -388,6 +388,7 @@ void renderGamePanel(const DrawContext* dc) {
 }
 
 void render(GameFlow* gf, const IntVec2& fbSize) {
+    PLY_ASSERT(fbSize.x > 0 && fbSize.y > 0);
     const Assets* a = Assets::instance;
     PLY_SET_IN_SCOPE(DynamicArrayBuffers::instance, &gf->dynBuffers);
     gf->dynBuffers.beginFrame();
@@ -398,6 +399,7 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
 #endif
 
     // Clear viewport
+    GL_CHECK(Viewport(0, 0, fbSize.x, fbSize.y));
     GL_CHECK(DepthMask(GL_TRUE));
     GL_CHECK(ClearColor(0, 0, 0, 1));
     GL_CHECK(ClearDepth(1.0));
