@@ -40,6 +40,7 @@ struct Assets {
     Array<DrawMesh> pipe;
     Array<DrawMesh> title;
     Array<DrawMesh> outline;
+    Array<DrawMesh> blackOutline;
     Array<DrawMesh> star;
 
     BirdAnimData bad;

@@ -199,6 +199,7 @@ void drawTitle(const TitleScreen* titleScreen) {
     Float4x4 mat = cameraToViewport * w2c * Float4x4::makeTranslation({0, worldDistance, 4.f}) *
                    Float4x4::makeRotation({1, 0, 0}, Pi / 2.f) * skewRot *
                    Float4x4::makeTranslation({0, 0, 2.2f}) * Float4x4::makeScale(7.5f);
+    a->flatShader->draw(mat, a->blackOutline.view(), false);
     a->flatShader->draw(mat, a->outline.view(), false);
     a->flatShader->draw(mat, a->title.view(), true);
 }

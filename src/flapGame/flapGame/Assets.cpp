@@ -281,6 +281,7 @@ void Assets::load(StringView assetsPath) {
                               aiProcess_Triangulate);
         assets->title = getMeshes(scene, scene->mRootNode->FindNode("Title"));
         assets->outline = getMeshes(scene, scene->mRootNode->FindNode("Outline"));
+        assets->blackOutline = getMeshes(scene, scene->mRootNode->FindNode("BlackOutline"));
         assets->star = getMeshes(scene, scene->mRootNode->FindNode("Star"));
     }
     {
