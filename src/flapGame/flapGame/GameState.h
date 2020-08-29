@@ -190,6 +190,10 @@ struct GameState {
             bool rising = false;
             float risingTime = 0;
         };
+        struct Transition {
+            float startAngle = 0;
+            float param = 0;
+        };
 #include "codegen/switch-flap-GameState-Camera.inl" //@@ply
     };
     Camera camera;

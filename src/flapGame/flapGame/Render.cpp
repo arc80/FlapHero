@@ -368,7 +368,7 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     GL_CHECK(ClearDepth(1.0));
     GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
     drawTitle(ts);
-    //    drawStars(ts);
+    drawStars(ts);
     {
         // Draw background
         float hypnoAngle = mix(ts->hypnoAngle[0], ts->hypnoAngle[1], dc->intervalFrac);
