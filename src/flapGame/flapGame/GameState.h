@@ -79,9 +79,6 @@ struct GameState {
     struct Mode {
         // ply make switch
         struct Title {
-            float birdOrbit[2] = {0, 0};
-            bool birdRising = false;
-            float risingTime[2] = {0, 0};
             Owned<TitleScreen> titleScreen;
         };
         struct Playing {
@@ -184,7 +181,22 @@ struct GameState {
     Rotator rotator;
 
     // Camera
-    float camX[2] = {0, 0}; // relative to world
+    struct Camera {
+        // ply make switch
+        struct Follow {
+        };
+        struct Orbit {
+            float angle = 0;
+            bool rising = false;
+            float risingTime = 0;
+        };
+#include "codegen/switch-flap-GameState-Camera.inl" //@@ply
+    };
+    Camera camera;
+    QuatPos camToWorld[2] = {
+        {Quaternion::identity(), {0, 0, 0}},
+        {Quaternion::identity(), {0, 0, 0}},
+    };
 
     // Playfield
     struct Playfield {
@@ -194,6 +206,7 @@ struct GameState {
     };
     Playfield playfield;
 
+    void updateCamera(bool cut = false);
     void startPlaying();
 };
 

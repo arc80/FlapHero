@@ -125,17 +125,6 @@ void updateMovement(UpdateContext* uc) {
     float dt = gs->outerCtx->simulationTimeStep;
 
     if (auto title = gs->mode.title()) {
-        title->birdOrbit[0] = wrap(title->birdOrbit[1], 2 * Pi);
-        title->birdOrbit[1] = title->birdOrbit[0] - dt * 2.f;
-
-        title->risingTime[0] = title->risingTime[1];
-        title->risingTime[1] += (title->birdRising ? 2.5f : 5.f) * dt;
-        if (title->risingTime[1] >= 1.f) {
-            title->birdRising = !title->birdRising;
-            title->risingTime[0] = 0;
-            title->risingTime[1] = 0;
-        }
-
         updateTitleScreen(title->titleScreen);
     } else if (auto playing = gs->mode.playing()) {
         // Handle jump
@@ -306,8 +295,8 @@ void updateMovement(UpdateContext* uc) {
 void adjustX(GameState* gs, float amount) {
     gs->bird.pos[0].x += amount;
     gs->bird.pos[1].x += amount;
-    gs->camX[0] += amount;
-    gs->camX[1] += amount;
+    gs->camToWorld[0].pos.x += amount;
+    gs->camToWorld[1].pos.x += amount;
     for (ObstacleSequence* seq : gs->playfield.sequences) {
         seq->xSeqRelWorld += amount;
     }
@@ -330,6 +319,7 @@ void adjustX(GameState* gs, float amount) {
 void timeStep(UpdateContext* uc) {
     GameState* gs = uc->gs;
     float dt = gs->outerCtx->simulationTimeStep;
+    Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
 
     // Handle inputs
     if (gs->buttonPressed) {
@@ -370,7 +360,7 @@ void timeStep(UpdateContext* uc) {
     gs->bird.rot[0] = gs->bird.rot[1];
     gs->birdAnim.wingTime[0] = gs->birdAnim.wingTime[1];
     gs->birdAnim.eyeTime[0] = gs->birdAnim.eyeTime[1];
-    gs->camX[0] = gs->camX[1];
+    gs->camToWorld[0] = gs->camToWorld[1];
 
     // Advance bird
     updateMovement(uc);
@@ -429,14 +419,20 @@ void timeStep(UpdateContext* uc) {
         }
     }
 
-    // Set camera
-    Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
-    float birdRelCameraX = mix(visibleExtents.mins.x, visibleExtents.maxs.x, 0.3116f);
-    gs->camX[1] = gs->bird.pos[1].x - birdRelCameraX;
+    // Update camera
+    if (auto orbit = gs->camera.orbit()) {
+        orbit->angle = wrap(orbit->angle - dt * 2.f, 2 * Pi);
+        orbit->risingTime += (orbit->rising ? 2.5f : 5.f) * dt;
+        if (orbit->risingTime >= 1.f) {
+            orbit->rising = !orbit->rising;
+            orbit->risingTime = 0;
+        }
+    }
+    gs->updateCamera();
 
     // Add obstacles
     if (!gs->mode.title()) {
-        float visibleEdge = gs->camX[1] + visibleExtents.maxs.x + 2.f;
+        float visibleEdge = gs->camToWorld[1].pos.x + visibleExtents.maxs.x + 2.f;
 
         // Add new obstacle sequences
         if (gs->playfield.sequences.isEmpty()) {
@@ -453,7 +449,7 @@ void timeStep(UpdateContext* uc) {
         }
 
         // Remove old obstacles
-        float leftEdge = gs->camX[1] + visibleExtents.mins.x;
+        float leftEdge = gs->camToWorld[1].pos.x + visibleExtents.mins.x;
         while (gs->playfield.obstacles.numItems() > 1) {
             if (!gs->playfield.obstacles[0]->canRemove(leftEdge))
                 break;
@@ -462,7 +458,7 @@ void timeStep(UpdateContext* uc) {
     }
 
     // Shift world periodically
-    if (gs->camX[1] >= GameState::WrapAmount) {
+    if (gs->camToWorld[1].pos.x >= GameState::WrapAmount) {
         adjustX(gs, -GameState::WrapAmount);
     }
 
@@ -476,17 +472,44 @@ void timeStep(UpdateContext* uc) {
     }
 }
 
+void GameState::updateCamera(bool cut) {
+    if (auto orbit = this->camera.orbit()) {
+        float yRise = applySimpleCubic(orbit->risingTime);
+        if (!orbit->rising) {
+            yRise = 1.f - yRise;
+        }
+        Float3 camRelBird = {Complex::fromAngle(orbit->angle) * 15.f, 3.5f};
+        this->camToWorld[1].quat =
+            Quaternion::fromOrtho(
+                extra::makeBasis(-camRelBird.normalized(), {0, 0, 1}, Axis3::ZNeg, Axis3::YPos))
+                .negatedIfCloserTo(this->camToWorld[0].quat);
+        this->camToWorld[1].pos =
+            this->bird.pos[1] + camRelBird + Float3{0, 0, 1.5f + mix(-0.15f, 0.15f, yRise)};
+    } else if (this->camera.follow()) {
+        Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
+        Float4x4 w2c = {{{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
+        float birdRelCameraX = mix(visibleExtents.mins.x, visibleExtents.maxs.x, 0.3116f);
+        this->camToWorld[1].quat =
+            Quaternion::fromOrtho(w2c).inverted().negatedIfCloserTo(this->camToWorld[0].quat);
+        this->camToWorld[1].pos = {this->bird.pos[1].x - birdRelCameraX, -GameState::WorldDistance, 0};
+    } else {
+        PLY_ASSERT(0);
+    }
+    if (cut) {
+        this->camToWorld[0] = this->camToWorld[1];
+    }
+}
+
 void GameState::startPlaying() {
     auto playing = this->mode.playing().switchTo();
     playing->curGravity = 0.f;
     playing->gravApproach = 20.f;
     Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
-    float birdRelCameraX = mix(visibleExtents.mins.x, visibleExtents.maxs.x, 0.3116f);
-    this->camX[0] = this->bird.pos[1].x - birdRelCameraX;
-    this->camX[1] = this->camX[0];
+    this->camera.follow().switchTo();
     this->rotator.angle().switchTo();
     this->bird.rot[0] = Quaternion::fromAxisAngle({0, 1, 0}, -0.1 * Pi);
     this->bird.rot[1] = this->bird.rot[0];
+    this->updateCamera(true);
 }
 
 void onEndSequence(GameState* gs, float xEndSeqRelWorld, bool wasSlanted) {

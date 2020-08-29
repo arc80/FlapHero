@@ -106,7 +106,7 @@ struct ShaderProgram {
     }
     PLY_INLINE ShaderProgram(Shader&& other) : id{other.id} {
         other.id = 0;
-    }
+    };
     PLY_INLINE void operator=(ShaderProgram&& other) {
         this->destroy();
         this->id = other.id;

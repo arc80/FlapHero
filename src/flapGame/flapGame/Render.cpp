@@ -239,33 +239,9 @@ void renderGamePanel(const DrawContext* dc) {
 
     // Draw bird
     Float3 birdRelWorld = mix(gs->bird.pos[0], gs->bird.pos[1], dc->intervalFrac);
-    Float4x4 w2c = {{{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
-    Float4x4 worldToCamera;
-    if (auto title = gs->mode.title()) {
-        float yRise = 0.f;
-        float risingTime = mix(title->risingTime[0], title->risingTime[1], dc->intervalFrac);
-        if (title->birdRising) {
-            yRise = applySimpleCubic(risingTime);
-        } else {
-            yRise = 1.f - applySimpleCubic(risingTime);
-        }
-
-        Float3 camRelWorld = {
-            Complex::fromAngle(mix(title->birdOrbit[0], title->birdOrbit[1], dc->intervalFrac)) *
-                15,
-            3.5f};
-        Float3x4 cameraToWorld =
-            extra::makeBasis(
-                (birdRelWorld + Float3{0, 0, 1.3f + mix(-0.15f, 0.15f, yRise)} - camRelWorld)
-                    .normalized(),
-                {0, 0, 1}, Axis3::ZNeg, Axis3::YPos)
-                .toFloat3x4(camRelWorld);
-        worldToCamera = cameraToWorld.invertedOrtho().toFloat4x4();
-    } else {
-        Float3 camRelWorld = {mix(gs->camX[0], gs->camX[1], dc->intervalFrac),
-                              -GameState::WorldDistance, 0};
-        worldToCamera = w2c * Float4x4::makeTranslation(-camRelWorld);
-    }
+    QuatPos camToWorld = {mix(gs->camToWorld[0].quat, gs->camToWorld[1].quat, dc->intervalFrac),
+                          mix(gs->camToWorld[0].pos, gs->camToWorld[1].pos, dc->intervalFrac)};
+    Float4x4 worldToCamera = camToWorld.inverted().toFloat4x4();
     {
         Quaternion rot = mix(gs->bird.rot[0], gs->bird.rot[1], dc->intervalFrac);
         Array<Float4x4> boneToModel = composeBirdBones(gs, dc->intervalFrac);
@@ -392,7 +368,7 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     GL_CHECK(ClearDepth(1.0));
     GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
     drawTitle(ts);
-    drawStars(ts);
+    //    drawStars(ts);
     {
         // Draw background
         float hypnoAngle = mix(ts->hypnoAngle[0], ts->hypnoAngle[1], dc->intervalFrac);

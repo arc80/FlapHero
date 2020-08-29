@@ -22,6 +22,8 @@ void GameFlow::resetGame(bool isPlaying) {
     } else {
         auto title = this->gameState->mode.title().switchTo();
         title->titleScreen = new TitleScreen;
+        this->gameState->camera.orbit().switchTo();
+        this->gameState->updateCamera(true);
     }
 }
 
