@@ -131,6 +131,7 @@ struct GameState {
     static constexpr float FlapRate = 4.f;
     static constexpr float WorldDistance = 80.f;
     static constexpr float DefaultAngle = -0.1f * Pi;
+    static constexpr float FollowCamRelBirdX = 4.5f;
 
     OuterContext* outerCtx = nullptr;
     Random random;

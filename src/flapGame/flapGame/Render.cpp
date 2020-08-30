@@ -383,7 +383,7 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     GL_CHECK(BindFramebuffer(GL_FRAMEBUFFER, ts->tempRTT.fboID));
     GL_CHECK(Viewport(0, 0, (u32) vpSize.x, (u32) vpSize.y));
     GL_CHECK(DepthMask(GL_TRUE));
-    GL_CHECK(ClearColor(0, 0, 0, 1));
+    GL_CHECK(ClearColor(0.75f, 0.75f, 0.75f, 1.f));
     GL_CHECK(ClearDepth(1.0));
     GL_CHECK(ClearStencil(0));
     GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));

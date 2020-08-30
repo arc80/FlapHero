@@ -317,7 +317,6 @@ void adjustX(GameState* gs, float amount) {
 void timeStep(UpdateContext* uc) {
     GameState* gs = uc->gs;
     float dt = gs->outerCtx->simulationTimeStep;
-    Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
 
     // Handle inputs
     if (gs->buttonPressed) {
@@ -443,6 +442,7 @@ void timeStep(UpdateContext* uc) {
     // Add obstacles
     if (!gs->mode.title() && gs->camera.follow()) {
         float visibleEdge = gs->bird.pos[1].x + 22.f;
+        float invisibleEdge = gs->bird.pos[1].x - 7.5f;
 
         // Add new obstacle sequences
         if (gs->playfield.sequences.isEmpty()) {
@@ -459,9 +459,8 @@ void timeStep(UpdateContext* uc) {
         }
 
         // Remove old obstacles
-        float leftEdge = gs->camToWorld[1].pos.x + visibleExtents.mins.x;
         while (gs->playfield.obstacles.numItems() > 1) {
-            if (!gs->playfield.obstacles[0]->canRemove(leftEdge))
+            if (!gs->playfield.obstacles[0]->canRemove(invisibleEdge))
                 break;
             gs->playfield.obstacles.erase(0);
         }
@@ -482,62 +481,51 @@ void timeStep(UpdateContext* uc) {
     }
 }
 
-QuatPos getCamera(GameState* gs, GameState::Camera::Orbit* orbit) {
-    float yRise = applySimpleCubic(orbit->risingTime);
-    if (!orbit->rising) {
-        yRise = 1.f - yRise;
+struct MixCameraParams {
+    float frameToFocusYaw = 0;
+    Float3 lookFromRelFrame = {0, 0, 0};
+    Float3 shiftRelFrame = {0, 0, 0};
+
+    QuatPos toQuatPos(const Float3& focusPos) const {
+        Float3x3 frame = Float3x3::makeRotation({0, 0, 1}, this->frameToFocusYaw);
+        Float3 lookFromRelFocus = frame * this->lookFromRelFrame;
+        Quaternion camToWorldRot = Quaternion::fromOrtho(
+            extra::makeBasis(-lookFromRelFocus.normalized(), {0, 0, 1}, Axis3::ZNeg, Axis3::YPos));
+        Float3 camToWorldPos = focusPos + lookFromRelFocus + frame * this->shiftRelFrame;
+        return {camToWorldRot, camToWorldPos};
     }
-    Float3 camRelBird = {Complex::fromAngle(orbit->angle) * 15.f, 3.5f};
-    QuatPos result;
-    result.quat = Quaternion::fromOrtho(
-        extra::makeBasis(-camRelBird.normalized(), {0, 0, 1}, Axis3::ZNeg, Axis3::YPos));
-    result.pos = gs->bird.pos[1] + camRelBird + Float3{0, 0, 1.5f + mix(-0.15f, 0.15f, yRise)};
-    return result;
-}
-
-QuatPos getCamera(GameState* gs, GameState::Camera::Follow*) {
-    Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
-    Float4x4 w2c = {{{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
-    float birdRelCameraX = mix(visibleExtents.mins.x, visibleExtents.maxs.x, 0.3116f);
-    QuatPos result;
-    result.quat = Quaternion::fromOrtho(w2c).inverted();
-    result.pos = {gs->bird.pos[1].x - birdRelCameraX, -GameState::WorldDistance, 0};
-    return result;
-}
-
-QuatPos getCamera(GameState* gs, GameState::Camera::Transition* trans) {
-    float angleT = interpolateCubic(0.f, 0.5f, 1.f, 1.f, trans->param);
-    float angle = interpolateCubic(trans->startAngle, trans->startAngle * 0.5f, 0.f, 0.f, angleT);
-    float t = applySimpleCubic(trans->param);
-
-    Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
-    Float4x4 w2c = {{{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
-    float birdRelCameraX = mix(visibleExtents.mins.x, visibleExtents.maxs.x, 0.3116f);
-    Float3 orbitLookFromRelFrame = {0, -15.f, 3.5f};
-    Float3 followLookFromRelFrame = {0, -GameState::WorldDistance, 0};
-
-    Float3x3 frame = Float3x3::makeRotation({0, 0, 1}, angle);
-    Float3 lookFromRelBird = frame * mix(orbitLookFromRelFrame, followLookFromRelFrame, t);
-    Float3 fwdLook = -lookFromRelBird.normalized();
-    Quaternion camToWorldRot =
-        Quaternion::fromOrtho(extra::makeBasis(fwdLook, {0, 0, 1}, Axis3::ZNeg, Axis3::YPos));
-    Float3 shift = mix(Float3{0, 0, 1.5f}, Float3{-birdRelCameraX, 0, 0}, t);
-    Float3 birdNoZ = {gs->bird.pos[1].x, 0, 0};
-    Float3 camToWorldPos = birdNoZ + lookFromRelBird + frame * shift;
-
-    return {camToWorldRot, camToWorldPos};
-}
+};
 
 void GameState::updateCamera(bool cut) {
+    MixCameraParams params;
     if (auto orbit = this->camera.orbit()) {
-        this->camToWorld[1] = getCamera(this, orbit.get());
+        // Orbiting
+        float yRise = applySimpleCubic(orbit->risingTime);
+        if (!orbit->rising) {
+            yRise = 1.f - yRise;
+        }
+        params.frameToFocusYaw = orbit->angle + Pi / 2.f;
+        params.lookFromRelFrame = {0, -15.f, 3.5f};
+        params.shiftRelFrame = {0, 0, 1.5f + mix(-0.15f, 0.15f, yRise)};
     } else if (auto follow = this->camera.follow()) {
-        this->camToWorld[1] = getCamera(this, follow.get());
-    } else if (auto transition = this->camera.transition()) {
-        this->camToWorld[1] = getCamera(this, transition.get());
+        // Following
+        params.lookFromRelFrame = {0, -GameState::WorldDistance, 0};
+        params.shiftRelFrame = {GameState::FollowCamRelBirdX, 0, 0};
+    } else if (auto trans = this->camera.transition()) {
+        // Transitioning from orbit to follow
+        float angleT = interpolateCubic(0.f, 0.5f, 1.f, 1.f, trans->param);
+        float angle =
+            interpolateCubic(trans->startAngle, trans->startAngle * 0.5f, 0.f, 0.f, angleT);
+        float t = applySimpleCubic(trans->param);
+        params.frameToFocusYaw = angle;
+        params.lookFromRelFrame =
+            mix(Float3{0, -15.f, 3.5f}, Float3{0, -GameState::WorldDistance, 0}, t);
+        params.shiftRelFrame =
+            mix(Float3{0, 0, 1.5f}, Float3{GameState::FollowCamRelBirdX, 0, 0}, t);
     } else {
         PLY_ASSERT(0);
     }
+    this->camToWorld[1] = params.toQuatPos({this->bird.pos[1].x, 0, 0});
     this->camToWorld[1].quat = this->camToWorld[1].quat.negatedIfCloserTo(this->camToWorld[0].quat);
     if (cut) {
         this->camToWorld[0] = this->camToWorld[1];
@@ -548,7 +536,6 @@ void GameState::startPlaying() {
     auto playing = this->mode.playing().switchTo();
     playing->curGravity = 0.f;
     playing->gravApproach = 20.f;
-    Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
     if (auto orbit = this->camera.orbit()) {
         float startAngle = orbit->angle;
         auto trans = this->camera.transition().switchTo();
