@@ -188,9 +188,18 @@ struct GameState {
             float angle = 0;
             bool rising = false;
             float risingTime = 0;
+
+            PLY_INLINE float getYRise() const {
+                float f = applySimpleCubic(this->risingTime);
+                if (!this->rising) {
+                    f = 1.f - f;
+                }
+                return mix(-0.15f, 0.15f, f);
+            }
         };
         struct Transition {
             float startAngle = 0;
+            float startYRise = 0;
             float param = 0;
         };
 #include "codegen/switch-flap-GameState-Camera.inl" //@@ply

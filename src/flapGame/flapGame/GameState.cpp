@@ -500,13 +500,9 @@ void GameState::updateCamera(bool cut) {
     MixCameraParams params;
     if (auto orbit = this->camera.orbit()) {
         // Orbiting
-        float yRise = applySimpleCubic(orbit->risingTime);
-        if (!orbit->rising) {
-            yRise = 1.f - yRise;
-        }
         params.frameToFocusYaw = orbit->angle + Pi / 2.f;
         params.lookFromRelFrame = {0, -15.f, 3.5f};
-        params.shiftRelFrame = {0, 0, 1.5f + mix(-0.15f, 0.15f, yRise)};
+        params.shiftRelFrame = {0, 0, 1.5f + orbit->getYRise()};
     } else if (auto follow = this->camera.follow()) {
         // Following
         params.lookFromRelFrame = {0, -GameState::WorldDistance, 0};
@@ -521,7 +517,7 @@ void GameState::updateCamera(bool cut) {
         params.lookFromRelFrame =
             mix(Float3{0, -15.f, 3.5f}, Float3{0, -GameState::WorldDistance, 0}, t);
         params.shiftRelFrame =
-            mix(Float3{0, 0, 1.5f}, Float3{GameState::FollowCamRelBirdX, 0, 0}, t);
+            mix(Float3{0, 0, 1.5f + trans->startYRise}, Float3{GameState::FollowCamRelBirdX, 0, 0}, t);
     } else {
         PLY_ASSERT(0);
     }
@@ -538,8 +534,10 @@ void GameState::startPlaying() {
     playing->gravApproach = 20.f;
     if (auto orbit = this->camera.orbit()) {
         float startAngle = orbit->angle;
+        float startYRise = orbit->getYRise();
         auto trans = this->camera.transition().switchTo();
         trans->startAngle = wrap(startAngle + 3 * Pi / 2, 2 * Pi) - Pi;
+        trans->startYRise = startYRise;
     } else {
         this->camera.follow().switchTo();
     }
