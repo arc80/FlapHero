@@ -660,7 +660,7 @@ PLY_NO_INLINE Owned<HypnoShader> HypnoShader::create() {
 PLY_NO_INLINE void HypnoShader::draw(const Float4x4& modelToViewport, GLuint textureID,
                                      const Texture& palette, float atScale) const {
     static constexpr float base = 1.3f;
-    static constexpr float minScale = 0.5f;
+    static constexpr float minScale = 0.1f;
     static constexpr float maxScale = 6.5f;
 
     Array<Float4> instPlacement;
@@ -730,10 +730,12 @@ PLY_NO_INLINE Owned<CopyShader> CopyShader::create() {
         Shader fragmentShader =
             Shader::compile(GL_FRAGMENT_SHADER, "in vec2 fragTexCoord;\n"
                                                 "uniform sampler2D texImage;\n"
+                                                "uniform float opacity;\n"
                                                 "out vec4 fragColor;\n"
                                                 "\n"
                                                 "void main() {\n"
                                                 "    fragColor = texture(texImage, fragTexCoord);\n"
+                                                "    fragColor.a = opacity;\n"
                                                 "}\n");
 
         // Link shader program
@@ -752,6 +754,8 @@ PLY_NO_INLINE Owned<CopyShader> CopyShader::create() {
     PLY_ASSERT(copyShader->modelToViewportUniform >= 0);
     copyShader->textureUniform = GL_NO_CHECK(GetUniformLocation(copyShader->shader.id, "texImage"));
     PLY_ASSERT(copyShader->textureUniform >= 0);
+    copyShader->opacityUniform = GL_NO_CHECK(GetUniformLocation(copyShader->shader.id, "opacity"));
+    PLY_ASSERT(copyShader->opacityUniform >= 0);
 
     // Create vertex and index buffers
     Array<VertexPT> vertices = {
@@ -768,17 +772,23 @@ PLY_NO_INLINE Owned<CopyShader> CopyShader::create() {
     return copyShader;
 }
 
-PLY_NO_INLINE void CopyShader::drawQuad(const Float4x4& modelToViewport, GLuint textureID) const {
+PLY_NO_INLINE void CopyShader::drawQuad(const Float4x4& modelToViewport, GLuint textureID, float opacity) const {
     GL_CHECK(UseProgram(this->shader.id));
-    GL_CHECK(Enable(GL_DEPTH_TEST));
-    GL_CHECK(DepthMask(GL_TRUE));
-    GL_CHECK(Disable(GL_BLEND));
+    GL_CHECK(Disable(GL_DEPTH_TEST));
+    if (opacity >= 1.f) {
+        GL_CHECK(Disable(GL_BLEND));
+    } else {
+        GL_CHECK(Enable(GL_BLEND));
+        GL_CHECK(BlendEquation(GL_FUNC_ADD));
+        GL_CHECK(BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+    }
 
     GL_CHECK(
         UniformMatrix4fv(this->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));
     GL_CHECK(ActiveTexture(GL_TEXTURE0));
     GL_CHECK(BindTexture(GL_TEXTURE_2D, textureID));
     GL_CHECK(Uniform1i(this->textureUniform, 0));
+    GL_CHECK(Uniform1f(this->opacityUniform, opacity));
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, this->quadVBO.id));
     GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
     GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,

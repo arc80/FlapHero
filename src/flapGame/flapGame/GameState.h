@@ -78,9 +78,7 @@ struct GameState {
 
     struct Mode {
         // ply make switch
-        struct Title {
-            Owned<TitleScreen> titleScreen;
-        };
+        struct Title {};
         struct Playing {
             float curGravity = NormalGravity;
             float gravApproach = NormalGravity; // blended at start & after recovery
@@ -138,6 +136,7 @@ struct GameState {
     Random random;
     bool buttonPressed = false;
     Mode mode;
+    Owned<TitleScreen> titleScreen;
 
     // Score
     u32 score = 0;
@@ -183,8 +182,7 @@ struct GameState {
     // Camera
     struct Camera {
         // ply make switch
-        struct Follow {
-        };
+        struct Follow {};
         struct Orbit {
             float angle = 0;
             bool rising = false;

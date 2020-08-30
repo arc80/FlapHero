@@ -124,9 +124,7 @@ void updateMovement(UpdateContext* uc) {
     GameState* gs = uc->gs;
     float dt = gs->outerCtx->simulationTimeStep;
 
-    if (auto title = gs->mode.title()) {
-        updateTitleScreen(title->titleScreen);
-    } else if (auto playing = gs->mode.playing()) {
+    if (auto playing = gs->mode.playing()) {
         // Handle jump
         if (uc->doJump) {
             gs->bird.setVel({GameState::ScrollRate, 0, GameState::LaunchVel});
@@ -362,6 +360,11 @@ void timeStep(UpdateContext* uc) {
     gs->birdAnim.eyeTime[0] = gs->birdAnim.eyeTime[1];
     gs->camToWorld[0] = gs->camToWorld[1];
 
+    // Update title screen, if present
+    if (gs->titleScreen) {
+        updateTitleScreen(gs->titleScreen);
+    }
+
     // Advance bird
     updateMovement(uc);
 
@@ -430,6 +433,7 @@ void timeStep(UpdateContext* uc) {
     } else if (auto trans = gs->camera.transition()) {
         trans->param += 2.f * dt;
         if (trans->param >= 1.f) {
+            gs->titleScreen.clear();
             gs->camera.follow().switchTo();
         }
     }

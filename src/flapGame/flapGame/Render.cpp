@@ -228,6 +228,18 @@ void drawStars(const TitleScreen* titleScreen) {
     a->flatShaderInstanced->draw(a->star[0], insData.view());
 }
 
+void applyTitleScreen(const DrawContext* dc, float opacity) {
+    const Assets* a = Assets::instance;
+    const GameState* gs = dc->gs;
+    const TitleScreen* ts = gs->titleScreen;
+
+    GL_CHECK(Enable(GL_STENCIL_TEST));
+    GL_CHECK(StencilFunc(GL_EQUAL, 0, 0xFF));
+    GL_CHECK(StencilOp(GL_KEEP, GL_KEEP, GL_KEEP));
+    a->copyShader->drawQuad(Float4x4::identity(), ts->tempTex.id, opacity);
+    GL_CHECK(Disable(GL_STENCIL_TEST));
+}
+
 void renderGamePanel(const DrawContext* dc) {
     const ViewportFrustum& vf = dc->vf;
     const Assets* a = Assets::instance;
@@ -245,11 +257,16 @@ void renderGamePanel(const DrawContext* dc) {
     {
         Quaternion rot = mix(gs->bird.rot[0], gs->bird.rot[1], dc->intervalFrac);
         Array<Float4x4> boneToModel = composeBirdBones(gs, dc->intervalFrac);
+        GL_CHECK(Enable(GL_STENCIL_TEST));
+        GL_CHECK(StencilFunc(GL_ALWAYS, 1, 0xFF));
+        GL_CHECK(StencilOp(GL_KEEP, GL_KEEP, GL_REPLACE));
+        GL_CHECK(StencilMask(0xFF));
         a->skinnedShader->draw(cameraToViewport,
                                worldToCamera * Float4x4::makeTranslation(birdRelWorld) *
                                    rot.toFloat4x4() * Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) *
                                    Float4x4::makeScale(1.0833f),
                                boneToModel.view(), a->bird.view());
+        GL_CHECK(Disable(GL_STENCIL_TEST));
     }
 
     if (!gs->mode.title()) {
@@ -331,10 +348,12 @@ void renderGamePanel(const DrawContext* dc) {
                                  Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
                              {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.65f, 20.f}, {0.75f, 20.f}});
         }
+
+        if (auto trans = gs->camera.transition()) {
+            applyTitleScreen(dc, applySimpleCubic(clamp(1.f - trans->param * 2.f, 0.f, 1.f)));
+        }
     } else {
-        auto title = gs->mode.title();
-        const TitleScreen* ts = title->titleScreen;
-        a->copyShader->drawQuad(Float4x4::makeTranslation({0, 0, 0.995f}), ts->tempTex.id);
+        applyTitleScreen(dc, 1.f);
     }
 }
 
@@ -366,6 +385,7 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     GL_CHECK(DepthMask(GL_TRUE));
     GL_CHECK(ClearColor(0, 0, 0, 1));
     GL_CHECK(ClearDepth(1.0));
+    GL_CHECK(ClearStencil(0));
     GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
     drawTitle(ts);
     drawStars(ts);
@@ -421,7 +441,7 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
             .quantize();
 
     // Before drawing the panels, draw the title screen (if any) to a temporary buffer
-    if (auto title = gf->gameState->mode.title()) {
+    if (gf->gameState->titleScreen) {
         DrawContext dc;
         PLY_SET_IN_SCOPE(DrawContext::instance_, &dc);
         dc.gs = gf->gameState;
@@ -430,7 +450,7 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
         dc.fracTime = gf->fracTime;
         dc.intervalFrac = intervalFrac;
         dc.visibleExtents = visibleExtents;
-        drawTitleScreenToTemp(title->titleScreen);
+        drawTitleScreenToTemp(gf->gameState->titleScreen);
     }
 
     // Clear viewport
