@@ -337,12 +337,11 @@ void renderGamePanel(const DrawContext* dc) {
                          Float4x4::makeTranslation({244, 520, 0}) * Float4x4::makeScale(1.8f) *
                          Float4x4::makeTranslation({-gameOver.xMid(), 0, 0}),
                      {0.85f, 1.75f}, {0, 0, 0, 0.4f});
-            drawOutlinedText(a->sdfOutline, a->sdfFont, gameOver,
-                             Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                                 Float4x4::makeTranslation({240, 524, 0}) *
-                                 Float4x4::makeScale(1.8f) *
-                                 Float4x4::makeTranslation({-gameOver.xMid(), 0, 0}),
-                             {1, 0.3f, 0.3f, 0.f}, {0, 0, 0, 0}, {{0.65f, 24.f}, {0.75f, 24.f}});
+            drawText(a->sdfCommon, a->sdfFont, gameOver,
+                     Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
+                         Float4x4::makeTranslation({240, 524, 0}) * Float4x4::makeScale(1.8f) *
+                         Float4x4::makeTranslation({-gameOver.xMid(), 0, 0}),
+                     {0.75f, 32.f}, {1.f, 0.85f, 0.0f, 1.f});
             drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 380}, 1.f, "SCORE",
                           String::from(gs->score), {1, 1, 1, 1});
             drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 250}, 0.5f, "BEST",
@@ -355,12 +354,11 @@ void renderGamePanel(const DrawContext* dc) {
                              Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
                              Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
                          {0.85f, 1.75f}, {0, 0, 0, 0.4f});
-                drawOutlinedText(a->sdfOutline, a->sdfFont, playAgain,
-                                 Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                                     Float4x4::makeTranslation({240, 24, 0}) *
-                                     Float4x4::makeScale(0.9f) *
-                                     Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
-                                 {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.6f, 16.f}, {0.75f, 12.f}});
+                drawText(a->sdfCommon, a->sdfFont, playAgain,
+                         Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
+                             Float4x4::makeTranslation({240, 24, 0}) * Float4x4::makeScale(0.9f) *
+                             Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
+                         {0.75f, 16.f}, {1.f, 1.f, 1.f, 1.f});
             }
         }
 
@@ -372,12 +370,11 @@ void renderGamePanel(const DrawContext* dc) {
                          Float4x4::makeTranslation({244, 570, 0}) * Float4x4::makeScale(1.5f) *
                          Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
                      {0.85f, 1.75f}, {0, 0, 0, 0.4f});
-            drawOutlinedText(a->sdfOutline, a->sdfFont, tb,
-                             Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                                 Float4x4::makeTranslation({240, 574, 0}) *
-                                 Float4x4::makeScale(1.5f) *
-                                 Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
-                             {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.65f, 20.f}, {0.75f, 20.f}});
+            drawText(a->sdfCommon, a->sdfFont, tb,
+                     Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
+                         Float4x4::makeTranslation({240, 574, 0}) * Float4x4::makeScale(1.5f) *
+                         Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
+                     {0.75f, 32.f}, {1.f, 1.f, 1.f, 1.f});
         }
 
         if (auto trans = gs->camera.transition()) {
