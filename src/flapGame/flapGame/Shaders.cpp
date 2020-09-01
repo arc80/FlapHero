@@ -61,8 +61,7 @@ PLY_NO_INLINE Owned<MaterialShader> MaterialShader::create() {
 }
 
 PLY_NO_INLINE void MaterialShader::draw(const Float4x4& cameraToViewport,
-                                        const Float4x4& modelToCamera,
-                                        ArrayView<const DrawMesh> drawMeshes) {
+                                        const Float4x4& modelToCamera, const DrawMesh* drawMesh) {
     GL_CHECK(UseProgram(this->shader.id));
     GL_CHECK(Enable(GL_DEPTH_TEST));
     GL_CHECK(DepthMask(GL_TRUE));
@@ -72,25 +71,21 @@ PLY_NO_INLINE void MaterialShader::draw(const Float4x4& cameraToViewport,
         UniformMatrix4fv(this->cameraToViewportUniform, 1, GL_FALSE, (GLfloat*) &cameraToViewport));
     GL_CHECK(UniformMatrix4fv(this->modelToCameraUniform, 1, GL_FALSE, (GLfloat*) &modelToCamera));
 
-    for (const DrawMesh& drawMesh : drawMeshes) {
-        // Set remaining uniforms and vertex attributes
-        GL_CHECK(Uniform3fv(this->colorUniform, 1, (const GLfloat*) &drawMesh.diffuse));
-        GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh.vbo.id));
-        PLY_ASSERT(drawMesh.type == DrawMesh::NotSkinned);
-        GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
-        GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
-                                     (GLsizei) sizeof(VertexPN),
-                                     (GLvoid*) offsetof(VertexPN, pos)));
-        GL_CHECK(EnableVertexAttribArray(this->vertNormalAttrib));
-        GL_CHECK(VertexAttribPointer(this->vertNormalAttrib, 3, GL_FLOAT, GL_FALSE,
-                                     (GLsizei) sizeof(VertexPN),
-                                     (GLvoid*) offsetof(VertexPN, normal)));
+    // Set remaining uniforms and vertex attributes
+    GL_CHECK(Uniform3fv(this->colorUniform, 1, (const GLfloat*) &drawMesh->diffuse));
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
+    PLY_ASSERT(drawMesh->type == DrawMesh::NotSkinned);
+    GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPN), (GLvoid*) offsetof(VertexPN, pos)));
+    GL_CHECK(EnableVertexAttribArray(this->vertNormalAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertNormalAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPN), (GLvoid*) offsetof(VertexPN, normal)));
 
-        // Draw this VBO
-        GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh.indexBuffer.id));
-        GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) drawMesh.numIndices, GL_UNSIGNED_SHORT,
-                              (void*) 0));
-    }
+    // Draw this VBO
+    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh->indexBuffer.id));
+    GL_CHECK(
+        DrawElements(GL_TRIANGLES, (GLsizei) drawMesh->numIndices, GL_UNSIGNED_SHORT, (void*) 0));
 }
 
 //---------------------------------------------------------
@@ -174,7 +169,7 @@ PLY_NO_INLINE Owned<SkinnedShader> SkinnedShader::create() {
 PLY_NO_INLINE void SkinnedShader::draw(const Float4x4& cameraToViewport,
                                        const Float4x4& modelToCamera,
                                        ArrayView<const Float4x4> boneToModel,
-                                       ArrayView<const DrawMesh> drawMeshes) {
+                                       const DrawMesh* drawMesh) {
     GL_CHECK(UseProgram(this->shader.id));
     GL_CHECK(Enable(GL_DEPTH_TEST));
     GL_CHECK(DepthMask(GL_TRUE));
@@ -184,43 +179,41 @@ PLY_NO_INLINE void SkinnedShader::draw(const Float4x4& cameraToViewport,
         UniformMatrix4fv(this->cameraToViewportUniform, 1, GL_FALSE, (GLfloat*) &cameraToViewport));
     GL_CHECK(UniformMatrix4fv(this->modelToCameraUniform, 1, GL_FALSE, (GLfloat*) &modelToCamera));
 
-    for (const DrawMesh& drawMesh : drawMeshes) {
-        // Compute boneXforms
-        Array<Float4x4> boneXforms;
-        boneXforms.resize(drawMesh.bones.numItems());
-        for (u32 i = 0; i < drawMesh.bones.numItems(); i++) {
-            u32 indexInSkel = drawMesh.bones[i].indexInSkel;
-            boneXforms[i] = boneToModel[indexInSkel] * drawMesh.bones[i].baseModelToBone;
-        }
-        GL_CHECK(UniformMatrix4fv(this->boneXformsUniform, boneXforms.numItems(), GL_FALSE,
-                                  (const GLfloat*) boneXforms.get()));
-
-        // Set remaining uniforms and vertex attributes
-        GL_CHECK(Uniform3fv(this->colorUniform, 1, (const GLfloat*) &drawMesh.diffuse));
-        GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh.vbo.id));
-        PLY_ASSERT(drawMesh.type == DrawMesh::Skinned);
-        GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
-        GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
-                                     (GLsizei) sizeof(VertexPNW2),
-                                     (GLvoid*) offsetof(VertexPNW2, pos)));
-        GL_CHECK(EnableVertexAttribArray(this->vertNormalAttrib));
-        GL_CHECK(VertexAttribPointer(this->vertNormalAttrib, 3, GL_FLOAT, GL_FALSE,
-                                     (GLsizei) sizeof(VertexPNW2),
-                                     (GLvoid*) offsetof(VertexPNW2, normal)));
-        GL_CHECK(EnableVertexAttribArray(this->vertBlendIndicesAttrib));
-        GL_CHECK(VertexAttribPointer(this->vertBlendIndicesAttrib, 2, GL_UNSIGNED_SHORT, GL_FALSE,
-                                     (GLsizei) sizeof(VertexPNW2),
-                                     (GLvoid*) offsetof(VertexPNW2, blendIndices)));
-        GL_CHECK(EnableVertexAttribArray(this->vertBlendWeightsAttrib));
-        GL_CHECK(VertexAttribPointer(this->vertBlendWeightsAttrib, 2, GL_FLOAT, GL_FALSE,
-                                     (GLsizei) sizeof(VertexPNW2),
-                                     (GLvoid*) offsetof(VertexPNW2, blendWeights)));
-
-        // Draw this VBO
-        GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh.indexBuffer.id));
-        GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) drawMesh.numIndices, GL_UNSIGNED_SHORT,
-                              (void*) 0));
+    // Compute boneXforms
+    Array<Float4x4> boneXforms;
+    boneXforms.resize(drawMesh->bones.numItems());
+    for (u32 i = 0; i < drawMesh->bones.numItems(); i++) {
+        u32 indexInSkel = drawMesh->bones[i].indexInSkel;
+        boneXforms[i] = boneToModel[indexInSkel] * drawMesh->bones[i].baseModelToBone;
     }
+    GL_CHECK(UniformMatrix4fv(this->boneXformsUniform, boneXforms.numItems(), GL_FALSE,
+                              (const GLfloat*) boneXforms.get()));
+
+    // Set remaining uniforms and vertex attributes
+    GL_CHECK(Uniform3fv(this->colorUniform, 1, (const GLfloat*) &drawMesh->diffuse));
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
+    PLY_ASSERT(drawMesh->type == DrawMesh::Skinned);
+    GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPNW2),
+                                 (GLvoid*) offsetof(VertexPNW2, pos)));
+    GL_CHECK(EnableVertexAttribArray(this->vertNormalAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertNormalAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPNW2),
+                                 (GLvoid*) offsetof(VertexPNW2, normal)));
+    GL_CHECK(EnableVertexAttribArray(this->vertBlendIndicesAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertBlendIndicesAttrib, 2, GL_UNSIGNED_SHORT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPNW2),
+                                 (GLvoid*) offsetof(VertexPNW2, blendIndices)));
+    GL_CHECK(EnableVertexAttribArray(this->vertBlendWeightsAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertBlendWeightsAttrib, 2, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPNW2),
+                                 (GLvoid*) offsetof(VertexPNW2, blendWeights)));
+
+    // Draw this VBO
+    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh->indexBuffer.id));
+    GL_CHECK(
+        DrawElements(GL_TRIANGLES, (GLsizei) drawMesh->numIndices, GL_UNSIGNED_SHORT, (void*) 0));
 }
 
 //---------------------------------------------------------
@@ -273,8 +266,8 @@ PLY_NO_INLINE Owned<FlatShader> FlatShader::create() {
     return flatShader;
 }
 
-PLY_NO_INLINE void FlatShader::draw(const Float4x4& modelToViewport,
-                                    ArrayView<const DrawMesh> drawMeshes, bool writeDepth) {
+PLY_NO_INLINE void FlatShader::draw(const Float4x4& modelToViewport, const DrawMesh* drawMesh,
+                                    bool writeDepth) {
     GL_CHECK(UseProgram(this->shader.id));
     GL_CHECK(Enable(GL_DEPTH_TEST));
     GL_CHECK(DepthMask(writeDepth ? GL_TRUE : GL_FALSE));
@@ -283,21 +276,18 @@ PLY_NO_INLINE void FlatShader::draw(const Float4x4& modelToViewport,
     GL_CHECK(
         UniformMatrix4fv(this->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));
 
-    for (const DrawMesh& drawMesh : drawMeshes) {
-        // Set remaining uniforms and vertex attributes
-        Float3 linear = toSRGB(drawMesh.diffuse); // FIXME: Don't convert on load
-        GL_CHECK(Uniform3fv(this->colorUniform, 1, (const GLfloat*) &linear));
-        GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh.vbo.id));
-        GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
-        GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
-                                     (GLsizei) sizeof(VertexPN),
-                                     (GLvoid*) offsetof(VertexPN, pos)));
+    // Set remaining uniforms and vertex attributes
+    Float3 linear = toSRGB(drawMesh->diffuse); // FIXME: Don't convert on load
+    GL_CHECK(Uniform3fv(this->colorUniform, 1, (const GLfloat*) &linear));
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
+    GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPN), (GLvoid*) offsetof(VertexPN, pos)));
 
-        // Draw this VBO
-        GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh.indexBuffer.id));
-        GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) drawMesh.numIndices, GL_UNSIGNED_SHORT,
-                              (void*) 0));
-    }
+    // Draw this VBO
+    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh->indexBuffer.id));
+    GL_CHECK(
+        DrawElements(GL_TRIANGLES, (GLsizei) drawMesh->numIndices, GL_UNSIGNED_SHORT, (void*) 0));
 }
 
 PLY_NO_INLINE void FlatShader::drawQuad(const Float4x4& modelToViewport,
@@ -362,7 +352,7 @@ PLY_NO_INLINE Owned<FlatShaderInstanced> FlatShaderInstanced::create() {
     return flatShaderInst;
 }
 
-PLY_NO_INLINE void FlatShaderInstanced::draw(const DrawMesh& drawMesh,
+PLY_NO_INLINE void FlatShaderInstanced::draw(const DrawMesh* drawMesh,
                                              ArrayView<const InstanceData> instanceData) {
     GL_CHECK(UseProgram(this->shader.id));
     GL_CHECK(Enable(GL_DEPTH_TEST));
@@ -386,12 +376,12 @@ PLY_NO_INLINE void FlatShaderInstanced::draw(const DrawMesh& drawMesh,
     GL_CHECK(VertexAttribDivisor(this->instColorAttrib, 1));
 
     // Draw
-    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh.vbo.id));
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
     GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
     GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
                                  (GLsizei) sizeof(VertexPN), (GLvoid*) offsetof(VertexPN, pos)));
-    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh.indexBuffer.id));
-    GL_CHECK(DrawElementsInstanced(GL_TRIANGLES, (GLsizei) drawMesh.numIndices, GL_UNSIGNED_SHORT,
+    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh->indexBuffer.id));
+    GL_CHECK(DrawElementsInstanced(GL_TRIANGLES, (GLsizei) drawMesh->numIndices, GL_UNSIGNED_SHORT,
                                    (void*) 0, instanceData.numItems));
 
     for (u32 c = 0; c < 4; c++) {
@@ -772,7 +762,8 @@ PLY_NO_INLINE Owned<CopyShader> CopyShader::create() {
     return copyShader;
 }
 
-PLY_NO_INLINE void CopyShader::drawQuad(const Float4x4& modelToViewport, GLuint textureID, float opacity) const {
+PLY_NO_INLINE void CopyShader::drawQuad(const Float4x4& modelToViewport, GLuint textureID,
+                                        float opacity) const {
     GL_CHECK(UseProgram(this->shader.id));
     GL_CHECK(Disable(GL_DEPTH_TEST));
     if (opacity >= 1.f) {

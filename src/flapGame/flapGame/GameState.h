@@ -132,6 +132,7 @@ struct GameState {
     static constexpr float WorldDistance = 80.f;
     static constexpr float DefaultAngle = -0.1f * Pi;
     static constexpr float FollowCamRelBirdX = 4.5f;
+    static constexpr float ShrubRepeat = 57.2f;
 
     OuterContext* outerCtx = nullptr;
     Random random;
@@ -217,6 +218,7 @@ struct GameState {
         Array<float> sortedCheckpoints;
     };
     Playfield playfield;
+    float shrubX = -ShrubRepeat;
 
     void updateCamera(bool cut = false);
     void startPlaying();

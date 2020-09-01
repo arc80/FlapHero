@@ -32,16 +32,30 @@ struct FallAnimFrame {
     float rotationAngle = 0;
 };
 
+struct DrawGroup {
+    struct Instance {
+        Float4x4 itemToGroup = Float4x4::identity();
+        const DrawMesh* drawMesh = nullptr;
+    };
+
+    Array<Instance> instances;
+};
+
 struct Assets {
     String rootPath;
     
-    Array<DrawMesh> bird;
-    Array<DrawMesh> floor;
-    Array<DrawMesh> pipe;
-    Array<DrawMesh> title;
-    Array<DrawMesh> outline;
-    Array<DrawMesh> blackOutline;
-    Array<DrawMesh> star;
+    Array<Owned<DrawMesh>> bird;
+    Array<Owned<DrawMesh>> floor;
+    Array<Owned<DrawMesh>> pipe;
+    Array<Owned<DrawMesh>> shrub;
+    Array<Owned<DrawMesh>> shrub2;
+    Array<Owned<DrawMesh>> city;
+    Array<Owned<DrawMesh>> cloud;
+    Array<Owned<DrawMesh>> title;
+    Array<Owned<DrawMesh>> outline;
+    Array<Owned<DrawMesh>> blackOutline;
+    Array<Owned<DrawMesh>> star;
+    DrawGroup shrubGroup;
 
     BirdAnimData bad;
     Array<FallAnimFrame> fallAnim;

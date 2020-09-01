@@ -16,7 +16,7 @@ struct MaterialShader {
     static Owned<MaterialShader> create();
 
     void draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
-              ArrayView<const DrawMesh> drawMeshes);
+              const DrawMesh* drawMesh);
 };
 
 struct SkinnedShader {
@@ -33,7 +33,7 @@ struct SkinnedShader {
     static Owned<SkinnedShader> create();
 
     void draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
-              ArrayView<const Float4x4> boneToModel, ArrayView<const DrawMesh> drawMeshes);
+              ArrayView<const Float4x4> boneToModel, const DrawMesh* drawMesh);
 };
 
 struct FlatShader {
@@ -47,7 +47,7 @@ struct FlatShader {
 
     static Owned<FlatShader> create();
 
-    void draw(const Float4x4& modelToViewport, ArrayView<const DrawMesh> drawMeshes,
+    void draw(const Float4x4& modelToViewport, const DrawMesh* drawMesh,
               bool writeDepth);
     void drawQuad(const Float4x4& modelToViewport, const Float3& linearColor);
 };
@@ -64,7 +64,7 @@ struct FlatShaderInstanced {
     GLint instColorAttrib = 0;
 
     static Owned<FlatShaderInstanced> create();
-    void draw(const DrawMesh& drawMesh, ArrayView<const InstanceData> instanceData);
+    void draw(const DrawMesh* drawMesh, ArrayView<const InstanceData> instanceData);
 };
 
 struct FlashShader {

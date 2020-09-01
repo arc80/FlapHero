@@ -310,6 +310,7 @@ void adjustX(GameState* gs, float amount) {
         recovering->curve[0].pos.x += amount;
         recovering->curve[1].pos.x += amount;
     }
+    gs->shrubX = wrap(gs->shrubX + amount, GameState::ShrubRepeat) - GameState::ShrubRepeat;
 }
 
 //---------------------------------------
@@ -516,8 +517,8 @@ void GameState::updateCamera(bool cut) {
         params.frameToFocusYaw = angle;
         params.lookFromRelFrame =
             mix(Float3{0, -15.f, 3.5f}, Float3{0, -GameState::WorldDistance, 0}, t);
-        params.shiftRelFrame =
-            mix(Float3{0, 0, 1.5f + trans->startYRise}, Float3{GameState::FollowCamRelBirdX, 0, 0}, t);
+        params.shiftRelFrame = mix(Float3{0, 0, 1.5f + trans->startYRise},
+                                   Float3{GameState::FollowCamRelBirdX, 0, 0}, t);
     } else {
         PLY_ASSERT(0);
     }
