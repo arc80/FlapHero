@@ -300,22 +300,27 @@ void renderGamePanel(const DrawContext* dc) {
         }
 
         // Draw scenery
+        Float3 skyColor = {sRGBToLinear(113.f / 255), sRGBToLinear(200.f / 255),
+                           sRGBToLinear(206.f / 255)};
         for (u32 i = 0; i < 2; i++) {
+            MaterialShader::Props matProps;
+            matProps.specular = 0.025f;
+            matProps.fog = {skyColor, 0.8f};
+
             for (const DrawGroup::Instance& inst : a->shrubGroup.instances) {
+                matProps.diffuse = inst.drawMesh->diffuse * 4.f;
                 a->matShader->draw(
                     cameraToViewport,
                     worldToCamera *
                         Float4x4::makeTranslation({gs->shrubX + GameState::ShrubRepeat * i,
                                                    109.67f - GameState::WorldDistance, -16.7244f}) *
                         inst.itemToGroup,
-                    inst.drawMesh);
+                    inst.drawMesh, &matProps);
             }
         }
 
         // Draw sky
-        a->flatShader->drawQuad(
-            Float4x4::makeTranslation({0, 0, 0.999f}),
-            {sRGBToLinear(113.f / 255), sRGBToLinear(200.f / 255), sRGBToLinear(206.f / 255)});
+        a->flatShader->drawQuad(Float4x4::makeTranslation({0, 0, 0.999f}), skyColor);
 
         // Draw flash
         if (auto impact = gs->mode.impact()) {

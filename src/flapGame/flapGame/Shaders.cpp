@@ -24,6 +24,9 @@ PLY_NO_INLINE Owned<MaterialShader> MaterialShader::create() {
         Shader fragmentShader = Shader::compile(
             GL_FRAGMENT_SHADER, "in vec3 fragNormal;\n"
                                 "uniform vec3 color;\n"
+                                "uniform vec3 specular;\n"
+                                "uniform float specPower;\n"
+                                "uniform vec4 fog;\n"
                                 "vec3 lightDir = normalize(vec3(1.0, -1.0, -0.5));\n"
                                 "out vec4 fragColor;\n"
                                 "\n"
@@ -31,8 +34,9 @@ PLY_NO_INLINE Owned<MaterialShader> MaterialShader::create() {
                                 "    vec3 fn = normalize(fragNormal);\n"
                                 "    float d = (dot(-fn, lightDir) * 0.5 + 0.5) * 2.0 + 0.2;\n"
                                 "    vec3 reflect = lightDir - fn * (dot(fn, lightDir) * 2.0);\n"
-                                "    float spec = pow(max(reflect.z, 0.0), 5.0) * 0.2;\n"
-                                "    vec3 linear = color * d + vec3(spec);\n"
+                                "    vec3 spec = pow(max(reflect.z, 0.0), specPower) * specular;\n"
+                                "    vec3 linear = color * d + spec;\n"
+                                "    linear = mix(fog.rgb, linear, fog.a);\n"
                                 "    vec3 toneMapped = linear / (vec3(0.4) + linear);\n"
                                 "    fragColor = vec4(toneMapped, 1.0);\n"
                                 "}\n");
@@ -56,12 +60,22 @@ PLY_NO_INLINE Owned<MaterialShader> MaterialShader::create() {
     PLY_ASSERT(matShader->cameraToViewportUniform >= 0);
     matShader->colorUniform = GL_NO_CHECK(GetUniformLocation(matShader->shader.id, "color"));
     PLY_ASSERT(matShader->colorUniform >= 0);
+    matShader->specularUniform = GL_NO_CHECK(GetUniformLocation(matShader->shader.id, "specular"));
+    PLY_ASSERT(matShader->specularUniform >= 0);
+    matShader->specPowerUniform =
+        GL_NO_CHECK(GetUniformLocation(matShader->shader.id, "specPower"));
+    PLY_ASSERT(matShader->specPowerUniform >= 0);
+    matShader->fogUniform = GL_NO_CHECK(GetUniformLocation(matShader->shader.id, "fog"));
+    PLY_ASSERT(matShader->fogUniform >= 0);
 
     return matShader;
 }
 
+MaterialShader::Props MaterialShader::defaultProps;
+
 PLY_NO_INLINE void MaterialShader::draw(const Float4x4& cameraToViewport,
-                                        const Float4x4& modelToCamera, const DrawMesh* drawMesh) {
+                                        const Float4x4& modelToCamera, const DrawMesh* drawMesh,
+                                        const Props* props) {
     GL_CHECK(UseProgram(this->shader.id));
     GL_CHECK(Enable(GL_DEPTH_TEST));
     GL_CHECK(DepthMask(GL_TRUE));
@@ -72,7 +86,16 @@ PLY_NO_INLINE void MaterialShader::draw(const Float4x4& cameraToViewport,
     GL_CHECK(UniformMatrix4fv(this->modelToCameraUniform, 1, GL_FALSE, (GLfloat*) &modelToCamera));
 
     // Set remaining uniforms and vertex attributes
-    GL_CHECK(Uniform3fv(this->colorUniform, 1, (const GLfloat*) &drawMesh->diffuse));
+    if (props) {
+        GL_CHECK(Uniform3fv(this->colorUniform, 1, (const GLfloat*) &props->diffuse));
+    } else {
+        GL_CHECK(Uniform3fv(this->colorUniform, 1, (const GLfloat*) &drawMesh->diffuse));
+        props = &defaultProps;
+    }
+    GL_CHECK(Uniform3fv(this->specularUniform, 1, (const GLfloat*) &props->specular));
+    GL_CHECK(Uniform1f(this->specPowerUniform, props->specPower));
+    GL_CHECK(Uniform4fv(this->fogUniform, 1, (const GLfloat*) &props->fog));
+
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
     PLY_ASSERT(drawMesh->type == DrawMesh::NotSkinned);
     GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
