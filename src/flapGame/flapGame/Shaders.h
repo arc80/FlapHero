@@ -103,6 +103,8 @@ struct TexturedShader {
 
     static PLY_NO_INLINE Owned<TexturedShader> create();
     void draw(const Float4x4& modelToViewport, GLuint textureID, const Float4& color,
+              const DrawMesh* drawMesh, bool depthTest = false);
+    void draw(const Float4x4& modelToViewport, GLuint textureID, const Float4& color,
               ArrayView<VertexPT> vertices, ArrayView<u16> indices) const;
 };
 

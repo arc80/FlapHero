@@ -56,10 +56,11 @@ struct MeshMap {
 };
 
 Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* srcMesh,
-                           ArrayView<Bone> forSkel = {}) {
+                           DrawMesh::VertexType vertexType, ArrayView<Bone> forSkel = {}) {
     PLY_ASSERT(srcMesh->mMaterialIndex >= 0);
     const aiMaterial* srcMat = srcScene->mMaterials[srcMesh->mMaterialIndex];
     Owned<DrawMesh> out = new DrawMesh;
+    out->vertexType = vertexType;
     if (mm) {
         mm->pairs.append({srcMesh, out});
     }
@@ -75,8 +76,9 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
             out->diffuse = fromSRGB(*(Float3*) &aiDiffuse);
         }
     }
-    if (forSkel.isEmpty()) {
+    if (vertexType == DrawMesh::VertexType::NotSkinned) {
         // Unskinned vertices
+        PLY_ASSERT(forSkel.isEmpty());
         Array<VertexPN> vertices;
         vertices.resize(srcMesh->mNumVertices);
         for (u32 j = 0; j < srcMesh->mNumVertices; j++) {
@@ -84,9 +86,9 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
             vertices[j].normal = *(Float3*) (srcMesh->mNormals + j);
         }
         out->vbo = GLBuffer::create(vertices.view().bufferView());
-    } else {
+    } else if (vertexType == DrawMesh::VertexType::Skinned) {
         // Skinned vertices
-        out->type = DrawMesh::Skinned;
+        PLY_ASSERT(!forSkel.isEmpty());
         out->bones.resize(srcMesh->mNumBones);
         Array<VertexPNW2> vertices;
         vertices.resize(srcMesh->mNumVertices); // all members zero initialized
@@ -125,6 +127,19 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
             }
         }
         out->vbo = GLBuffer::create(vertices.view().bufferView());
+    } else if (vertexType == DrawMesh::VertexType::Textured) {
+        // Textured vertices (not skinned)
+        PLY_ASSERT(forSkel.isEmpty());
+        PLY_ASSERT(srcMesh->mTextureCoords[0]);
+        Array<VertexPT> vertices;
+        vertices.resize(srcMesh->mNumVertices);
+        for (u32 j = 0; j < srcMesh->mNumVertices; j++) {
+            vertices[j].pos = *(Float3*) (srcMesh->mVertices + j);
+            vertices[j].uv = *(Float2*) (srcMesh->mTextureCoords[0] + j);
+        }
+        out->vbo = GLBuffer::create(vertices.view().bufferView());
+    } else {
+        PLY_ASSERT(0);
     }
     {
         // Indices
@@ -143,14 +158,15 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
 }
 
 Array<Owned<DrawMesh>> getMeshes(MeshMap* mm, const aiScene* srcScene, const aiNode* srcNode,
-                                 ArrayView<Bone> forSkel = {}) {
+                                 DrawMesh::VertexType vertexType, ArrayView<Bone> forSkel = {}) {
     Array<Owned<DrawMesh>> result;
     for (u32 m = 0; m < srcNode->mNumMeshes; m++) {
         const aiMesh* srcMesh = srcScene->mMeshes[srcNode->mMeshes[m]];
-        result.append(toDrawMesh(mm, srcScene, srcMesh, forSkel));
+        result.append(toDrawMesh(mm, srcScene, srcMesh, vertexType, forSkel));
     }
     for (u32 c = 0; c < srcNode->mNumChildren; c++) {
-        result.moveExtend(getMeshes(mm, srcScene, srcNode->mChildren[c], forSkel).view());
+        result.moveExtend(
+            getMeshes(mm, srcScene, srcNode->mChildren[c], vertexType, forSkel).view());
     }
     return result;
 }
@@ -304,13 +320,14 @@ void Assets::load(StringView assetsPath) {
     Assets* assets = new Assets;
     assets->rootPath = assetsPath;
     Assets::instance = assets;
+    using VT = DrawMesh::VertexType;
     {
         Assimp::Importer importer;
         const aiScene* scene =
             importer.ReadFile(NativePath::join(assetsPath, "Bird.fbx").withNullTerminator().bytes,
                               aiProcess_Triangulate);
         extractBirdAnimData(&assets->bad, scene);
-        assets->bird = getMeshes(nullptr, scene, scene->mRootNode->FindNode("Bird"),
+        assets->bird = getMeshes(nullptr, scene, scene->mRootNode->FindNode("Bird"), VT::Skinned,
                                  assets->bad.birdSkel.view());
     }
     {
@@ -319,24 +336,33 @@ void Assets::load(StringView assetsPath) {
             importer.ReadFile(NativePath::join(assetsPath, "Level.fbx").withNullTerminator().bytes,
                               aiProcess_Triangulate);
         MeshMap mm;
-        assets->floor = getMeshes(nullptr, scene, scene->mRootNode->FindNode("Floor"));
-        assets->pipe = getMeshes(nullptr, scene, scene->mRootNode->FindNode("Pipe"));
-        assets->shrub = getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub"));
-        assets->shrub2 = getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub2"));
-        assets->city = getMeshes(nullptr, scene, scene->mRootNode->FindNode("City"));
-        assets->cloud = getMeshes(nullptr, scene, scene->mRootNode->FindNode("Cloud"));
+        assets->floor =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Floor"), VT::NotSkinned);
+        assets->pipe =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Pipe"), VT::NotSkinned);
+        assets->shrub = getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub"), VT::NotSkinned);
+        assets->shrub2 =
+            getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub2"), VT::NotSkinned);
+        assets->city =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("City"), VT::NotSkinned);
+        assets->cloud =
+            getMeshes(&mm, scene, scene->mRootNode->FindNode("Cloud"), VT::Textured);
         assets->shrubGroup = loadDrawGroup(scene, scene->mRootNode->FindNode("ShrubGroup"), &mm);
+        assets->cloudGroup = loadDrawGroup(scene, scene->mRootNode->FindNode("CloudGroup"), &mm);
     }
     {
         Assimp::Importer importer;
         const aiScene* scene =
             importer.ReadFile(NativePath::join(assetsPath, "Title.fbx").withNullTerminator().bytes,
                               aiProcess_Triangulate);
-        assets->title = getMeshes(nullptr, scene, scene->mRootNode->FindNode("Title"));
-        assets->outline = getMeshes(nullptr, scene, scene->mRootNode->FindNode("Outline"));
+        assets->title =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Title"), VT::NotSkinned);
+        assets->outline =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Outline"), VT::NotSkinned);
         assets->blackOutline =
-            getMeshes(nullptr, scene, scene->mRootNode->FindNode("BlackOutline"));
-        assets->star = getMeshes(nullptr, scene, scene->mRootNode->FindNode("Star"));
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("BlackOutline"), VT::NotSkinned);
+        assets->star =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Star"), VT::NotSkinned);
     }
     {
         Assimp::Importer importer;
@@ -379,6 +405,16 @@ void Assets::load(StringView assetsPath) {
         params.minFilter = false;
         params.magFilter = false;
         assets->hypnoPaletteTexture.init(im, 5, params);
+    }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "Cloud.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        SamplerParams params;
+        params.repeatX = false;
+        params.repeatY = false;
+        assets->cloudTexture.init(im, 3, params);
     }
 
     // Load font resources

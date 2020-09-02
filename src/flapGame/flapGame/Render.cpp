@@ -253,7 +253,7 @@ void renderGamePanel(const DrawContext* dc) {
     const Assets* a = Assets::instance;
     const GameState* gs = dc->gs;
 
-    Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum, 10.f, 1000.f);
+    Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum, 10.f, 10000.f);
     GL_CHECK(Viewport((GLint) vf.viewport.mins.x, (GLint) vf.viewport.mins.y,
                       (GLsizei) vf.viewport.width(), (GLsizei) vf.viewport.height()));
 
@@ -321,6 +321,16 @@ void renderGamePanel(const DrawContext* dc) {
 
         // Draw sky
         a->flatShader->drawQuad(Float4x4::makeTranslation({0, 0, 0.999f}), skyColor);
+
+        // Draw clouds
+        for (const DrawGroup::Instance& inst : a->cloudGroup.instances) {
+            Float4x4 skyBoxW2C = worldToCamera;
+            skyBoxW2C[3] = {0, 0, 0, 1};
+            for (const DrawMesh* dm : a->cloud) {
+                a->texturedShader->draw(cameraToViewport * skyBoxW2C * inst.itemToGroup,
+                                        a->cloudTexture.id, {1, 1, 1, 1}, dm, true);
+            }
+        }
 
         // Draw flash
         if (auto impact = gs->mode.impact()) {

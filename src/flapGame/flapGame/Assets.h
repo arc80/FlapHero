@@ -56,6 +56,7 @@ struct Assets {
     Array<Owned<DrawMesh>> blackOutline;
     Array<Owned<DrawMesh>> star;
     DrawGroup shrubGroup;
+    DrawGroup cloudGroup;
 
     BirdAnimData bad;
     Array<FallAnimFrame> fallAnim;
@@ -64,6 +65,7 @@ struct Assets {
     Texture speedLimitTexture;
     Texture waveTexture;
     Texture hypnoPaletteTexture;
+    Texture cloudTexture;
 
     Owned<SDFCommon> sdfCommon;
     Owned<SDFOutline> sdfOutline;

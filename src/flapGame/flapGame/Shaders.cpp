@@ -97,7 +97,7 @@ PLY_NO_INLINE void MaterialShader::draw(const Float4x4& cameraToViewport,
     GL_CHECK(Uniform4fv(this->fogUniform, 1, (const GLfloat*) &props->fog));
 
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
-    PLY_ASSERT(drawMesh->type == DrawMesh::NotSkinned);
+    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::NotSkinned);
     GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
     GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
                                  (GLsizei) sizeof(VertexPN), (GLvoid*) offsetof(VertexPN, pos)));
@@ -215,7 +215,7 @@ PLY_NO_INLINE void SkinnedShader::draw(const Float4x4& cameraToViewport,
     // Set remaining uniforms and vertex attributes
     GL_CHECK(Uniform3fv(this->colorUniform, 1, (const GLfloat*) &drawMesh->diffuse));
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
-    PLY_ASSERT(drawMesh->type == DrawMesh::Skinned);
+    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::Skinned);
     GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
     GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
                                  (GLsizei) sizeof(VertexPNW2),
@@ -303,6 +303,7 @@ PLY_NO_INLINE void FlatShader::draw(const Float4x4& modelToViewport, const DrawM
     Float3 linear = toSRGB(drawMesh->diffuse); // FIXME: Don't convert on load
     GL_CHECK(Uniform3fv(this->colorUniform, 1, (const GLfloat*) &linear));
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
+    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::NotSkinned);
     GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
     GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
                                  (GLsizei) sizeof(VertexPN), (GLvoid*) offsetof(VertexPN, pos)));
@@ -400,6 +401,7 @@ PLY_NO_INLINE void FlatShaderInstanced::draw(const DrawMesh* drawMesh,
 
     // Draw
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
+    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::NotSkinned);
     GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
     GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
                                  (GLsizei) sizeof(VertexPN), (GLvoid*) offsetof(VertexPN, pos)));
@@ -554,13 +556,15 @@ PLY_NO_INLINE Owned<TexturedShader> TexturedShader::create() {
     return result;
 }
 
-void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, const Float4& color,
-                          ArrayView<VertexPT> vertices, ArrayView<u16> indices) const {
-    GLuint vboID = DynamicArrayBuffers::instance->upload(vertices.bufferView());
-    GLuint indicesID = DynamicArrayBuffers::instance->upload(indices.bufferView());
-
-    GL_CHECK(UseProgram(this->shader.id));
-    GL_CHECK(Disable(GL_DEPTH_TEST));
+void drawTexturedShader(const TexturedShader* shader, const Float4x4& modelToViewport,
+                        GLuint textureID, const Float4& color, GLuint vboID, GLuint indicesID,
+                        u32 numIndices, bool depthTest) {
+    GL_CHECK(UseProgram(shader->shader.id));
+    if (depthTest) {
+        GL_CHECK(Enable(GL_DEPTH_TEST));
+    } else {
+        GL_CHECK(Disable(GL_DEPTH_TEST));
+    }
     GL_CHECK(DepthMask(GL_FALSE));
     GL_CHECK(Enable(GL_BLEND));
     // Premultiplied alpha
@@ -568,25 +572,39 @@ void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, con
     GL_CHECK(BlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA));
 
     GL_CHECK(
-        UniformMatrix4fv(this->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));
+        UniformMatrix4fv(shader->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));
     GL_CHECK(ActiveTexture(GL_TEXTURE0));
     GL_CHECK(BindTexture(GL_TEXTURE_2D, textureID));
-    GL_CHECK(Uniform1i(this->textureUniform, 0));
-    GL_CHECK(Uniform4fv(this->colorUniform, 1, (const GLfloat*) &color));
+    GL_CHECK(Uniform1i(shader->textureUniform, 0));
+    GL_CHECK(Uniform4fv(shader->colorUniform, 1, (const GLfloat*) &color));
 
     // Bind VBO
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, vboID));
-    GL_CHECK(EnableVertexAttribArray(this->positionAttrib));
-    GL_CHECK(VertexAttribPointer(this->positionAttrib, 4, GL_FLOAT, GL_FALSE,
+    GL_CHECK(EnableVertexAttribArray(shader->positionAttrib));
+    GL_CHECK(VertexAttribPointer(shader->positionAttrib, 4, GL_FLOAT, GL_FALSE,
                                  (GLsizei) sizeof(VertexPT), (GLvoid*) offsetof(VertexPT, pos)));
-    GL_CHECK(EnableVertexAttribArray(this->texCoordAttrib));
-    GL_CHECK(VertexAttribPointer(this->texCoordAttrib, 2, GL_FLOAT, GL_FALSE,
+    GL_CHECK(EnableVertexAttribArray(shader->texCoordAttrib));
+    GL_CHECK(VertexAttribPointer(shader->texCoordAttrib, 2, GL_FLOAT, GL_FALSE,
                                  (GLsizei) sizeof(VertexPT), (GLvoid*) offsetof(VertexPT, uv)));
 
     // Bind index buffer
     GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesID));
 
-    GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) indices.numItems, GL_UNSIGNED_SHORT, (void*) 0));
+    GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) numIndices, GL_UNSIGNED_SHORT, (void*) 0));
+}
+
+void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, const Float4& color,
+                          const DrawMesh* drawMesh, bool depthTest) {
+    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::Textured);
+    drawTexturedShader(this, modelToViewport, textureID, color, drawMesh->vbo.id,
+                       drawMesh->indexBuffer.id, drawMesh->numIndices, depthTest);
+}
+
+void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, const Float4& color,
+                          ArrayView<VertexPT> vertices, ArrayView<u16> indices) const {
+    GLuint vboID = DynamicArrayBuffers::instance->upload(vertices.bufferView());
+    GLuint indicesID = DynamicArrayBuffers::instance->upload(indices.bufferView());
+    drawTexturedShader(this, modelToViewport, textureID, color, vboID, indicesID, indices.numItems, false);
 }
 
 //---------------------------------------------------------

@@ -32,12 +32,13 @@ struct DrawMesh {
         Float4x4 baseModelToBone = Float4x4::identity();
     };
 
-    enum Type {
+    enum class VertexType {
         Skinned,
         NotSkinned,
+        Textured,
     };
 
-    Type type = NotSkinned;
+    VertexType vertexType = VertexType::NotSkinned;
     Float3 diffuse = {0, 0, 0};
     u32 numIndices = 0;
     GLBuffer vbo;
