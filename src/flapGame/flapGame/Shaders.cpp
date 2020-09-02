@@ -604,7 +604,8 @@ void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, con
                           ArrayView<VertexPT> vertices, ArrayView<u16> indices) const {
     GLuint vboID = DynamicArrayBuffers::instance->upload(vertices.bufferView());
     GLuint indicesID = DynamicArrayBuffers::instance->upload(indices.bufferView());
-    drawTexturedShader(this, modelToViewport, textureID, color, vboID, indicesID, indices.numItems, false);
+    drawTexturedShader(this, modelToViewport, textureID, color, vboID, indicesID, indices.numItems,
+                       false);
 }
 
 //---------------------------------------------------------
@@ -626,8 +627,7 @@ PLY_NO_INLINE Owned<HypnoShader> HypnoShader::create() {
             "    vec2 warped = vec2(cos(angle), -sin(angle));\n"
             "    float scale = mix(instPlacement.y, instPlacement.z, vertPosition.y);\n"
             "    vec2 modelPos = warped * scale;\n"
-            "    fragTexCoord = vec4(vertPosition.x, 1.0 - vertPosition.y, scale, "
-            "instPlacement.w);\n"
+            "    fragTexCoord = vec4(vertPosition.x, vertPosition.y, scale, instPlacement.w);\n"
             "    gl_Position = modelToViewport * vec4(modelPos, 0.0, 1.0);\n"
             "}\n");
 

@@ -74,20 +74,20 @@ void drawRoundedRect(const TexturedShader* shader, const Float4x4& modelToViewpo
     };
 
     // Bottom row
-    addQuad({bounds.mins, bounds.mins + Float2{r, r}}, {{0, 1}, {1, 0}});
-    addQuad({bounds.mins + Float2{r, 0}, bounds.bottomRight() + Float2{-r, r}}, {{1, 1}, {1, 0}});
+    addQuad({bounds.mins, bounds.mins + Float2{r, r}}, {{0, 0}, {1, 1}});
+    addQuad({bounds.mins + Float2{r, 0}, bounds.bottomRight() + Float2{-r, r}}, {{1, 0}, {1, 1}});
     addQuad({bounds.bottomRight() + Float2{-r, 0}, bounds.bottomRight() + Float2{0, r}},
-            {{1, 1}, {0, 0}});
+            {{1, 0}, {0, 1}});
 
     // Middle row
-    addQuad({bounds.mins + Float2{0, r}, bounds.topLeft() + Float2{r, -r}}, {{0, 0}, {1, 0}});
-    addQuad({bounds.mins + Float2{r, r}, bounds.maxs + Float2{-r, -r}}, {{1, 0}, {1, 0}});
-    addQuad({bounds.bottomRight() + Float2{-r, r}, bounds.maxs + Float2{0, -r}}, {{1, 0}, {0, 0}});
+    addQuad({bounds.mins + Float2{0, r}, bounds.topLeft() + Float2{r, -r}}, {{0, 1}, {1, 1}});
+    addQuad({bounds.mins + Float2{r, r}, bounds.maxs + Float2{-r, -r}}, {{1, 1}, {1, 1}});
+    addQuad({bounds.bottomRight() + Float2{-r, r}, bounds.maxs + Float2{0, -r}}, {{1, 1}, {0, 1}});
 
     // Top row
-    addQuad({bounds.topLeft() + Float2{0, -r}, bounds.topLeft() + Float2{r, 0}}, {{0, 0}, {1, 1}});
-    addQuad({bounds.topLeft() + Float2{r, -r}, bounds.maxs + Float2{-r, 0}}, {{1, 0}, {1, 1}});
-    addQuad({bounds.maxs + Float2{-r, -r}, bounds.maxs}, {{1, 0}, {0, 1}});
+    addQuad({bounds.topLeft() + Float2{0, -r}, bounds.topLeft() + Float2{r, 0}}, {{0, 1}, {1, 0}});
+    addQuad({bounds.topLeft() + Float2{r, -r}, bounds.maxs + Float2{-r, 0}}, {{1, 1}, {1, 0}});
+    addQuad({bounds.maxs + Float2{-r, -r}, bounds.maxs}, {{1, 1}, {0, 0}});
 
     shader->draw(modelToViewport, textureID, color, verts.view(), indices.view());
 }
@@ -337,7 +337,7 @@ void renderGamePanel(const DrawContext* dc) {
             a->flashShader->drawQuad(
                 cameraToViewport * worldToCamera * Float4x4::makeTranslation(impact->hit.pos) *
                     Float4x4::makeRotation({1, 0, 0}, Pi * 0.5f) * Float4x4::makeScale(2.f),
-                {0.25f, -0.25f, 0.75f, 0.25f}, a->flashTexture.id, {1.2f, 1.2f, 0, 0.6f});
+                {0.25f, 0.25f, 0.75f, 0.75f}, a->flashTexture.id, {1.2f, 1.2f, 0, 0.6f});
         }
 
         if (auto dead = gs->mode.dead()) {
