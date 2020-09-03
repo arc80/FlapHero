@@ -305,7 +305,7 @@ void renderGamePanel(const DrawContext* dc) {
         for (u32 i = 0; i < 3; i++) {
             MaterialShader::Props matProps;
             matProps.specular = 0.025f;
-            matProps.fog = {skyColor, 0.8f};
+            matProps.fog = {skyColor, 0.85f};
 
             for (const DrawGroup::Instance& inst : a->shrubGroup.instances) {
                 matProps.diffuse = inst.drawMesh->diffuse * 4.f;
@@ -324,14 +324,14 @@ void renderGamePanel(const DrawContext* dc) {
         {
             MaterialShader::Props matProps;
             matProps.specular = 0.0025f;
-            matProps.fog = {skyColor, 0.9f};
+            matProps.fog = {skyColor, 0.75f};
             for (float r = -3; r <= 3; r++) {
                 for (const DrawGroup::Instance& inst : a->cityGroup.instances) {
                     a->texMatShader->draw(
                         cameraToViewport,
                         worldToCamera * a->cityGroup.groupToWorld *
                             Float4x4::makeTranslation(
-                                {gs->buildingX + GameState::BuildingRepeat * r, 0, -10}) *
+                                {gs->buildingX + GameState::BuildingRepeat * r, 0, 0}) *
                             inst.itemToGroup,
                         inst.drawMesh, a->windowTexture.id, &matProps);
                 }
