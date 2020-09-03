@@ -26,6 +26,12 @@ struct VertexPT {
     Float2 uv = {0, 0};
 };
 
+struct VertexPNT {
+    Float3 pos = {0, 0, 0};
+    Float3 normal = {0, 0, 0};
+    Float2 uv = {0, 0};
+};
+
 struct DrawMesh {
     struct Bone {
         u32 indexInSkel = 0;
@@ -35,7 +41,8 @@ struct DrawMesh {
     enum class VertexType {
         Skinned,
         NotSkinned,
-        Textured,
+        TexturedFlat,
+        TexturedNormal,
     };
 
     VertexType vertexType = VertexType::NotSkinned;

@@ -299,7 +299,7 @@ void renderGamePanel(const DrawContext* dc) {
                 dm);
         }
 
-        // Draw scenery
+        // Draw shrubs
         Float3 skyColor = {sRGBToLinear(113.f / 255), sRGBToLinear(200.f / 255),
                            sRGBToLinear(206.f / 255)};
         for (u32 i = 0; i < 2; i++) {
@@ -319,13 +319,31 @@ void renderGamePanel(const DrawContext* dc) {
             }
         }
 
+        // Draw cities
+        Float4x4 skyBoxW2C = worldToCamera;
+        skyBoxW2C[3] = {0, 0, 0, 1};
+        {
+            MaterialShader::Props matProps;
+            matProps.specular = 0.0025f;
+            matProps.fog = {skyColor, 0.9f};
+            for (float r = -3; r <= 3; r++) {
+                for (const DrawGroup::Instance& inst : a->cityGroup.instances) {
+                    a->texMatShader->draw(
+                        cameraToViewport,
+                        worldToCamera * a->cityGroup.groupToWorld *
+                            Float4x4::makeTranslation(
+                                {gs->buildingX + GameState::BuildingRepeat * r, 0, -10}) *
+                            inst.itemToGroup,
+                        inst.drawMesh, a->windowTexture.id, &matProps);
+                }
+            }
+        }
+
         // Draw sky
         a->flatShader->drawQuad(Float4x4::makeTranslation({0, 0, 0.999f}), skyColor);
 
         // Draw clouds
         for (const DrawGroup::Instance& inst : a->cloudGroup.instances) {
-            Float4x4 skyBoxW2C = worldToCamera;
-            skyBoxW2C[3] = {0, 0, 0, 1};
             for (const DrawMesh* dm : a->cloud) {
                 a->texturedShader->draw(cameraToViewport * skyBoxW2C * inst.itemToGroup,
                                         a->cloudTexture.id, {1, 1, 1, 1}, dm, true);

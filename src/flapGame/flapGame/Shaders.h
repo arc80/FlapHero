@@ -30,6 +30,32 @@ struct MaterialShader {
               const DrawMesh* drawMesh, const Props* props = nullptr);
 };
 
+struct TexturedMaterialShader {
+    struct Props {
+        Float3 diffuse = {1, 1, 1};
+        Float3 specular = {0.2f, 0.2f, 0.2f};
+        float specPower = 5.f;
+        Float4 fog = {0, 0, 0, 1};
+    };
+    static Props defaultProps;
+
+    ShaderProgram shader;
+    GLint vertPositionAttrib = 0;
+    GLint vertTexCoordAttrib = 0;
+    GLint vertNormalAttrib = 0;
+    GLint modelToCameraUniform = 0;
+    GLint cameraToViewportUniform = 0;
+    GLint textureUniform = 0;
+    GLint specularUniform = 0;
+    GLint specPowerUniform = 0;
+    GLint fogUniform = 0;
+
+    static Owned<TexturedMaterialShader> create();
+
+    void draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
+              const DrawMesh* drawMesh, GLuint texID, const MaterialShader::Props* props = nullptr);
+};
+
 struct SkinnedShader {
     ShaderProgram shader;
     GLint vertPositionAttrib = 0;

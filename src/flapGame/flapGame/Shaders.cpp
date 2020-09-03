@@ -113,6 +113,127 @@ PLY_NO_INLINE void MaterialShader::draw(const Float4x4& cameraToViewport,
 
 //---------------------------------------------------------
 
+PLY_NO_INLINE Owned<TexturedMaterialShader> TexturedMaterialShader::create() {
+    Owned<TexturedMaterialShader> texMatShader = new TexturedMaterialShader;
+    {
+        Shader vertexShader = Shader::compile(
+            GL_VERTEX_SHADER,
+            "in vec3 vertPosition;\n"
+            "in vec3 vertNormal;\n"
+            "in vec2 vertTexCoord;\n"
+            "uniform mat4 modelToCamera;\n"
+            "uniform mat4 cameraToViewport;\n"
+            "out vec3 fragNormal\n;"
+            "out vec2 fragTexCoord\n;"
+            "\n"
+            "void main() {\n"
+            "    fragNormal = vec3(modelToCamera * vec4(vertNormal, 0.0));\n"
+            "    fragTexCoord = vertTexCoord;\n"
+            "    gl_Position = cameraToViewport * (modelToCamera * vec4(vertPosition, 1.0));\n"
+            "}\n");
+
+        Shader fragmentShader = Shader::compile(
+            GL_FRAGMENT_SHADER, "in vec3 fragNormal;\n"
+                                "in vec2 fragTexCoord;\n"
+                                "uniform sampler2D texImage;\n"
+                                "uniform vec3 specular;\n"
+                                "uniform float specPower;\n"
+                                "uniform vec4 fog;\n"
+                                "vec3 lightDir = normalize(vec3(1.0, -1.0, -0.5));\n"
+                                "out vec4 fragColor;\n"
+                                "\n"
+                                "void main() {\n"
+                                "    vec3 fn = normalize(fragNormal);\n"
+                                "    float d = (dot(-fn, lightDir) * 0.5 + 0.5) * 0.4 + 0.35;\n"
+                                "    vec3 reflect = lightDir - fn * (dot(fn, lightDir) * 2.0);\n"
+                                "    vec3 spec = pow(max(reflect.z, 0.0), specPower) * specular;\n"
+                                "    vec3 color = texture(texImage, fragTexCoord).rgb;\n"
+                                "    vec3 linear = color * d + spec;\n"
+                                "    linear = mix(fog.rgb, linear, fog.a);\n"
+                                "    vec3 toneMapped = linear / (vec3(0.4) + linear);\n"
+                                "    fragColor = vec4(linear, 1.0);\n"
+                                "}\n");
+
+        // Link shader program
+        texMatShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
+    }
+
+    // Get shader program's vertex attribute and uniform locations
+    texMatShader->vertPositionAttrib =
+        GL_NO_CHECK(GetAttribLocation(texMatShader->shader.id, "vertPosition"));
+    PLY_ASSERT(texMatShader->vertPositionAttrib >= 0);
+    texMatShader->vertTexCoordAttrib =
+        GL_NO_CHECK(GetAttribLocation(texMatShader->shader.id, "vertTexCoord"));
+    PLY_ASSERT(texMatShader->vertTexCoordAttrib >= 0);
+    texMatShader->vertNormalAttrib =
+        GL_NO_CHECK(GetAttribLocation(texMatShader->shader.id, "vertNormal"));
+    PLY_ASSERT(texMatShader->vertNormalAttrib >= 0);
+    texMatShader->modelToCameraUniform =
+        GL_NO_CHECK(GetUniformLocation(texMatShader->shader.id, "modelToCamera"));
+    PLY_ASSERT(texMatShader->modelToCameraUniform >= 0);
+    texMatShader->cameraToViewportUniform =
+        GL_NO_CHECK(GetUniformLocation(texMatShader->shader.id, "cameraToViewport"));
+    PLY_ASSERT(texMatShader->cameraToViewportUniform >= 0);
+    texMatShader->textureUniform =
+        GL_NO_CHECK(GetUniformLocation(texMatShader->shader.id, "texImage"));
+    PLY_ASSERT(texMatShader->textureUniform >= 0);
+    texMatShader->specularUniform =
+        GL_NO_CHECK(GetUniformLocation(texMatShader->shader.id, "specular"));
+    PLY_ASSERT(texMatShader->specularUniform >= 0);
+    texMatShader->specPowerUniform =
+        GL_NO_CHECK(GetUniformLocation(texMatShader->shader.id, "specPower"));
+    PLY_ASSERT(texMatShader->specPowerUniform >= 0);
+    texMatShader->fogUniform = GL_NO_CHECK(GetUniformLocation(texMatShader->shader.id, "fog"));
+    PLY_ASSERT(texMatShader->fogUniform >= 0);
+
+    return texMatShader;
+}
+
+PLY_NO_INLINE void TexturedMaterialShader::draw(const Float4x4& cameraToViewport,
+                                                const Float4x4& modelToCamera,
+                                                const DrawMesh* drawMesh, GLuint texID,
+                                                const MaterialShader::Props* props) {
+    GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Enable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_TRUE));
+    GL_CHECK(Disable(GL_BLEND));
+
+    GL_CHECK(
+        UniformMatrix4fv(this->cameraToViewportUniform, 1, GL_FALSE, (GLfloat*) &cameraToViewport));
+    GL_CHECK(UniformMatrix4fv(this->modelToCameraUniform, 1, GL_FALSE, (GLfloat*) &modelToCamera));
+
+    // Set remaining uniforms and vertex attributes
+    GL_CHECK(ActiveTexture(GL_TEXTURE0));
+    GL_CHECK(BindTexture(GL_TEXTURE_2D, texID));
+    GL_CHECK(Uniform1i(this->textureUniform, 0));
+    if (!props) {
+        props = &MaterialShader::defaultProps;
+    }
+    GL_CHECK(Uniform3fv(this->specularUniform, 1, (const GLfloat*) &props->specular));
+    GL_CHECK(Uniform1f(this->specPowerUniform, props->specPower));
+    GL_CHECK(Uniform4fv(this->fogUniform, 1, (const GLfloat*) &props->fog));
+
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
+    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::TexturedNormal);
+    GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPNT), (GLvoid*) offsetof(VertexPNT, pos)));
+    GL_CHECK(EnableVertexAttribArray(this->vertNormalAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertNormalAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPNT),
+                                 (GLvoid*) offsetof(VertexPNT, normal)));
+    GL_CHECK(EnableVertexAttribArray(this->vertTexCoordAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertTexCoordAttrib, 2, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPNT), (GLvoid*) offsetof(VertexPNT, uv)));
+
+    // Draw this VBO
+    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh->indexBuffer.id));
+    GL_CHECK(
+        DrawElements(GL_TRIANGLES, (GLsizei) drawMesh->numIndices, GL_UNSIGNED_SHORT, (void*) 0));
+}
+
+//---------------------------------------------------------
+
 PLY_NO_INLINE Owned<SkinnedShader> SkinnedShader::create() {
     Owned<SkinnedShader> skinnedShader = new SkinnedShader;
     {
@@ -595,7 +716,7 @@ void drawTexturedShader(const TexturedShader* shader, const Float4x4& modelToVie
 
 void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, const Float4& color,
                           const DrawMesh* drawMesh, bool depthTest) {
-    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::Textured);
+    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::TexturedFlat);
     drawTexturedShader(this, modelToViewport, textureID, color, drawMesh->vbo.id,
                        drawMesh->indexBuffer.id, drawMesh->numIndices, depthTest);
 }

@@ -127,14 +127,26 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
             }
         }
         out->vbo = GLBuffer::create(vertices.view().bufferView());
-    } else if (vertexType == DrawMesh::VertexType::Textured) {
-        // Textured vertices (not skinned)
+    } else if (vertexType == DrawMesh::VertexType::TexturedFlat) {
+        // Textured vertices (not skinned) without normal
         PLY_ASSERT(forSkel.isEmpty());
         PLY_ASSERT(srcMesh->mTextureCoords[0]);
         Array<VertexPT> vertices;
         vertices.resize(srcMesh->mNumVertices);
         for (u32 j = 0; j < srcMesh->mNumVertices; j++) {
             vertices[j].pos = *(Float3*) (srcMesh->mVertices + j);
+            vertices[j].uv = *(Float2*) (srcMesh->mTextureCoords[0] + j);
+        }
+        out->vbo = GLBuffer::create(vertices.view().bufferView());
+    } else if (vertexType == DrawMesh::VertexType::TexturedNormal) {
+        // Textured vertices (not skinned) with normal
+        PLY_ASSERT(forSkel.isEmpty());
+        PLY_ASSERT(srcMesh->mTextureCoords[0]);
+        Array<VertexPNT> vertices;
+        vertices.resize(srcMesh->mNumVertices);
+        for (u32 j = 0; j < srcMesh->mNumVertices; j++) {
+            vertices[j].pos = *(Float3*) (srcMesh->mVertices + j);
+            vertices[j].normal = *(Float3*) (srcMesh->mNormals + j);
             vertices[j].uv = *(Float2*) (srcMesh->mTextureCoords[0] + j);
         }
         out->vbo = GLBuffer::create(vertices.view().bufferView());
@@ -300,6 +312,7 @@ struct GroupMeshes {
 
 DrawGroup loadDrawGroup(const aiScene* srcScene, const aiNode* srcNode, const MeshMap* mm) {
     DrawGroup dg;
+    dg.groupToWorld = ((Float4x4*) &srcNode->mTransformation)->transposed();
     for (u32 c = 0; c < srcNode->mNumChildren; c++) {
         const aiNode* srcChild = srcNode->mChildren[c];
         for (u32 m = 0; m < srcChild->mNumMeshes; m++) {
@@ -343,12 +356,11 @@ void Assets::load(StringView assetsPath) {
         assets->shrub = getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub"), VT::NotSkinned);
         assets->shrub2 =
             getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub2"), VT::NotSkinned);
-        assets->city =
-            getMeshes(nullptr, scene, scene->mRootNode->FindNode("City"), VT::NotSkinned);
-        assets->cloud =
-            getMeshes(&mm, scene, scene->mRootNode->FindNode("Cloud"), VT::Textured);
+        assets->city = getMeshes(&mm, scene, scene->mRootNode->FindNode("City"), VT::TexturedNormal);
+        assets->cloud = getMeshes(&mm, scene, scene->mRootNode->FindNode("Cloud"), VT::TexturedFlat);
         assets->shrubGroup = loadDrawGroup(scene, scene->mRootNode->FindNode("ShrubGroup"), &mm);
         assets->cloudGroup = loadDrawGroup(scene, scene->mRootNode->FindNode("CloudGroup"), &mm);
+        assets->cityGroup = loadDrawGroup(scene, scene->mRootNode->FindNode("CityGroup"), &mm);
     }
     {
         Assimp::Importer importer;
@@ -416,6 +428,13 @@ void Assets::load(StringView assetsPath) {
         params.repeatY = false;
         assets->cloudTexture.init(im, 3, params);
     }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "window.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        assets->windowTexture.init(im, 3, {});
+    }
 
     // Load font resources
     assets->sdfCommon = SDFCommon::create();
@@ -429,6 +448,7 @@ void Assets::load(StringView assetsPath) {
 
     // Load shaders
     assets->matShader = MaterialShader::create();
+    assets->texMatShader = TexturedMaterialShader::create();
     assets->skinnedShader = SkinnedShader::create();
     assets->flatShader = FlatShader::create();
     assets->flatShaderInstanced = FlatShaderInstanced::create();

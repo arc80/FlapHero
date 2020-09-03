@@ -38,6 +38,7 @@ struct DrawGroup {
         const DrawMesh* drawMesh = nullptr;
     };
 
+    Float4x4 groupToWorld = Float4x4::identity();
     Array<Instance> instances;
 };
 
@@ -57,6 +58,7 @@ struct Assets {
     Array<Owned<DrawMesh>> star;
     DrawGroup shrubGroup;
     DrawGroup cloudGroup;
+    DrawGroup cityGroup;
 
     BirdAnimData bad;
     Array<FallAnimFrame> fallAnim;
@@ -66,12 +68,14 @@ struct Assets {
     Texture waveTexture;
     Texture hypnoPaletteTexture;
     Texture cloudTexture;
+    Texture windowTexture;
 
     Owned<SDFCommon> sdfCommon;
     Owned<SDFOutline> sdfOutline;
     Owned<SDFFont> sdfFont;
 
     Owned<MaterialShader> matShader;
+    Owned<TexturedMaterialShader> texMatShader;
     Owned<SkinnedShader> skinnedShader;
     Owned<FlatShader> flatShader;
     Owned<FlatShaderInstanced> flatShaderInstanced;

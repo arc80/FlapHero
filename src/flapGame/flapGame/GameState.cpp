@@ -311,6 +311,7 @@ void adjustX(GameState* gs, float amount) {
         recovering->curve[1].pos.x += amount;
     }
     gs->shrubX = wrap(gs->shrubX + amount, GameState::ShrubRepeat) - GameState::ShrubRepeat;
+    gs->buildingX = wrap(gs->buildingX + amount, GameState::BuildingRepeat);
 }
 
 //---------------------------------------
