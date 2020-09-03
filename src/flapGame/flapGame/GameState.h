@@ -132,7 +132,7 @@ struct GameState {
     static constexpr float WorldDistance = 80.f;
     static constexpr float DefaultAngle = -0.1f * Pi;
     static constexpr float FollowCamRelBirdX = 4.5f;
-    static constexpr float ShrubRepeat = 57.2f;
+    static constexpr float ShrubRepeat = 26.625f;
     static constexpr float BuildingRepeat = 42.f;
 
     OuterContext* outerCtx = nullptr;

@@ -302,7 +302,7 @@ void renderGamePanel(const DrawContext* dc) {
         // Draw shrubs
         Float3 skyColor = {sRGBToLinear(113.f / 255), sRGBToLinear(200.f / 255),
                            sRGBToLinear(206.f / 255)};
-        for (u32 i = 0; i < 2; i++) {
+        for (u32 i = 0; i < 3; i++) {
             MaterialShader::Props matProps;
             matProps.specular = 0.025f;
             matProps.fog = {skyColor, 0.8f};
@@ -311,9 +311,8 @@ void renderGamePanel(const DrawContext* dc) {
                 matProps.diffuse = inst.drawMesh->diffuse * 4.f;
                 a->matShader->draw(
                     cameraToViewport,
-                    worldToCamera *
-                        Float4x4::makeTranslation({gs->shrubX + GameState::ShrubRepeat * i,
-                                                   109.67f - GameState::WorldDistance, -16.7244f}) *
+                    worldToCamera * a->shrubGroup.groupToWorld *
+                        Float4x4::makeTranslation({gs->shrubX + GameState::ShrubRepeat * i, 0, 0}) *
                         inst.itemToGroup,
                     inst.drawMesh, &matProps);
             }
