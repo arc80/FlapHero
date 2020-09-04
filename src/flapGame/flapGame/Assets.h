@@ -47,6 +47,7 @@ struct Assets {
     
     Array<Owned<DrawMesh>> bird;
     Array<Owned<DrawMesh>> floor;
+    Array<Owned<DrawMesh>> floorStripe;
     Array<Owned<DrawMesh>> pipe;
     Array<Owned<DrawMesh>> shrub;
     Array<Owned<DrawMesh>> shrub2;
@@ -69,6 +70,7 @@ struct Assets {
     Texture hypnoPaletteTexture;
     Texture cloudTexture;
     Texture windowTexture;
+    Texture stripeTexture;
 
     Owned<SDFCommon> sdfCommon;
     Owned<SDFOutline> sdfOutline;

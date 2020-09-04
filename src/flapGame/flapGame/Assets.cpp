@@ -170,15 +170,19 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
 }
 
 Array<Owned<DrawMesh>> getMeshes(MeshMap* mm, const aiScene* srcScene, const aiNode* srcNode,
-                                 DrawMesh::VertexType vertexType, ArrayView<Bone> forSkel = {}) {
+                                 DrawMesh::VertexType vertexType, ArrayView<Bone> forSkel = {},
+                                 LambdaView<bool(StringView matName)> filter = {}) {
     Array<Owned<DrawMesh>> result;
     for (u32 m = 0; m < srcNode->mNumMeshes; m++) {
         const aiMesh* srcMesh = srcScene->mMeshes[srcNode->mMeshes[m]];
-        result.append(toDrawMesh(mm, srcScene, srcMesh, vertexType, forSkel));
+        if (!filter.isValid() ||
+            filter(toStringView(srcScene->mMaterials[srcMesh->mMaterialIndex]->GetName()))) {
+            result.append(toDrawMesh(mm, srcScene, srcMesh, vertexType, forSkel));
+        }
     }
     for (u32 c = 0; c < srcNode->mNumChildren; c++) {
         result.moveExtend(
-            getMeshes(mm, srcScene, srcNode->mChildren[c], vertexType, forSkel).view());
+            getMeshes(mm, srcScene, srcNode->mChildren[c], vertexType, forSkel, filter).view());
     }
     return result;
 }
@@ -350,14 +354,20 @@ void Assets::load(StringView assetsPath) {
                               aiProcess_Triangulate);
         MeshMap mm;
         assets->floor =
-            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Floor"), VT::NotSkinned);
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Floor"), VT::NotSkinned, {},
+                      [](StringView matName) { return matName != "Stripes"; });
+        assets->floorStripe =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Floor"), VT::TexturedNormal, {},
+                      [](StringView matName) { return matName == "Stripes"; });
         assets->pipe =
             getMeshes(nullptr, scene, scene->mRootNode->FindNode("Pipe"), VT::NotSkinned);
         assets->shrub = getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub"), VT::NotSkinned);
         assets->shrub2 =
             getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub2"), VT::NotSkinned);
-        assets->city = getMeshes(&mm, scene, scene->mRootNode->FindNode("City"), VT::TexturedNormal);
-        assets->cloud = getMeshes(&mm, scene, scene->mRootNode->FindNode("Cloud"), VT::TexturedFlat);
+        assets->city =
+            getMeshes(&mm, scene, scene->mRootNode->FindNode("City"), VT::TexturedNormal);
+        assets->cloud =
+            getMeshes(&mm, scene, scene->mRootNode->FindNode("Cloud"), VT::TexturedFlat);
         assets->shrubGroup = loadDrawGroup(scene, scene->mRootNode->FindNode("ShrubGroup"), &mm);
         assets->cloudGroup = loadDrawGroup(scene, scene->mRootNode->FindNode("CloudGroup"), &mm);
         assets->cityGroup = loadDrawGroup(scene, scene->mRootNode->FindNode("CityGroup"), &mm);
@@ -434,6 +444,13 @@ void Assets::load(StringView assetsPath) {
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
         assets->windowTexture.init(im, 3, {});
+    }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "stripe.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        assets->stripeTexture.init(im, 3, {});
     }
 
     // Load font resources

@@ -123,7 +123,7 @@ struct GameState {
     static constexpr float LowestHeight = -10.766f;
     static constexpr float TerminalVelocity = -60.f;
     static constexpr float ScrollRate = 10.f;
-    static constexpr float WrapAmount = 6.f;
+    static constexpr float WrapAmount = 6.75f;
     static constexpr float PipeSpacing = 13.f;
     static constexpr float PipeRadius = 2.f;
     static constexpr float BirdRadius = 1.f;

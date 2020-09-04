@@ -289,12 +289,19 @@ void renderGamePanel(const DrawContext* dc) {
         }
 
         // Draw floor
+        for (const DrawMesh* dm : a->floorStripe) {
+            a->texMatShader->draw(
+                cameraToViewport,
+                worldToCamera *
+                    Float4x4::makeTranslation({0.f, 0.f, dc->visibleExtents.mins.y + 4.f}) *
+                    Float4x4::makeRotation({0, 0, 1}, Pi / 2.f),
+                dm, a->stripeTexture.id);
+        }
         for (const DrawMesh* dm : a->floor) {
             a->matShader->draw(
                 cameraToViewport,
                 worldToCamera *
-                    Float4x4::makeTranslation({worldToCamera.invertedOrtho()[3].x, 0.f,
-                                               dc->visibleExtents.mins.y + 4.f}) *
+                    Float4x4::makeTranslation({0.f, 0.f, dc->visibleExtents.mins.y + 4.f}) *
                     Float4x4::makeRotation({0, 0, 1}, Pi / 2.f),
                 dm);
         }
