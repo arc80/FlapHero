@@ -424,7 +424,7 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
     gf->dynBuffers.beginFrame();
     float intervalFrac = gf->fracTime / gf->simulationTimeStep;
 
-#if !PLY_TARGET_IOS // doesn't exist in OpenGLES 3
+#if !PLY_TARGET_IOS && !PLY_TARGET_ANDROID// doesn't exist in OpenGLES 3
     GL_CHECK(Enable(GL_FRAMEBUFFER_SRGB));
 #endif
 

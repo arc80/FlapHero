@@ -74,7 +74,7 @@ PLY_NO_INLINE void DynamicArrayBuffers::beginFrame() {
 PLY_NO_INLINE Shader Shader::compile(GLenum type, StringView source) {
     GLuint id = GL_NO_CHECK(CreateShader(type));
     PLY_ASSERT(GL_NO_CHECK(GetError()) == GL_NO_ERROR);
-#if PLY_TARGET_IOS
+#if PLY_TARGET_IOS || PLY_TARGET_ANDROID
     String fullSource = String::format("#version 300 es\n"
                                        "precision mediump float;\n"
                                        "{}{}",

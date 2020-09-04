@@ -2,6 +2,10 @@
 #include <flapGame/Core.h>
 #if PLY_TARGET_IOS
 #import <OpenGLES/ES3/gl.h>
+#elif PLY_TARGET_ANDROID
+#include <GLES3/gl32.h>
+#define glDepthRange glDepthRangef
+#define glClearDepth glClearDepthf
 #else
 #include <glad/glad.h>
 #endif
