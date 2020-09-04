@@ -336,7 +336,7 @@ void renderGamePanel(const DrawContext* dc) {
         {
             MaterialShader::Props matProps;
             matProps.specular = 0.0025f;
-            matProps.fog = {skyColor, 0.75f};
+            matProps.fog = {mix(Float3{1, 1, 1}, skyColor, 0.4f), 0.5f};
             for (float r = -3; r <= 3; r++) {
                 for (const DrawGroup::Instance& inst : a->cityGroup.instances) {
                     a->texMatShader->draw(
