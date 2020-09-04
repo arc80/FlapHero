@@ -134,6 +134,7 @@ struct GameState {
     static constexpr float FollowCamRelBirdX = 4.5f;
     static constexpr float ShrubRepeat = 26.625f;
     static constexpr float BuildingRepeat = 44.f;
+    static constexpr float CloudRadiansPerCameraX = 0.0005f;
 
     OuterContext* outerCtx = nullptr;
     Random random;
@@ -221,6 +222,7 @@ struct GameState {
     Playfield playfield;
     float shrubX = -ShrubRepeat;
     float buildingX = 0;
+    float cloudAngleOffset = 0.05f;
 
     void updateCamera(bool cut = false);
     void startPlaying();

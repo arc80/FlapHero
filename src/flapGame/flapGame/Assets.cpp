@@ -434,7 +434,6 @@ void Assets::load(StringView assetsPath) {
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
         SamplerParams params;
-        params.repeatX = false;
         params.repeatY = false;
         assets->cloudTexture.init(im, 3, params);
     }

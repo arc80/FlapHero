@@ -312,6 +312,8 @@ void adjustX(GameState* gs, float amount) {
     }
     gs->shrubX = wrap(gs->shrubX + amount, GameState::ShrubRepeat) - GameState::ShrubRepeat;
     gs->buildingX = wrap(gs->buildingX + amount, GameState::BuildingRepeat);
+    gs->cloudAngleOffset =
+        wrap(gs->cloudAngleOffset - amount * GameState::CloudRadiansPerCameraX, 2 * Pi);
 }
 
 //---------------------------------------

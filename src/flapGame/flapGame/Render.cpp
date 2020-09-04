@@ -310,8 +310,7 @@ void renderGamePanel(const DrawContext* dc) {
         Float3 skyColor = fromSRGB(Float3{113.f / 255, 200.f / 255, 206.f / 255});
         {
             ShrubShader::Props shrubProps;
-            shrubProps.diffuse[0] =
-                mix(fromSRGB(Float3{0.2f, 0.7f, 0.f} * 0.85f), skyColor, 0.25f);
+            shrubProps.diffuse[0] = mix(fromSRGB(Float3{0.2f, 0.7f, 0.f} * 0.85f), skyColor, 0.25f);
             shrubProps.diffuse[1] = mix(fromSRGB(Float3{0.3f, 0.85f, 0.3f}), skyColor, 0.15f);
             shrubProps.specular = {mix(Float3{1, 1, 1}, skyColor, 0.25f), 0.15f};
             shrubProps.specPower = 1.f;
@@ -333,7 +332,7 @@ void renderGamePanel(const DrawContext* dc) {
 
         // Draw cities
         Float4x4 skyBoxW2C = worldToCamera;
-        skyBoxW2C[3] = {0, 0, 0, 1};
+        skyBoxW2C[3].asFloat2() = {0, 0};
         {
             MaterialShader::Props matProps;
             matProps.specular = 0.0025f;
@@ -355,11 +354,12 @@ void renderGamePanel(const DrawContext* dc) {
         a->flatShader->drawQuad(Float4x4::makeTranslation({0, 0, 0.999f}), skyColor);
 
         // Draw clouds
-        for (const DrawGroup::Instance& inst : a->cloudGroup.instances) {
-            for (const DrawMesh* dm : a->cloud) {
-                a->texturedShader->draw(cameraToViewport * skyBoxW2C * inst.itemToGroup,
-                                        a->cloudTexture.id, {1, 1, 1, 1}, dm, true);
-            }
+        float cloudAngle =
+            gs->cloudAngleOffset + camToWorld.pos.x * GameState::CloudRadiansPerCameraX;
+        for (const DrawMesh* dm : a->cloud) {
+            a->texturedShader->draw(cameraToViewport * skyBoxW2C *
+                                        Float4x4::makeRotation({0, 0, 1}, cloudAngle),
+                                    a->cloudTexture.id, {1, 1, 1, 1}, dm, true);
         }
 
         // Draw flash
