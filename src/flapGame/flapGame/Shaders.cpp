@@ -874,8 +874,8 @@ void drawTexturedShader(const TexturedShader* shader, const Float4x4& modelToVie
 
     GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) numIndices, GL_UNSIGNED_SHORT, (void*) 0));
 
-    GL_CHECK(DisableVertexAttribArray(this->positionAttrib));
-    GL_CHECK(DisableVertexAttribArray(this->texCoordAttrib));
+    GL_CHECK(DisableVertexAttribArray(shader->positionAttrib));
+    GL_CHECK(DisableVertexAttribArray(shader->texCoordAttrib));
 }
 
 void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, const Float4& color,
