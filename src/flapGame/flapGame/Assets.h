@@ -71,6 +71,8 @@ struct Assets {
     Texture cloudTexture;
     Texture windowTexture;
     Texture stripeTexture;
+    Texture shrubTexture;
+    Texture shrub2Texture;
 
     Owned<SDFCommon> sdfCommon;
     Owned<SDFOutline> sdfOutline;
@@ -78,6 +80,7 @@ struct Assets {
 
     Owned<MaterialShader> matShader;
     Owned<TexturedMaterialShader> texMatShader;
+    Owned<ShrubShader> shrubShader;
     Owned<SkinnedShader> skinnedShader;
     Owned<FlatShader> flatShader;
     Owned<FlatShaderInstanced> flatShaderInstanced;

@@ -361,9 +361,9 @@ void Assets::load(StringView assetsPath) {
                       [](StringView matName) { return matName == "Stripes"; });
         assets->pipe =
             getMeshes(nullptr, scene, scene->mRootNode->FindNode("Pipe"), VT::NotSkinned);
-        assets->shrub = getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub"), VT::NotSkinned);
+        assets->shrub = getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub"), VT::TexturedNormal);
         assets->shrub2 =
-            getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub2"), VT::NotSkinned);
+            getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub2"), VT::TexturedNormal);
         assets->city =
             getMeshes(&mm, scene, scene->mRootNode->FindNode("City"), VT::TexturedNormal);
         assets->cloud =
@@ -452,6 +452,20 @@ void Assets::load(StringView assetsPath) {
         image::OwnImage im = loadPNG(pngData);
         assets->stripeTexture.init(im, 3, {});
     }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "Shrub.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        assets->shrubTexture.init(im, 3, {});
+    }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "Shrub2.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        assets->shrub2Texture.init(im, 3, {});
+    }
 
     // Load font resources
     assets->sdfCommon = SDFCommon::create();
@@ -466,6 +480,7 @@ void Assets::load(StringView assetsPath) {
     // Load shaders
     assets->matShader = MaterialShader::create();
     assets->texMatShader = TexturedMaterialShader::create();
+    assets->shrubShader = ShrubShader::create();
     assets->skinnedShader = SkinnedShader::create();
     assets->flatShader = FlatShader::create();
     assets->flatShaderInstanced = FlatShaderInstanced::create();

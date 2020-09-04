@@ -234,6 +234,148 @@ PLY_NO_INLINE void TexturedMaterialShader::draw(const Float4x4& cameraToViewport
 
 //---------------------------------------------------------
 
+PLY_NO_INLINE Owned<ShrubShader> ShrubShader::create() {
+    Owned<ShrubShader> shrubShader = new ShrubShader;
+    {
+        Shader vertexShader = Shader::compile(
+            GL_VERTEX_SHADER,
+            "in vec3 vertPosition;\n"
+            "in vec3 vertNormal;\n"
+            "in vec2 vertTexCoord;\n"
+            "uniform mat4 modelToCamera;\n"
+            "uniform mat4 cameraToViewport;\n"
+            "out vec3 fragNormal\n;"
+            "out vec2 fragTexCoord\n;"
+            "\n"
+            "void main() {\n"
+            "    fragNormal = vec3(modelToCamera * vec4(vertNormal, 0.0));\n"
+            "    fragTexCoord = vertTexCoord;\n"
+            "    gl_Position = cameraToViewport * (modelToCamera * vec4(vertPosition, 1.0));\n"
+            "}\n");
+
+        Shader fragmentShader = Shader::compile(
+            GL_FRAGMENT_SHADER, "in vec3 fragNormal;\n"
+                                "in vec2 fragTexCoord;\n"
+                                "uniform sampler2D texImage;\n"
+                                "uniform vec3 diffuse0;\n"
+                                "uniform vec3 diffuse1;\n"
+                                "uniform vec4 shade;\n"
+                                "uniform vec4 specular;\n"
+                                "uniform float specPower;\n"
+                                "uniform vec4 rim;\n"
+                                "vec3 lightDir = normalize(vec3(1.0, -1.0, -0.5));\n"
+                                "vec3 specLightDir = normalize(vec3(0.8, -1.0, 0.0));\n"
+                                "out vec4 fragColor;\n"
+                                "\n"
+                                "void main() {\n"
+                                "    float texValue = texture(texImage, fragTexCoord).r;\n"
+                                "    vec3 color = mix(diffuse0, diffuse1, texValue);\n"
+                                "    vec3 fn = normalize(fragNormal);\n"
+                                "    float diffAmt = 0.5 - dot(fn, lightDir) * 0.5;\n"
+                                "    color *= mix(vec3(1.0), shade.rgb, min(shade.a * (1.0 - diffAmt), 1.0));\n"
+                                "    vec3 reflect = lightDir - fn * (dot(fn, specLightDir) * 2.0);\n"
+                                "    float specAmt = pow(max(reflect.z, 0.0), specPower) * texValue;\n"
+                                "    specAmt *= texValue;\n"
+                                "    color = mix(color, specular.rgb, specular.a * specAmt);\n"
+                                "    float rimAmt = clamp(1.0 - 2.5 * fn.z, 0.0, 1.0);\n"
+                                "    color = mix(color, rim.rgb, rim.a * rimAmt);\n"
+                                "    fragColor = vec4(color, 1.0);\n"
+                                "}\n");
+
+        // Link shader program
+        shrubShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
+    }
+
+    // Get shader program's vertex attribute and uniform locations
+    shrubShader->vertPositionAttrib =
+        GL_NO_CHECK(GetAttribLocation(shrubShader->shader.id, "vertPosition"));
+    PLY_ASSERT(shrubShader->vertPositionAttrib >= 0);
+    shrubShader->vertTexCoordAttrib =
+        GL_NO_CHECK(GetAttribLocation(shrubShader->shader.id, "vertTexCoord"));
+    PLY_ASSERT(shrubShader->vertTexCoordAttrib >= 0);
+    shrubShader->vertNormalAttrib =
+        GL_NO_CHECK(GetAttribLocation(shrubShader->shader.id, "vertNormal"));
+    PLY_ASSERT(shrubShader->vertNormalAttrib >= 0);
+    shrubShader->modelToCameraUniform =
+        GL_NO_CHECK(GetUniformLocation(shrubShader->shader.id, "modelToCamera"));
+    PLY_ASSERT(shrubShader->modelToCameraUniform >= 0);
+    shrubShader->cameraToViewportUniform =
+        GL_NO_CHECK(GetUniformLocation(shrubShader->shader.id, "cameraToViewport"));
+    PLY_ASSERT(shrubShader->cameraToViewportUniform >= 0);
+    shrubShader->textureUniform =
+        GL_NO_CHECK(GetUniformLocation(shrubShader->shader.id, "texImage"));
+    PLY_ASSERT(shrubShader->textureUniform >= 0);
+    shrubShader->diffuse0Uniform =
+        GL_NO_CHECK(GetUniformLocation(shrubShader->shader.id, "diffuse0"));
+    PLY_ASSERT(shrubShader->diffuse0Uniform >= 0);
+    shrubShader->diffuse1Uniform =
+        GL_NO_CHECK(GetUniformLocation(shrubShader->shader.id, "diffuse1"));
+    PLY_ASSERT(shrubShader->diffuse1Uniform >= 0);
+    shrubShader->shadeUniform =
+        GL_NO_CHECK(GetUniformLocation(shrubShader->shader.id, "shade"));
+    PLY_ASSERT(shrubShader->shadeUniform >= 0);
+    shrubShader->specularUniform =
+        GL_NO_CHECK(GetUniformLocation(shrubShader->shader.id, "specular"));
+    PLY_ASSERT(shrubShader->specularUniform >= 0);
+    shrubShader->specPowerUniform =
+        GL_NO_CHECK(GetUniformLocation(shrubShader->shader.id, "specPower"));
+    PLY_ASSERT(shrubShader->specPowerUniform >= 0);
+    shrubShader->rimUniform =
+        GL_NO_CHECK(GetUniformLocation(shrubShader->shader.id, "rim"));
+    PLY_ASSERT(shrubShader->rimUniform >= 0);
+
+    return shrubShader;
+}
+
+ShrubShader::Props ShrubShader::defaultProps;
+
+PLY_NO_INLINE void ShrubShader::draw(const Float4x4& cameraToViewport,
+                                     const Float4x4& modelToCamera, const DrawMesh* drawMesh,
+                                     GLuint texID, const ShrubShader::Props* props) {
+    GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Enable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_TRUE));
+    GL_CHECK(Disable(GL_BLEND));
+
+    GL_CHECK(
+        UniformMatrix4fv(this->cameraToViewportUniform, 1, GL_FALSE, (GLfloat*) &cameraToViewport));
+    GL_CHECK(UniformMatrix4fv(this->modelToCameraUniform, 1, GL_FALSE, (GLfloat*) &modelToCamera));
+
+    // Set remaining uniforms and vertex attributes
+    GL_CHECK(ActiveTexture(GL_TEXTURE0));
+    GL_CHECK(BindTexture(GL_TEXTURE_2D, texID));
+    GL_CHECK(Uniform1i(this->textureUniform, 0));
+    if (!props) {
+        props = &ShrubShader::defaultProps;
+    }
+    GL_CHECK(Uniform3fv(this->diffuse0Uniform, 1, (const GLfloat*) &props->diffuse[0]));
+    GL_CHECK(Uniform3fv(this->diffuse1Uniform, 1, (const GLfloat*) &props->diffuse[1]));
+    GL_CHECK(Uniform4fv(this->shadeUniform, 1, (const GLfloat*) &props->shade));
+    GL_CHECK(Uniform4fv(this->specularUniform, 1, (const GLfloat*) &props->specular));
+    GL_CHECK(Uniform1f(this->specPowerUniform, props->specPower));
+    GL_CHECK(Uniform4fv(this->rimUniform, 1, (const GLfloat*) &props->rim));
+
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
+    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::TexturedNormal);
+    GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPNT), (GLvoid*) offsetof(VertexPNT, pos)));
+    GL_CHECK(EnableVertexAttribArray(this->vertNormalAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertNormalAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPNT),
+                                 (GLvoid*) offsetof(VertexPNT, normal)));
+    GL_CHECK(EnableVertexAttribArray(this->vertTexCoordAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertTexCoordAttrib, 2, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPNT), (GLvoid*) offsetof(VertexPNT, uv)));
+
+    // Draw this VBO
+    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh->indexBuffer.id));
+    GL_CHECK(
+        DrawElements(GL_TRIANGLES, (GLsizei) drawMesh->numIndices, GL_UNSIGNED_SHORT, (void*) 0));
+}
+
+//---------------------------------------------------------
+
 PLY_NO_INLINE Owned<SkinnedShader> SkinnedShader::create() {
     Owned<SkinnedShader> skinnedShader = new SkinnedShader;
     {

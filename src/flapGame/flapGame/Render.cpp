@@ -307,21 +307,27 @@ void renderGamePanel(const DrawContext* dc) {
         }
 
         // Draw shrubs
-        Float3 skyColor = {sRGBToLinear(113.f / 255), sRGBToLinear(200.f / 255),
-                           sRGBToLinear(206.f / 255)};
-        for (u32 i = 0; i < 3; i++) {
-            MaterialShader::Props matProps;
-            matProps.specular = 0.025f;
-            matProps.fog = {skyColor, 0.85f};
-
-            for (const DrawGroup::Instance& inst : a->shrubGroup.instances) {
-                matProps.diffuse = inst.drawMesh->diffuse * 4.f;
-                a->matShader->draw(
-                    cameraToViewport,
-                    worldToCamera * a->shrubGroup.groupToWorld *
-                        Float4x4::makeTranslation({gs->shrubX + GameState::ShrubRepeat * i, 0, 0}) *
-                        inst.itemToGroup,
-                    inst.drawMesh, &matProps);
+        Float3 skyColor = fromSRGB(Float3{113.f / 255, 200.f / 255, 206.f / 255});
+        {
+            ShrubShader::Props shrubProps;
+            shrubProps.diffuse[0] =
+                mix(fromSRGB(Float3{0.2f, 0.7f, 0.f} * 0.85f), skyColor, 0.25f);
+            shrubProps.diffuse[1] = mix(fromSRGB(Float3{0.3f, 0.85f, 0.3f}), skyColor, 0.15f);
+            shrubProps.specular = {mix(Float3{1, 1, 1}, skyColor, 0.25f), 0.15f};
+            shrubProps.specPower = 1.f;
+            shrubProps.shade = {mix(Float3{0, 0.2f, 0.4f}, skyColor, 0.2f), 0.6f};
+            shrubProps.rim = {mix(Float3{1, 1, 1}, skyColor, 0.5f), 0.5f};
+            for (u32 i = 0; i < 3; i++) {
+                for (const DrawGroup::Instance& inst : a->shrubGroup.instances) {
+                    GLuint texID =
+                        (inst.drawMesh == a->shrub[0]) ? a->shrubTexture.id : a->shrub2Texture.id;
+                    a->shrubShader->draw(cameraToViewport,
+                                         worldToCamera * a->shrubGroup.groupToWorld *
+                                             Float4x4::makeTranslation(
+                                                 {gs->shrubX + GameState::ShrubRepeat * i, 0, 0}) *
+                                             inst.itemToGroup,
+                                         inst.drawMesh, texID, &shrubProps);
+                }
             }
         }
 
