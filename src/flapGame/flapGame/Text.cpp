@@ -303,6 +303,9 @@ PLY_NO_INLINE void drawText(const SDFCommon* common, const SDFFont* sdfFont, con
 
     // Draw
     GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) tb.numIndices, GL_UNSIGNED_SHORT, (void*) 0));
+
+    GL_CHECK(DisableVertexAttribArray(common->texCoordAttrib));
+    GL_CHECK(DisableVertexAttribArray(common->positionAttrib));
 }
 
 PLY_NO_INLINE void drawOutlinedText(const SDFOutline* outline, const SDFFont* sdfFont,
@@ -342,6 +345,9 @@ PLY_NO_INLINE void drawOutlinedText(const SDFOutline* outline, const SDFFont* sd
 
     // Draw
     GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) tb.numIndices, GL_UNSIGNED_SHORT, (void*) 0));
+
+    GL_CHECK(DisableVertexAttribArray(outline->texCoordAttrib));
+    GL_CHECK(DisableVertexAttribArray(outline->positionAttrib));
 }
 
 } // namespace flap

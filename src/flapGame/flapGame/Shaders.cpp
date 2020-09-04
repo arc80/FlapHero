@@ -90,6 +90,9 @@ PLY_NO_INLINE void MaterialShader::draw(const Float4x4& cameraToViewport,
         GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh.indexBuffer.id));
         GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) drawMesh.numIndices, GL_UNSIGNED_SHORT,
                               (void*) 0));
+
+        GL_CHECK(DisableVertexAttribArray(this->vertNormalAttrib));
+        GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
     }
 }
 
@@ -220,6 +223,11 @@ PLY_NO_INLINE void SkinnedShader::draw(const Float4x4& cameraToViewport,
         GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh.indexBuffer.id));
         GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) drawMesh.numIndices, GL_UNSIGNED_SHORT,
                               (void*) 0));
+
+        GL_CHECK(DisableVertexAttribArray(this->vertNormalAttrib));
+        GL_CHECK(DisableVertexAttribArray(this->vertBlendIndicesAttrib));
+        GL_CHECK(DisableVertexAttribArray(this->vertBlendWeightsAttrib));
+        GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
     }
 }
 
@@ -297,6 +305,8 @@ PLY_NO_INLINE void FlatShader::draw(const Float4x4& modelToViewport,
         GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh.indexBuffer.id));
         GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) drawMesh.numIndices, GL_UNSIGNED_SHORT,
                               (void*) 0));
+
+        GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
     }
 }
 
@@ -319,6 +329,8 @@ PLY_NO_INLINE void FlatShader::drawQuad(const Float4x4& modelToViewport,
     GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->quadIndices.id));
     GL_CHECK(
         DrawElements(GL_TRIANGLES, (GLsizei) this->quadNumIndices, GL_UNSIGNED_SHORT, (void*) 0));
+
+    GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
 }
 
 //---------------------------------------------------------
@@ -396,8 +408,11 @@ PLY_NO_INLINE void FlatShaderInstanced::draw(const DrawMesh& drawMesh,
 
     for (u32 c = 0; c < 4; c++) {
         GL_CHECK(VertexAttribDivisor(this->instModelToViewportAttrib + c, 0));
+        GL_CHECK(DisableVertexAttribArray(this->instModelToViewportAttrib + c));
     }
     GL_CHECK(VertexAttribDivisor(this->instColorAttrib, 0));
+    GL_CHECK(DisableVertexAttribArray(this->instColorAttrib));
+    GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
 }
 
 //---------------------------------------------------------
@@ -491,6 +506,8 @@ void FlashShader::drawQuad(const Float4x4& modelToViewport, const Float4& vertTo
 
     // Draw
     GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) this->numIndices, GL_UNSIGNED_SHORT, (void*) 0));
+
+    GL_CHECK(DisableVertexAttribArray(this->positionAttrib));
 }
 
 //---------------------------------------------------------
@@ -574,6 +591,9 @@ void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, con
     GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesID));
 
     GL_CHECK(DrawElements(GL_TRIANGLES, (GLsizei) indices.numItems, GL_UNSIGNED_SHORT, (void*) 0));
+
+    GL_CHECK(DisableVertexAttribArray(this->texCoordAttrib));
+    GL_CHECK(DisableVertexAttribArray(this->positionAttrib));
 }
 
 //---------------------------------------------------------
@@ -709,6 +729,9 @@ PLY_NO_INLINE void HypnoShader::draw(const Float4x4& modelToViewport, GLuint tex
                                    (void*) 0, instPlacement.numItems()));
 
     GL_CHECK(VertexAttribDivisor(this->instPlacementAttrib, 0));
+
+    GL_CHECK(DisableVertexAttribArray(this->instPlacementAttrib));
+    GL_CHECK(DisableVertexAttribArray(this->positionAttrib));
 }
 
 //---------------------------------------------------------
@@ -801,6 +824,9 @@ PLY_NO_INLINE void CopyShader::drawQuad(const Float4x4& modelToViewport, GLuint 
     GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->quadIndices.id));
     GL_CHECK(
         DrawElements(GL_TRIANGLES, (GLsizei) this->quadNumIndices, GL_UNSIGNED_SHORT, (void*) 0));
+
+    GL_CHECK(DisableVertexAttribArray(this->vertTexCoordAttrib));
+    GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
 }
 
 } // namespace flap
