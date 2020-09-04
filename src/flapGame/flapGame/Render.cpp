@@ -74,20 +74,20 @@ void drawRoundedRect(const TexturedShader* shader, const Float4x4& modelToViewpo
     };
 
     // Bottom row
-    addQuad({bounds.mins, bounds.mins + Float2{r, r}}, {{0, 1}, {1, 0}});
-    addQuad({bounds.mins + Float2{r, 0}, bounds.bottomRight() + Float2{-r, r}}, {{1, 1}, {1, 0}});
+    addQuad({bounds.mins, bounds.mins + Float2{r, r}}, {{0, 0}, {1, 1}});
+    addQuad({bounds.mins + Float2{r, 0}, bounds.bottomRight() + Float2{-r, r}}, {{1, 0}, {1, 1}});
     addQuad({bounds.bottomRight() + Float2{-r, 0}, bounds.bottomRight() + Float2{0, r}},
-            {{1, 1}, {0, 0}});
+            {{1, 0}, {0, 1}});
 
     // Middle row
-    addQuad({bounds.mins + Float2{0, r}, bounds.topLeft() + Float2{r, -r}}, {{0, 0}, {1, 0}});
-    addQuad({bounds.mins + Float2{r, r}, bounds.maxs + Float2{-r, -r}}, {{1, 0}, {1, 0}});
-    addQuad({bounds.bottomRight() + Float2{-r, r}, bounds.maxs + Float2{0, -r}}, {{1, 0}, {0, 0}});
+    addQuad({bounds.mins + Float2{0, r}, bounds.topLeft() + Float2{r, -r}}, {{0, 1}, {1, 1}});
+    addQuad({bounds.mins + Float2{r, r}, bounds.maxs + Float2{-r, -r}}, {{1, 1}, {1, 1}});
+    addQuad({bounds.bottomRight() + Float2{-r, r}, bounds.maxs + Float2{0, -r}}, {{1, 1}, {0, 1}});
 
     // Top row
-    addQuad({bounds.topLeft() + Float2{0, -r}, bounds.topLeft() + Float2{r, 0}}, {{0, 0}, {1, 1}});
-    addQuad({bounds.topLeft() + Float2{r, -r}, bounds.maxs + Float2{-r, 0}}, {{1, 0}, {1, 1}});
-    addQuad({bounds.maxs + Float2{-r, -r}, bounds.maxs}, {{1, 0}, {0, 1}});
+    addQuad({bounds.topLeft() + Float2{0, -r}, bounds.topLeft() + Float2{r, 0}}, {{0, 1}, {1, 0}});
+    addQuad({bounds.topLeft() + Float2{r, -r}, bounds.maxs + Float2{-r, 0}}, {{1, 1}, {1, 0}});
+    addQuad({bounds.maxs + Float2{-r, -r}, bounds.maxs}, {{1, 1}, {0, 0}});
 
     shader->draw(modelToViewport, textureID, color, verts.view(), indices.view());
 }
@@ -182,8 +182,10 @@ Array<Float4x4> composeBirdBones(const GameState* gs, float intervalFrac) {
 
 void Pipe::draw(const Obstacle::DrawParams& params) const {
     const Assets* a = Assets::instance;
-    a->matShader->draw(params.cameraToViewport, params.worldToCamera * this->pipeToWorld,
-                       a->pipe.view());
+
+    for (const DrawMesh* dm : a->pipe) {
+        a->matShader->draw(params.cameraToViewport, params.worldToCamera * this->pipeToWorld, dm);
+    }
 }
 
 void drawTitle(const TitleScreen* titleScreen) {
@@ -200,10 +202,16 @@ void drawTitle(const TitleScreen* titleScreen) {
                    Float4x4::makeRotation({1, 0, 0}, Pi / 2.f) * skewRot *
                    Float4x4::makeTranslation({0, 0, 2.2f}) * Float4x4::makeScale(7.5f);
     GL_CHECK(DepthRange(0.0, 0.5));
-    a->flatShader->draw(mat, a->title.view(), true);
+    for (const DrawMesh* dm : a->title) {
+        a->flatShader->draw(mat, dm, true);
+    }
     GL_CHECK(DepthRange(0.5, 0.5));
-    a->flatShader->draw(mat, a->outline.view(), true);
-    a->flatShader->draw(mat, a->blackOutline.view(), true);
+    for (const DrawMesh* dm : a->outline) {
+        a->flatShader->draw(mat, dm, true);
+    }
+    for (const DrawMesh* dm : a->blackOutline) {
+        a->flatShader->draw(mat, dm, true);
+    }
 }
 
 void drawStars(const TitleScreen* titleScreen) {
@@ -245,7 +253,7 @@ void renderGamePanel(const DrawContext* dc) {
     const Assets* a = Assets::instance;
     const GameState* gs = dc->gs;
 
-    Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum, 10.f, 100.f);
+    Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum, 10.f, 10000.f);
     GL_CHECK(Viewport((GLint) vf.viewport.mins.x, (GLint) vf.viewport.mins.y,
                       (GLsizei) vf.viewport.width(), (GLsizei) vf.viewport.height()));
 
@@ -261,11 +269,13 @@ void renderGamePanel(const DrawContext* dc) {
         GL_CHECK(StencilFunc(GL_ALWAYS, 1, 0xFF));
         GL_CHECK(StencilOp(GL_KEEP, GL_KEEP, GL_REPLACE));
         GL_CHECK(StencilMask(0xFF));
-        a->skinnedShader->draw(cameraToViewport,
-                               worldToCamera * Float4x4::makeTranslation(birdRelWorld) *
-                                   rot.toFloat4x4() * Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) *
-                                   Float4x4::makeScale(1.0833f),
-                               boneToModel.view(), a->bird.view());
+        for (const DrawMesh* dm : a->bird) {
+            a->skinnedShader->draw(
+                cameraToViewport,
+                worldToCamera * Float4x4::makeTranslation(birdRelWorld) * rot.toFloat4x4() *
+                    Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) * Float4x4::makeScale(1.0833f),
+                boneToModel.view(), dm);
+        }
         GL_CHECK(Disable(GL_STENCIL_TEST));
     }
 
@@ -279,24 +289,85 @@ void renderGamePanel(const DrawContext* dc) {
         }
 
         // Draw floor
-        a->matShader->draw(cameraToViewport,
-                           worldToCamera *
-                               Float4x4::makeTranslation({worldToCamera.invertedOrtho()[3].x, 0.f,
-                                                          dc->visibleExtents.mins.y + 4.f}) *
-                               Float4x4::makeRotation({0, 0, 1}, Pi / 2.f),
-                           a->floor.view());
+        for (const DrawMesh* dm : a->floorStripe) {
+            a->texMatShader->draw(
+                cameraToViewport,
+                worldToCamera *
+                    Float4x4::makeTranslation({0.f, 0.f, dc->visibleExtents.mins.y + 4.f}) *
+                    Float4x4::makeRotation({0, 0, 1}, Pi / 2.f),
+                dm, a->stripeTexture.id);
+        }
+        for (const DrawMesh* dm : a->floor) {
+            a->matShader->draw(
+                cameraToViewport,
+                worldToCamera *
+                    Float4x4::makeTranslation({0.f, 0.f, dc->visibleExtents.mins.y + 4.f}) *
+                    Float4x4::makeRotation({0, 0, 1}, Pi / 2.f),
+                dm);
+        }
 
-        // Draw background
-        a->flatShader->drawQuad(
-            Float4x4::makeTranslation({0, 0, 0.999f}),
-            {sRGBToLinear(113.f / 255), sRGBToLinear(200.f / 255), sRGBToLinear(206.f / 255)});
+        // Draw shrubs
+        Float3 skyColor = fromSRGB(Float3{113.f / 255, 200.f / 255, 206.f / 255});
+        {
+            ShrubShader::Props shrubProps;
+            shrubProps.diffuse[0] = mix(fromSRGB(Float3{0.2f, 0.7f, 0.f} * 0.85f), skyColor, 0.25f);
+            shrubProps.diffuse[1] = mix(fromSRGB(Float3{0.3f, 0.85f, 0.3f}), skyColor, 0.15f);
+            shrubProps.specular = {mix(Float3{1, 1, 1}, skyColor, 0.25f), 0.15f};
+            shrubProps.specPower = 1.f;
+            shrubProps.shade = {mix(Float3{0, 0.2f, 0.4f}, skyColor, 0.2f), 0.6f};
+            shrubProps.rim = {mix(Float3{1, 1, 1}, skyColor, 0.5f), 0.5f};
+            for (u32 i = 0; i < 3; i++) {
+                for (const DrawGroup::Instance& inst : a->shrubGroup.instances) {
+                    GLuint texID =
+                        (inst.drawMesh == a->shrub[0]) ? a->shrubTexture.id : a->shrub2Texture.id;
+                    a->shrubShader->draw(cameraToViewport,
+                                         worldToCamera * a->shrubGroup.groupToWorld *
+                                             Float4x4::makeTranslation(
+                                                 {gs->shrubX + GameState::ShrubRepeat * i, 0, 0}) *
+                                             inst.itemToGroup,
+                                         inst.drawMesh, texID, &shrubProps);
+                }
+            }
+        }
+
+        // Draw cities
+        Float4x4 skyBoxW2C = worldToCamera;
+        skyBoxW2C[3].asFloat2() = {0, 0};
+        {
+            MaterialShader::Props matProps;
+            matProps.specular = 0.0025f;
+            matProps.fog = {mix(Float3{1, 1, 1}, skyColor, 0.4f), 0.5f};
+            for (float r = -3; r <= 3; r++) {
+                for (const DrawGroup::Instance& inst : a->cityGroup.instances) {
+                    a->texMatShader->draw(
+                        cameraToViewport,
+                        worldToCamera * a->cityGroup.groupToWorld *
+                            Float4x4::makeTranslation(
+                                {gs->buildingX + GameState::BuildingRepeat * r, 0, 0}) *
+                            inst.itemToGroup,
+                        inst.drawMesh, a->windowTexture.id, &matProps);
+                }
+            }
+        }
+
+        // Draw sky
+        a->flatShader->drawQuad(Float4x4::makeTranslation({0, 0, 0.999f}), skyColor);
+
+        // Draw clouds
+        float cloudAngle =
+            gs->cloudAngleOffset + camToWorld.pos.x * GameState::CloudRadiansPerCameraX;
+        for (const DrawMesh* dm : a->cloud) {
+            a->texturedShader->draw(cameraToViewport * skyBoxW2C *
+                                        Float4x4::makeRotation({0, 0, 1}, cloudAngle),
+                                    a->cloudTexture.id, {1, 1, 1, 1}, dm, true);
+        }
 
         // Draw flash
         if (auto impact = gs->mode.impact()) {
             a->flashShader->drawQuad(
                 cameraToViewport * worldToCamera * Float4x4::makeTranslation(impact->hit.pos) *
                     Float4x4::makeRotation({1, 0, 0}, Pi * 0.5f) * Float4x4::makeScale(2.f),
-                {0.25f, -0.25f, 0.75f, 0.25f}, a->flashTexture.id, {1.2f, 1.2f, 0, 0.6f});
+                {0.25f, 0.25f, 0.75f, 0.75f}, a->flashTexture.id, {1.2f, 1.2f, 0, 0.6f});
         }
 
         if (auto dead = gs->mode.dead()) {
@@ -306,12 +377,11 @@ void renderGamePanel(const DrawContext* dc) {
                          Float4x4::makeTranslation({244, 520, 0}) * Float4x4::makeScale(1.8f) *
                          Float4x4::makeTranslation({-gameOver.xMid(), 0, 0}),
                      {0.85f, 1.75f}, {0, 0, 0, 0.4f});
-            drawOutlinedText(a->sdfOutline, a->sdfFont, gameOver,
-                             Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                                 Float4x4::makeTranslation({240, 524, 0}) *
-                                 Float4x4::makeScale(1.8f) *
-                                 Float4x4::makeTranslation({-gameOver.xMid(), 0, 0}),
-                             {1, 0.3f, 0.3f, 0.f}, {0, 0, 0, 0}, {{0.65f, 24.f}, {0.75f, 24.f}});
+            drawText(a->sdfCommon, a->sdfFont, gameOver,
+                     Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
+                         Float4x4::makeTranslation({240, 524, 0}) * Float4x4::makeScale(1.8f) *
+                         Float4x4::makeTranslation({-gameOver.xMid(), 0, 0}),
+                     {0.75f, 32.f}, {1.f, 0.85f, 0.0f, 1.f});
             drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 380}, 1.f, "SCORE",
                           String::from(gs->score), {1, 1, 1, 1});
             drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 250}, 0.5f, "BEST",
@@ -324,12 +394,11 @@ void renderGamePanel(const DrawContext* dc) {
                              Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
                              Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
                          {0.85f, 1.75f}, {0, 0, 0, 0.4f});
-                drawOutlinedText(a->sdfOutline, a->sdfFont, playAgain,
-                                 Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                                     Float4x4::makeTranslation({240, 24, 0}) *
-                                     Float4x4::makeScale(0.9f) *
-                                     Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
-                                 {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.6f, 16.f}, {0.75f, 12.f}});
+                drawText(a->sdfCommon, a->sdfFont, playAgain,
+                         Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
+                             Float4x4::makeTranslation({240, 24, 0}) * Float4x4::makeScale(0.9f) *
+                             Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
+                         {0.75f, 16.f}, {1.f, 1.f, 1.f, 1.f});
             }
         }
 
@@ -341,12 +410,11 @@ void renderGamePanel(const DrawContext* dc) {
                          Float4x4::makeTranslation({244, 570, 0}) * Float4x4::makeScale(1.5f) *
                          Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
                      {0.85f, 1.75f}, {0, 0, 0, 0.4f});
-            drawOutlinedText(a->sdfOutline, a->sdfFont, tb,
-                             Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                                 Float4x4::makeTranslation({240, 574, 0}) *
-                                 Float4x4::makeScale(1.5f) *
-                                 Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
-                             {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.65f, 20.f}, {0.75f, 20.f}});
+            drawText(a->sdfCommon, a->sdfFont, tb,
+                     Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
+                         Float4x4::makeTranslation({240, 574, 0}) * Float4x4::makeScale(1.5f) *
+                         Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
+                     {0.75f, 32.f}, {1.f, 1.f, 1.f, 1.f});
         }
 
         if (auto trans = gs->camera.transition()) {

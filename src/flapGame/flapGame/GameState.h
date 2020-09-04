@@ -123,7 +123,7 @@ struct GameState {
     static constexpr float LowestHeight = -10.766f;
     static constexpr float TerminalVelocity = -60.f;
     static constexpr float ScrollRate = 10.f;
-    static constexpr float WrapAmount = 6.f;
+    static constexpr float WrapAmount = 6.75f;
     static constexpr float PipeSpacing = 13.f;
     static constexpr float PipeRadius = 2.f;
     static constexpr float BirdRadius = 1.f;
@@ -132,6 +132,9 @@ struct GameState {
     static constexpr float WorldDistance = 80.f;
     static constexpr float DefaultAngle = -0.1f * Pi;
     static constexpr float FollowCamRelBirdX = 4.5f;
+    static constexpr float ShrubRepeat = 26.625f;
+    static constexpr float BuildingRepeat = 44.f;
+    static constexpr float CloudRadiansPerCameraX = 0.0005f;
 
     OuterContext* outerCtx = nullptr;
     Random random;
@@ -217,6 +220,9 @@ struct GameState {
         Array<float> sortedCheckpoints;
     };
     Playfield playfield;
+    float shrubX = -ShrubRepeat;
+    float buildingX = 0;
+    float cloudAngleOffset = 0.05f;
 
     void updateCamera(bool cut = false);
     void startPlaying();

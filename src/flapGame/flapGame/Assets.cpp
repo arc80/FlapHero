@@ -38,94 +38,151 @@ void insertSorted(VertexPNW2* vertex, u32 boneIndex, float weight) {
     }
 }
 
-Array<DrawMesh> getMeshes(const aiScene* srcScene, const aiNode* srcNode,
-                          ArrayView<Bone> forSkel = {}) {
-    Array<DrawMesh> result;
-    for (u32 m = 0; m < srcNode->mNumMeshes; m++) {
-        const aiMesh* srcMesh = srcScene->mMeshes[srcNode->mMeshes[m]];
-        PLY_ASSERT(srcMesh->mMaterialIndex >= 0);
-        const aiMaterial* srcMat = srcScene->mMaterials[srcMesh->mMaterialIndex];
-        DrawMesh& out = result.append();
+struct MeshMap {
+    struct Pair {
+        const aiMesh* srcMesh = nullptr;
+        const DrawMesh* drawMesh = nullptr;
+    };
 
-        aiString aiName;
-        aiReturn rc = srcMat->Get(AI_MATKEY_NAME, aiName);
-        PLY_ASSERT(rc == AI_SUCCESS);
+    Array<Pair> pairs;
 
-        {
-            // Diffuse color
-            aiColor4D aiDiffuse;
-            if (srcMat->Get(AI_MATKEY_COLOR_DIFFUSE, aiDiffuse) == AI_SUCCESS) {
-                out.diffuse = fromSRGB(*(Float3*) &aiDiffuse);
-            }
+    const DrawMesh* find(const aiMesh* srcMesh) const {
+        for (const Pair& pair : this->pairs) {
+            if (pair.srcMesh == srcMesh)
+                return pair.drawMesh;
         }
-        if (forSkel.isEmpty()) {
-            // Unskinned vertices
-            Array<VertexPN> vertices;
-            vertices.resize(srcMesh->mNumVertices);
-            for (u32 j = 0; j < srcMesh->mNumVertices; j++) {
-                vertices[j].pos = *(Float3*) (srcMesh->mVertices + j);
-                vertices[j].normal = *(Float3*) (srcMesh->mNormals + j);
-            }
-            out.vbo = GLBuffer::create(vertices.view().bufferView());
-        } else {
-            // Skinned vertices
-            out.type = DrawMesh::Skinned;
-            out.bones.resize(srcMesh->mNumBones);
-            Array<VertexPNW2> vertices;
-            vertices.resize(srcMesh->mNumVertices); // all members zero initialized
-            for (u32 j = 0; j < srcMesh->mNumVertices; j++) {
-                vertices[j].pos = *(Float3*) (srcMesh->mVertices + j);
-                vertices[j].normal = *(Float3*) (srcMesh->mNormals + j);
-            }
-            for (u32 mb = 0; mb < srcMesh->mNumBones; mb++) {
-                const aiBone* meshBone = srcMesh->mBones[mb];
-                // Find bone by name
-                u32 bi = safeDemote<u32>(find(forSkel, [&](const Bone& bone) {
-                    return bone.name == toStringView(meshBone->mName);
-                }));
-                for (u32 wi = 0; wi < meshBone->mNumWeights; wi++) {
-                    const aiVertexWeight& srcVertexWeight = meshBone->mWeights[wi];
-                    PLY_ASSERT(srcVertexWeight.mWeight >= 0);
-                    VertexPNW2& vertex = vertices[srcVertexWeight.mVertexId];
-                    insertSorted(&vertex, mb, srcVertexWeight.mWeight);
-                }
-                out.bones[mb].baseModelToBone =
-                    ((Float4x4*) &meshBone->mOffsetMatrix)->transposed() *
-                    AxisRot{Axis3::XPos, Axis3::ZPos, Axis3::YNeg}.toFloat4x4() *
-                    Float4x4::makeScale(0.01f);
-                out.bones[mb].indexInSkel = bi;
-            }
-            // Normalize weights
-            for (VertexPNW2& vertex : vertices) {
-                float totalW = vertex.blendWeights[0] + vertex.blendWeights[1];
-                if (totalW < 1e-6f) {
-                    vertex.blendWeights[0] = 1;
-                    vertex.blendWeights[1] = 0;
-                } else {
-                    float ootw = 1.f / totalW;
-                    vertex.blendWeights[0] *= ootw;
-                    vertex.blendWeights[1] *= ootw;
-                }
-            }
-            out.vbo = GLBuffer::create(vertices.view().bufferView());
-        }
-        {
-            // Indices
-            Array<u16> indices;
-            indices.resize(srcMesh->mNumFaces * 3);
-            for (u32 j = 0; j < srcMesh->mNumFaces; j++) {
-                PLY_ASSERT(srcMesh->mFaces[j].mNumIndices == 3);
-                indices[j * 3] = srcMesh->mFaces[j].mIndices[0];
-                indices[j * 3 + 1] = srcMesh->mFaces[j].mIndices[1];
-                indices[j * 3 + 2] = srcMesh->mFaces[j].mIndices[2];
-            }
-            out.indexBuffer = GLBuffer::create(indices.view().bufferView());
-            out.numIndices = indices.numItems();
-        }
+        return nullptr;
+    }
+};
+
+Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* srcMesh,
+                           DrawMesh::VertexType vertexType, ArrayView<Bone> forSkel = {}) {
+    PLY_ASSERT(srcMesh->mMaterialIndex >= 0);
+    const aiMaterial* srcMat = srcScene->mMaterials[srcMesh->mMaterialIndex];
+    Owned<DrawMesh> out = new DrawMesh;
+    out->vertexType = vertexType;
+    if (mm) {
+        mm->pairs.append({srcMesh, out});
     }
 
+    aiString aiName;
+    aiReturn rc = srcMat->Get(AI_MATKEY_NAME, aiName);
+    PLY_ASSERT(rc == AI_SUCCESS);
+
+    {
+        // Diffuse color
+        aiColor4D aiDiffuse;
+        if (srcMat->Get(AI_MATKEY_COLOR_DIFFUSE, aiDiffuse) == AI_SUCCESS) {
+            out->diffuse = fromSRGB(*(Float3*) &aiDiffuse);
+        }
+    }
+    if (vertexType == DrawMesh::VertexType::NotSkinned) {
+        // Unskinned vertices
+        PLY_ASSERT(forSkel.isEmpty());
+        Array<VertexPN> vertices;
+        vertices.resize(srcMesh->mNumVertices);
+        for (u32 j = 0; j < srcMesh->mNumVertices; j++) {
+            vertices[j].pos = *(Float3*) (srcMesh->mVertices + j);
+            vertices[j].normal = *(Float3*) (srcMesh->mNormals + j);
+        }
+        out->vbo = GLBuffer::create(vertices.view().bufferView());
+    } else if (vertexType == DrawMesh::VertexType::Skinned) {
+        // Skinned vertices
+        PLY_ASSERT(!forSkel.isEmpty());
+        out->bones.resize(srcMesh->mNumBones);
+        Array<VertexPNW2> vertices;
+        vertices.resize(srcMesh->mNumVertices); // all members zero initialized
+        for (u32 j = 0; j < srcMesh->mNumVertices; j++) {
+            vertices[j].pos = *(Float3*) (srcMesh->mVertices + j);
+            vertices[j].normal = *(Float3*) (srcMesh->mNormals + j);
+        }
+        for (u32 mb = 0; mb < srcMesh->mNumBones; mb++) {
+            const aiBone* meshBone = srcMesh->mBones[mb];
+            // Find bone by name
+            u32 bi = safeDemote<u32>(find(forSkel, [&](const Bone& bone) {
+                return bone.name == toStringView(meshBone->mName);
+            }));
+            for (u32 wi = 0; wi < meshBone->mNumWeights; wi++) {
+                const aiVertexWeight& srcVertexWeight = meshBone->mWeights[wi];
+                PLY_ASSERT(srcVertexWeight.mWeight >= 0);
+                VertexPNW2& vertex = vertices[srcVertexWeight.mVertexId];
+                insertSorted(&vertex, mb, srcVertexWeight.mWeight);
+            }
+            out->bones[mb].baseModelToBone =
+                ((Float4x4*) &meshBone->mOffsetMatrix)->transposed() *
+                AxisRot{Axis3::XPos, Axis3::ZPos, Axis3::YNeg}.toFloat4x4() *
+                Float4x4::makeScale(0.01f);
+            out->bones[mb].indexInSkel = bi;
+        }
+        // Normalize weights
+        for (VertexPNW2& vertex : vertices) {
+            float totalW = vertex.blendWeights[0] + vertex.blendWeights[1];
+            if (totalW < 1e-6f) {
+                vertex.blendWeights[0] = 1;
+                vertex.blendWeights[1] = 0;
+            } else {
+                float ootw = 1.f / totalW;
+                vertex.blendWeights[0] *= ootw;
+                vertex.blendWeights[1] *= ootw;
+            }
+        }
+        out->vbo = GLBuffer::create(vertices.view().bufferView());
+    } else if (vertexType == DrawMesh::VertexType::TexturedFlat) {
+        // Textured vertices (not skinned) without normal
+        PLY_ASSERT(forSkel.isEmpty());
+        PLY_ASSERT(srcMesh->mTextureCoords[0]);
+        Array<VertexPT> vertices;
+        vertices.resize(srcMesh->mNumVertices);
+        for (u32 j = 0; j < srcMesh->mNumVertices; j++) {
+            vertices[j].pos = *(Float3*) (srcMesh->mVertices + j);
+            vertices[j].uv = *(Float2*) (srcMesh->mTextureCoords[0] + j);
+        }
+        out->vbo = GLBuffer::create(vertices.view().bufferView());
+    } else if (vertexType == DrawMesh::VertexType::TexturedNormal) {
+        // Textured vertices (not skinned) with normal
+        PLY_ASSERT(forSkel.isEmpty());
+        PLY_ASSERT(srcMesh->mTextureCoords[0]);
+        Array<VertexPNT> vertices;
+        vertices.resize(srcMesh->mNumVertices);
+        for (u32 j = 0; j < srcMesh->mNumVertices; j++) {
+            vertices[j].pos = *(Float3*) (srcMesh->mVertices + j);
+            vertices[j].normal = *(Float3*) (srcMesh->mNormals + j);
+            vertices[j].uv = *(Float2*) (srcMesh->mTextureCoords[0] + j);
+        }
+        out->vbo = GLBuffer::create(vertices.view().bufferView());
+    } else {
+        PLY_ASSERT(0);
+    }
+    {
+        // Indices
+        Array<u16> indices;
+        indices.resize(srcMesh->mNumFaces * 3);
+        for (u32 j = 0; j < srcMesh->mNumFaces; j++) {
+            PLY_ASSERT(srcMesh->mFaces[j].mNumIndices == 3);
+            indices[j * 3] = srcMesh->mFaces[j].mIndices[0];
+            indices[j * 3 + 1] = srcMesh->mFaces[j].mIndices[1];
+            indices[j * 3 + 2] = srcMesh->mFaces[j].mIndices[2];
+        }
+        out->indexBuffer = GLBuffer::create(indices.view().bufferView());
+        out->numIndices = indices.numItems();
+    }
+    return out;
+}
+
+Array<Owned<DrawMesh>> getMeshes(MeshMap* mm, const aiScene* srcScene, const aiNode* srcNode,
+                                 DrawMesh::VertexType vertexType, ArrayView<Bone> forSkel = {},
+                                 LambdaView<bool(StringView matName)> filter = {}) {
+    Array<Owned<DrawMesh>> result;
+    for (u32 m = 0; m < srcNode->mNumMeshes; m++) {
+        const aiMesh* srcMesh = srcScene->mMeshes[srcNode->mMeshes[m]];
+        if (!filter.isValid() ||
+            filter(toStringView(srcScene->mMaterials[srcMesh->mMaterialIndex]->GetName()))) {
+            result.append(toDrawMesh(mm, srcScene, srcMesh, vertexType, forSkel));
+        }
+    }
     for (u32 c = 0; c < srcNode->mNumChildren; c++) {
-        result.moveExtend(getMeshes(srcScene, srcNode->mChildren[c], forSkel).view());
+        result.moveExtend(
+            getMeshes(mm, srcScene, srcNode->mChildren[c], vertexType, forSkel, filter).view());
     }
     return result;
 }
@@ -252,37 +309,82 @@ Array<FallAnimFrame> extractFallAnimation(const aiScene* scene, u32 numFrames) {
     return frames;
 }
 
+struct GroupMeshes {
+    StringView name;
+    ArrayView<const DrawMesh> drawMeshes;
+};
+
+DrawGroup loadDrawGroup(const aiScene* srcScene, const aiNode* srcNode, const MeshMap* mm) {
+    DrawGroup dg;
+    dg.groupToWorld = ((Float4x4*) &srcNode->mTransformation)->transposed();
+    for (u32 c = 0; c < srcNode->mNumChildren; c++) {
+        const aiNode* srcChild = srcNode->mChildren[c];
+        for (u32 m = 0; m < srcChild->mNumMeshes; m++) {
+            const aiMesh* srcMesh = srcScene->mMeshes[srcChild->mMeshes[m]];
+            const DrawMesh* drawMesh = mm->find(srcMesh);
+            if (drawMesh) {
+                DrawGroup::Instance& inst = dg.instances.append();
+                inst.itemToGroup = ((Float4x4*) &srcChild->mTransformation)->transposed();
+                inst.drawMesh = drawMesh;
+            }
+        }
+    }
+    return dg;
+}
+
 void Assets::load(StringView assetsPath) {
     PLY_ASSERT(FileSystem::native()->exists(assetsPath) == ExistsResult::Directory);
     Assets* assets = new Assets;
     assets->rootPath = assetsPath;
     Assets::instance = assets;
+    using VT = DrawMesh::VertexType;
     {
         Assimp::Importer importer;
         const aiScene* scene =
             importer.ReadFile(NativePath::join(assetsPath, "Bird.fbx").withNullTerminator().bytes,
                               aiProcess_Triangulate);
         extractBirdAnimData(&assets->bad, scene);
-        assets->bird =
-            getMeshes(scene, scene->mRootNode->FindNode("Bird"), assets->bad.birdSkel.view());
+        assets->bird = getMeshes(nullptr, scene, scene->mRootNode->FindNode("Bird"), VT::Skinned,
+                                 assets->bad.birdSkel.view());
     }
     {
         Assimp::Importer importer;
         const aiScene* scene =
             importer.ReadFile(NativePath::join(assetsPath, "Level.fbx").withNullTerminator().bytes,
                               aiProcess_Triangulate);
-        assets->floor = getMeshes(scene, scene->mRootNode->FindNode("Floor"));
-        assets->pipe = getMeshes(scene, scene->mRootNode->FindNode("Pipe"));
+        MeshMap mm;
+        assets->floor =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Floor"), VT::NotSkinned, {},
+                      [](StringView matName) { return matName != "Stripes"; });
+        assets->floorStripe =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Floor"), VT::TexturedNormal, {},
+                      [](StringView matName) { return matName == "Stripes"; });
+        assets->pipe =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Pipe"), VT::NotSkinned);
+        assets->shrub = getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub"), VT::TexturedNormal);
+        assets->shrub2 =
+            getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub2"), VT::TexturedNormal);
+        assets->city =
+            getMeshes(&mm, scene, scene->mRootNode->FindNode("City"), VT::TexturedNormal);
+        assets->cloud =
+            getMeshes(&mm, scene, scene->mRootNode->FindNode("Cloud"), VT::TexturedFlat);
+        assets->shrubGroup = loadDrawGroup(scene, scene->mRootNode->FindNode("ShrubGroup"), &mm);
+        assets->cloudGroup = loadDrawGroup(scene, scene->mRootNode->FindNode("CloudGroup"), &mm);
+        assets->cityGroup = loadDrawGroup(scene, scene->mRootNode->FindNode("CityGroup"), &mm);
     }
     {
         Assimp::Importer importer;
         const aiScene* scene =
             importer.ReadFile(NativePath::join(assetsPath, "Title.fbx").withNullTerminator().bytes,
                               aiProcess_Triangulate);
-        assets->title = getMeshes(scene, scene->mRootNode->FindNode("Title"));
-        assets->outline = getMeshes(scene, scene->mRootNode->FindNode("Outline"));
-        assets->blackOutline = getMeshes(scene, scene->mRootNode->FindNode("BlackOutline"));
-        assets->star = getMeshes(scene, scene->mRootNode->FindNode("Star"));
+        assets->title =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Title"), VT::NotSkinned);
+        assets->outline =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Outline"), VT::NotSkinned);
+        assets->blackOutline =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("BlackOutline"), VT::NotSkinned);
+        assets->star =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Star"), VT::NotSkinned);
     }
     {
         Assimp::Importer importer;
@@ -308,8 +410,7 @@ void Assets::load(StringView assetsPath) {
         assets->speedLimitTexture.init(im, 3, params);
     }
     {
-        Buffer pngData =
-            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "wave.png"));
+        Buffer pngData = FileSystem::native()->loadBinary(NativePath::join(assetsPath, "wave.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
         SamplerParams params;
@@ -327,6 +428,43 @@ void Assets::load(StringView assetsPath) {
         params.magFilter = false;
         assets->hypnoPaletteTexture.init(im, 5, params);
     }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "Cloud.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        SamplerParams params;
+        params.repeatY = false;
+        assets->cloudTexture.init(im, 3, params);
+    }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "window.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        assets->windowTexture.init(im, 3, {});
+    }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "stripe.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        assets->stripeTexture.init(im, 3, {});
+    }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "Shrub.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        assets->shrubTexture.init(im, 3, {});
+    }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "Shrub2.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        assets->shrub2Texture.init(im, 3, {});
+    }
 
     // Load font resources
     assets->sdfCommon = SDFCommon::create();
@@ -340,6 +478,8 @@ void Assets::load(StringView assetsPath) {
 
     // Load shaders
     assets->matShader = MaterialShader::create();
+    assets->texMatShader = TexturedMaterialShader::create();
+    assets->shrubShader = ShrubShader::create();
     assets->skinnedShader = SkinnedShader::create();
     assets->flatShader = FlatShader::create();
     assets->flatShaderInstanced = FlatShaderInstanced::create();

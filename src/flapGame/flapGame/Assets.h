@@ -32,16 +32,34 @@ struct FallAnimFrame {
     float rotationAngle = 0;
 };
 
+struct DrawGroup {
+    struct Instance {
+        Float4x4 itemToGroup = Float4x4::identity();
+        const DrawMesh* drawMesh = nullptr;
+    };
+
+    Float4x4 groupToWorld = Float4x4::identity();
+    Array<Instance> instances;
+};
+
 struct Assets {
     String rootPath;
     
-    Array<DrawMesh> bird;
-    Array<DrawMesh> floor;
-    Array<DrawMesh> pipe;
-    Array<DrawMesh> title;
-    Array<DrawMesh> outline;
-    Array<DrawMesh> blackOutline;
-    Array<DrawMesh> star;
+    Array<Owned<DrawMesh>> bird;
+    Array<Owned<DrawMesh>> floor;
+    Array<Owned<DrawMesh>> floorStripe;
+    Array<Owned<DrawMesh>> pipe;
+    Array<Owned<DrawMesh>> shrub;
+    Array<Owned<DrawMesh>> shrub2;
+    Array<Owned<DrawMesh>> city;
+    Array<Owned<DrawMesh>> cloud;
+    Array<Owned<DrawMesh>> title;
+    Array<Owned<DrawMesh>> outline;
+    Array<Owned<DrawMesh>> blackOutline;
+    Array<Owned<DrawMesh>> star;
+    DrawGroup shrubGroup;
+    DrawGroup cloudGroup;
+    DrawGroup cityGroup;
 
     BirdAnimData bad;
     Array<FallAnimFrame> fallAnim;
@@ -50,12 +68,19 @@ struct Assets {
     Texture speedLimitTexture;
     Texture waveTexture;
     Texture hypnoPaletteTexture;
+    Texture cloudTexture;
+    Texture windowTexture;
+    Texture stripeTexture;
+    Texture shrubTexture;
+    Texture shrub2Texture;
 
     Owned<SDFCommon> sdfCommon;
     Owned<SDFOutline> sdfOutline;
     Owned<SDFFont> sdfFont;
 
     Owned<MaterialShader> matShader;
+    Owned<TexturedMaterialShader> texMatShader;
+    Owned<ShrubShader> shrubShader;
     Owned<SkinnedShader> skinnedShader;
     Owned<FlatShader> flatShader;
     Owned<FlatShaderInstanced> flatShaderInstanced;

@@ -6,17 +6,84 @@
 namespace flap {
 
 struct MaterialShader {
+    struct Props {
+        Float3 diffuse = {1, 1, 1};
+        Float3 specular = {0.2f, 0.2f, 0.2f};
+        float specPower = 5.f;
+        Float4 fog = {0, 0, 0, 1};
+    };
+    static Props defaultProps;
+
     ShaderProgram shader;
     GLint vertPositionAttrib = 0;
     GLint vertNormalAttrib = 0;
     GLint modelToCameraUniform = 0;
     GLint cameraToViewportUniform = 0;
     GLint colorUniform = 0;
+    GLint specularUniform = 0;
+    GLint specPowerUniform = 0;
+    GLint fogUniform = 0;
 
     static Owned<MaterialShader> create();
 
     void draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
-              ArrayView<const DrawMesh> drawMeshes);
+              const DrawMesh* drawMesh, const Props* props = nullptr);
+};
+
+struct TexturedMaterialShader {
+    struct Props {
+        Float3 diffuse = {1, 1, 1};
+        Float3 specular = {0.2f, 0.2f, 0.2f};
+        float specPower = 5.f;
+        Float4 fog = {0, 0, 0, 1};
+    };
+    static Props defaultProps;
+
+    ShaderProgram shader;
+    GLint vertPositionAttrib = 0;
+    GLint vertTexCoordAttrib = 0;
+    GLint vertNormalAttrib = 0;
+    GLint modelToCameraUniform = 0;
+    GLint cameraToViewportUniform = 0;
+    GLint textureUniform = 0;
+    GLint specularUniform = 0;
+    GLint specPowerUniform = 0;
+    GLint fogUniform = 0;
+
+    static Owned<TexturedMaterialShader> create();
+
+    void draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
+              const DrawMesh* drawMesh, GLuint texID, const MaterialShader::Props* props = nullptr);
+};
+
+struct ShrubShader {
+    struct Props {
+        Float3 diffuse[2] = {{0, 0, 0}, {1, 1, 1}};
+        Float4 shade = {0, 0, 0, 0.8f};
+        Float4 specular = {1, 1, 1, 0.5f};
+        float specPower = 5.f;
+        Float4 rim = {1, 1, 1, 0};
+    };
+    static Props defaultProps;
+
+    ShaderProgram shader;
+    GLint vertPositionAttrib = 0;
+    GLint vertTexCoordAttrib = 0;
+    GLint vertNormalAttrib = 0;
+    GLint modelToCameraUniform = 0;
+    GLint cameraToViewportUniform = 0;
+    GLint textureUniform = 0;
+    GLint diffuse0Uniform = 0;
+    GLint diffuse1Uniform = 0;
+    GLint shadeUniform = 0;
+    GLint specularUniform = 0;
+    GLint rimUniform = 0;
+    GLint specPowerUniform = 0;
+
+    static Owned<ShrubShader> create();
+
+    void draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
+              const DrawMesh* drawMesh, GLuint texID, const ShrubShader::Props* props = nullptr);
 };
 
 struct SkinnedShader {
@@ -33,7 +100,7 @@ struct SkinnedShader {
     static Owned<SkinnedShader> create();
 
     void draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
-              ArrayView<const Float4x4> boneToModel, ArrayView<const DrawMesh> drawMeshes);
+              ArrayView<const Float4x4> boneToModel, const DrawMesh* drawMesh);
 };
 
 struct FlatShader {
@@ -47,8 +114,7 @@ struct FlatShader {
 
     static Owned<FlatShader> create();
 
-    void draw(const Float4x4& modelToViewport, ArrayView<const DrawMesh> drawMeshes,
-              bool writeDepth);
+    void draw(const Float4x4& modelToViewport, const DrawMesh* drawMesh, bool writeDepth);
     void drawQuad(const Float4x4& modelToViewport, const Float3& linearColor);
 };
 
@@ -64,7 +130,7 @@ struct FlatShaderInstanced {
     GLint instColorAttrib = 0;
 
     static Owned<FlatShaderInstanced> create();
-    void draw(const DrawMesh& drawMesh, ArrayView<const InstanceData> instanceData);
+    void draw(const DrawMesh* drawMesh, ArrayView<const InstanceData> instanceData);
 };
 
 struct FlashShader {
@@ -92,6 +158,8 @@ struct TexturedShader {
     GLint colorUniform = 0;
 
     static PLY_NO_INLINE Owned<TexturedShader> create();
+    void draw(const Float4x4& modelToViewport, GLuint textureID, const Float4& color,
+              const DrawMesh* drawMesh, bool depthTest = false);
     void draw(const Float4x4& modelToViewport, GLuint textureID, const Float4& color,
               ArrayView<VertexPT> vertices, ArrayView<u16> indices) const;
 };

@@ -26,18 +26,26 @@ struct VertexPT {
     Float2 uv = {0, 0};
 };
 
+struct VertexPNT {
+    Float3 pos = {0, 0, 0};
+    Float3 normal = {0, 0, 0};
+    Float2 uv = {0, 0};
+};
+
 struct DrawMesh {
     struct Bone {
         u32 indexInSkel = 0;
         Float4x4 baseModelToBone = Float4x4::identity();
     };
 
-    enum Type {
+    enum class VertexType {
         Skinned,
         NotSkinned,
+        TexturedFlat,
+        TexturedNormal,
     };
 
-    Type type = NotSkinned;
+    VertexType vertexType = VertexType::NotSkinned;
     Float3 diffuse = {0, 0, 0};
     u32 numIndices = 0;
     GLBuffer vbo;
