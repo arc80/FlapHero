@@ -262,7 +262,12 @@ PLY_NO_INLINE void RenderToTexture::init(const Texture& tex, bool withDepth) {
     if (withDepth) {
         glGenRenderbuffers(1, &this->depthRBID);
         glBindRenderbuffer(GL_RENDERBUFFER, (GLuint) this->depthRBID);
+#if PLY_TARGET_ANDROID
+        // :TODO: GL_INVALID_ENUM error on Android...  Could GL_DEPTH_COMPONENT24 be used on all platforms?
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, tex.width, tex.height);
+#else
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, tex.width, tex.height);
+#endif
         glBindRenderbuffer(GL_RENDERBUFFER, 0);
     }
     GLint prevFBO;
