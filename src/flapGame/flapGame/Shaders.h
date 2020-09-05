@@ -86,6 +86,21 @@ struct ShrubShader {
               const DrawMesh* drawMesh, GLuint texID, const ShrubShader::Props* props = nullptr);
 };
 
+struct PipeShader {
+    ShaderProgram shader;
+    GLint vertPositionAttrib = 0;
+    GLint vertNormalAttrib = 0;
+    GLint modelToCameraUniform = 0;
+    GLint cameraToViewportUniform = 0;
+    GLint normalSkewUniform = 0;
+    GLint textureUniform = 0;
+
+    static Owned<PipeShader> create();
+
+    void draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
+              const Float2& normalSkew, const DrawMesh* drawMesh, GLuint texID);
+};
+
 struct SkinnedShader {
     ShaderProgram shader;
     GLint vertPositionAttrib = 0;

@@ -465,6 +465,16 @@ void Assets::load(StringView assetsPath) {
         image::OwnImage im = loadPNG(pngData);
         assets->shrub2Texture.init(im, 3, {});
     }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "pipeEnv.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        SamplerParams params;
+        params.repeatX = false;
+        params.repeatY = false;
+        assets->pipeEnvTexture.init(im, 3, params);
+    }
 
     // Load font resources
     assets->sdfCommon = SDFCommon::create();
@@ -480,6 +490,7 @@ void Assets::load(StringView assetsPath) {
     assets->matShader = MaterialShader::create();
     assets->texMatShader = TexturedMaterialShader::create();
     assets->shrubShader = ShrubShader::create();
+    assets->pipeShader = PipeShader::create();
     assets->skinnedShader = SkinnedShader::create();
     assets->flatShader = FlatShader::create();
     assets->flatShaderInstanced = FlatShaderInstanced::create();

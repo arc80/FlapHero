@@ -184,7 +184,8 @@ void Pipe::draw(const Obstacle::DrawParams& params) const {
     const Assets* a = Assets::instance;
 
     for (const DrawMesh* dm : a->pipe) {
-        a->matShader->draw(params.cameraToViewport, params.worldToCamera * this->pipeToWorld, dm);
+        a->pipeShader->draw(params.cameraToViewport, params.worldToCamera * this->pipeToWorld,
+                           Float2{0.035f, 0.035f}, dm, a->pipeEnvTexture.id);
     }
 }
 

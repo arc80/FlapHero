@@ -73,6 +73,7 @@ struct Assets {
     Texture stripeTexture;
     Texture shrubTexture;
     Texture shrub2Texture;
+    Texture pipeEnvTexture;
 
     Owned<SDFCommon> sdfCommon;
     Owned<SDFOutline> sdfOutline;
@@ -81,6 +82,7 @@ struct Assets {
     Owned<MaterialShader> matShader;
     Owned<TexturedMaterialShader> texMatShader;
     Owned<ShrubShader> shrubShader;
+    Owned<PipeShader> pipeShader;
     Owned<SkinnedShader> skinnedShader;
     Owned<FlatShader> flatShader;
     Owned<FlatShaderInstanced> flatShaderInstanced;
