@@ -344,8 +344,21 @@ void Assets::load(StringView assetsPath) {
             importer.ReadFile(NativePath::join(assetsPath, "Bird.fbx").withNullTerminator().bytes,
                               aiProcess_Triangulate);
         extractBirdAnimData(&assets->bad, scene);
-        assets->bird = getMeshes(nullptr, scene, scene->mRootNode->FindNode("Bird"), VT::Skinned,
-                                 assets->bad.birdSkel.view());
+        const aiNode* srcBird = scene->mRootNode->FindNode("Bird");
+        auto getMaterial = [&](Array<Owned<DrawMesh>>& dst, StringView materialName, VT vt) {
+            ArrayView<Bone> bones;
+            if (vt == VT::Skinned) {
+                bones = assets->bad.birdSkel.view();
+            }
+            dst = getMeshes(nullptr, scene, srcBird, vt, bones,
+                            [&](StringView m) { return materialName == m; });
+        };
+        getMaterial(assets->bird.beak, "Beak", VT::Skinned);
+        getMaterial(assets->bird.skin, "Skin", VT::Skinned);
+        getMaterial(assets->bird.wings, "Wing", VT::Skinned);
+        getMaterial(assets->bird.belly, "Belly", VT::Skinned);
+        getMaterial(assets->bird.eyeWhite, "Eye", VT::NotSkinned);
+        getMaterial(assets->bird.pupil, "Pupils", VT::Skinned);
     }
     {
         Assimp::Importer importer;
@@ -361,7 +374,8 @@ void Assets::load(StringView assetsPath) {
                       [](StringView matName) { return matName == "Stripes"; });
         assets->pipe =
             getMeshes(nullptr, scene, scene->mRootNode->FindNode("Pipe"), VT::NotSkinned);
-        assets->shrub = getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub"), VT::TexturedNormal);
+        assets->shrub =
+            getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub"), VT::TexturedNormal);
         assets->shrub2 =
             getMeshes(&mm, scene, scene->mRootNode->FindNode("Shrub2"), VT::TexturedNormal);
         assets->city =
@@ -475,6 +489,16 @@ void Assets::load(StringView assetsPath) {
         params.repeatY = false;
         assets->pipeEnvTexture.init(im, 3, params);
     }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "eyeWhite.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        SamplerParams params;
+        params.repeatX = false;
+        params.repeatY = false;
+        assets->eyeWhiteTexture.init(im, 3, params);
+    }
 
     // Load font resources
     assets->sdfCommon = SDFCommon::create();
@@ -489,6 +513,7 @@ void Assets::load(StringView assetsPath) {
     // Load shaders
     assets->matShader = MaterialShader::create();
     assets->texMatShader = TexturedMaterialShader::create();
+    assets->paintShader = PaintShader::create();
     assets->shrubShader = ShrubShader::create();
     assets->pipeShader = PipeShader::create();
     assets->skinnedShader = SkinnedShader::create();

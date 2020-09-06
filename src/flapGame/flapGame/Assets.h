@@ -45,7 +45,15 @@ struct DrawGroup {
 struct Assets {
     String rootPath;
     
-    Array<Owned<DrawMesh>> bird;
+    struct BirdParts {
+        Array<Owned<DrawMesh>> beak;
+        Array<Owned<DrawMesh>> skin;
+        Array<Owned<DrawMesh>> wings;
+        Array<Owned<DrawMesh>> belly;
+        Array<Owned<DrawMesh>> eyeWhite;
+        Array<Owned<DrawMesh>> pupil;
+    };
+    BirdParts bird;
     Array<Owned<DrawMesh>> floor;
     Array<Owned<DrawMesh>> floorStripe;
     Array<Owned<DrawMesh>> pipe;
@@ -74,6 +82,7 @@ struct Assets {
     Texture shrubTexture;
     Texture shrub2Texture;
     Texture pipeEnvTexture;
+    Texture eyeWhiteTexture;
 
     Owned<SDFCommon> sdfCommon;
     Owned<SDFOutline> sdfOutline;
@@ -81,6 +90,7 @@ struct Assets {
 
     Owned<MaterialShader> matShader;
     Owned<TexturedMaterialShader> texMatShader;
+    Owned<PaintShader> paintShader;
     Owned<ShrubShader> shrubShader;
     Owned<PipeShader> pipeShader;
     Owned<SkinnedShader> skinnedShader;

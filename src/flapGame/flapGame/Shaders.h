@@ -56,6 +56,33 @@ struct TexturedMaterialShader {
               const DrawMesh* drawMesh, GLuint texID, const MaterialShader::Props* props = nullptr);
 };
 
+struct PaintShader {
+    struct Props {
+        Float3 diffuse = {1, 1, 1};
+        Float4 shade = {0, 0, 0, 0.8f};
+        Float4 specular = {1, 1, 1, 0.5f};
+        float specPower = 5.f;
+        Float4 rim = {1, 1, 1, 0};
+    };
+    static Props defaultProps;
+
+    ShaderProgram shader;
+    GLint vertPositionAttrib = 0;
+    GLint vertNormalAttrib = 0;
+    GLint modelToCameraUniform = 0;
+    GLint cameraToViewportUniform = 0;
+    GLint diffuseUniform = 0;
+    GLint shadeUniform = 0;
+    GLint specularUniform = 0;
+    GLint rimUniform = 0;
+    GLint specPowerUniform = 0;
+
+    static Owned<PaintShader> create();
+
+    void draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
+              const DrawMesh* drawMesh, const Props* props = nullptr);
+};
+
 struct ShrubShader {
     struct Props {
         Float3 diffuse[2] = {{0, 0, 0}, {1, 1, 1}};
@@ -83,7 +110,7 @@ struct ShrubShader {
     static Owned<ShrubShader> create();
 
     void draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
-              const DrawMesh* drawMesh, GLuint texID, const ShrubShader::Props* props = nullptr);
+              const DrawMesh* drawMesh, GLuint texID, const Props* props = nullptr);
 };
 
 struct PipeShader {
@@ -102,6 +129,17 @@ struct PipeShader {
 };
 
 struct SkinnedShader {
+    struct Props {
+        Float3 diffuse = {1, 1, 1};
+        Float4 shade = {0, 0, 0, 0.8f};
+        Float4 specular = {1, 1, 1, 0.5f};
+        float specPower = 5.f;
+        Float4 rim = {1, 1, 1, 0};
+        float rimFactor = 2.5f;
+    };
+
+    static Props defaultProps;
+
     ShaderProgram shader;
     GLint vertPositionAttrib = 0;
     GLint vertNormalAttrib = 0;
@@ -109,13 +147,19 @@ struct SkinnedShader {
     GLint vertBlendWeightsAttrib = 0;
     GLint modelToCameraUniform = 0;
     GLint cameraToViewportUniform = 0;
-    GLint colorUniform = 0;
     GLint boneXformsUniform = 0;
+    GLint diffuseUniform = 0;
+    GLint shadeUniform = 0;
+    GLint specularUniform = 0;
+    GLint rimUniform = 0;
+    GLint rimFactorUniform = 0;
+    GLint specPowerUniform = 0;
 
     static Owned<SkinnedShader> create();
 
     void draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
-              ArrayView<const Float4x4> boneToModel, const DrawMesh* drawMesh);
+              ArrayView<const Float4x4> boneToModel, const DrawMesh* drawMesh,
+              const Props* props = nullptr);
 };
 
 struct FlatShader {

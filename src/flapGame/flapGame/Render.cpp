@@ -185,10 +185,9 @@ void Pipe::draw(const Obstacle::DrawParams& params) const {
 
     for (const DrawMesh* dm : a->pipe) {
         a->pipeShader->draw(params.cameraToViewport, params.worldToCamera * this->pipeToWorld,
-                           Float2{0.035f, 0.025f}, dm, a->pipeEnvTexture.id);
+                            Float2{0.035f, 0.025f}, dm, a->pipeEnvTexture.id);
     }
 }
-
 
 void drawTitle(const TitleScreen* titleScreen) {
     const Assets* a = Assets::instance;
@@ -255,6 +254,7 @@ void renderGamePanel(const DrawContext* dc) {
     const Assets* a = Assets::instance;
     const GameState* gs = dc->gs;
 
+    Float3 skyColor = fromSRGB(Float3{113.f / 255, 200.f / 255, 206.f / 255});
     Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum, 10.f, 10000.f);
     GL_CHECK(Viewport((GLint) vf.viewport.mins.x, (GLint) vf.viewport.mins.y,
                       (GLsizei) vf.viewport.width(), (GLsizei) vf.viewport.height()));
@@ -271,12 +271,61 @@ void renderGamePanel(const DrawContext* dc) {
         GL_CHECK(StencilFunc(GL_ALWAYS, 1, 0xFF));
         GL_CHECK(StencilOp(GL_KEEP, GL_KEEP, GL_REPLACE));
         GL_CHECK(StencilMask(0xFF));
-        for (const DrawMesh* dm : a->bird) {
-            a->skinnedShader->draw(
-                cameraToViewport,
-                worldToCamera * Float4x4::makeTranslation(birdRelWorld) * rot.toFloat4x4() *
-                    Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) * Float4x4::makeScale(1.0833f),
-                boneToModel.view(), dm);
+        Float4x4 modelToCamera = worldToCamera * Float4x4::makeTranslation(birdRelWorld) *
+                                 rot.toFloat4x4() * Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) *
+                                 Float4x4::makeScale(1.0833f);
+        for (const DrawMesh* dm : a->bird.beak) {
+            SkinnedShader::Props props;
+            props.diffuse = mix(Float3{1, 1, 1}, {0.48f, 0.1f, 0.014f}, 0.97f) * 0.95f;
+            props.shade = {0.3f, 0, 0, 0.8f};
+            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.4f), 0.2f};
+            props.rimFactor = 1.7f;
+            props.specular = {1, 0.9f, 0.3f, 0.22f};
+            props.specPower = 1.2f;
+            a->skinnedShader->draw(cameraToViewport, modelToCamera, boneToModel.view(), dm, &props);
+        }
+        for (const DrawMesh* dm : a->bird.skin) {
+            SkinnedShader::Props props;
+            props.diffuse = Float3{1, 0.8f, 0.1f} * 0.85f;
+            props.shade = {0.2f, 0.08f, 0, 1.f};
+            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.6f), 0.2f};
+            props.rimFactor = 1.8f;
+            props.specular = {Float3{1, 1, 0.3f} * 0.85f, 0.15f};
+            props.specPower = 2.f;
+            a->skinnedShader->draw(cameraToViewport, modelToCamera, boneToModel.view(), dm, &props);
+        }
+        for (const DrawMesh* dm : a->bird.wings) {
+            SkinnedShader::Props props;
+            props.diffuse = Float3{1, 0.8f, 0.22f} * 0.9f;
+            props.shade = {0.2f, 0.1f, 0, 0.9f};
+            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.5f), 0.15f};
+            props.rimFactor = 1.5f;
+            props.specular = {Float3{1, 1, 1}, 0.06f};
+            props.specPower = 2.f;
+            a->skinnedShader->draw(cameraToViewport, modelToCamera, boneToModel.view(), dm, &props);
+        }
+        for (const DrawMesh* dm : a->bird.belly) {
+            SkinnedShader::Props props;
+            props.diffuse = Float3{0.78f, 0.42f, 0.08f} * 0.99f;
+            props.shade = {0.4f, 0, 0, 0.7f};
+            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.3f), 0.2f};
+            props.rimFactor = 1.5f;
+            props.specular = {Float3{1, 1, 1}, 0.0f};
+            props.specPower = 2.f;
+            a->skinnedShader->draw(cameraToViewport, modelToCamera, boneToModel.view(), dm, &props);
+        }
+        for (const DrawMesh* dm : a->bird.eyeWhite) {
+            a->pipeShader->draw(cameraToViewport, modelToCamera, {0, 0}, dm, a->eyeWhiteTexture.id);
+        }
+        for (const DrawMesh* dm : a->bird.pupil) {
+            SkinnedShader::Props props;
+            props.diffuse = Float3{0.5f, 0.5f, 0.5f} * 0.12f;
+            props.shade = {0, 0, 0, 1.f};
+            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.3f), 0.f};
+            props.rimFactor = 1.5f;
+            props.specular = {Float3{1, 1, 1}, 0.4f};
+            props.specPower = 1.f;
+            a->skinnedShader->draw(cameraToViewport, modelToCamera, boneToModel.view(), dm, &props);
         }
         GL_CHECK(Disable(GL_STENCIL_TEST));
     }
@@ -309,7 +358,6 @@ void renderGamePanel(const DrawContext* dc) {
         }
 
         // Draw shrubs
-        Float3 skyColor = fromSRGB(Float3{113.f / 255, 200.f / 255, 206.f / 255});
         {
             ShrubShader::Props shrubProps;
             shrubProps.diffuse[0] = mix(fromSRGB(Float3{0.2f, 0.7f, 0.f} * 0.85f), skyColor, 0.25f);
@@ -494,7 +542,7 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
     gf->dynBuffers.beginFrame();
     float intervalFrac = gf->fracTime / gf->simulationTimeStep;
 
-#if !PLY_TARGET_IOS && !PLY_TARGET_ANDROID// doesn't exist in OpenGLES 3
+#if !PLY_TARGET_IOS && !PLY_TARGET_ANDROID // doesn't exist in OpenGLES 3
     GL_CHECK(Enable(GL_FRAMEBUFFER_SRGB));
 #endif
 

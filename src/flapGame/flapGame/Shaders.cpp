@@ -231,9 +231,126 @@ PLY_NO_INLINE void TexturedMaterialShader::draw(const Float4x4& cameraToViewport
     GL_CHECK(
         DrawElements(GL_TRIANGLES, (GLsizei) drawMesh->numIndices, GL_UNSIGNED_SHORT, (void*) 0));
 
-	GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
-	GL_CHECK(DisableVertexAttribArray(this->vertNormalAttrib));
-	GL_CHECK(DisableVertexAttribArray(this->vertTexCoordAttrib));
+    GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
+    GL_CHECK(DisableVertexAttribArray(this->vertNormalAttrib));
+    GL_CHECK(DisableVertexAttribArray(this->vertTexCoordAttrib));
+}
+
+//---------------------------------------------------------
+
+PLY_NO_INLINE Owned<PaintShader> PaintShader::create() {
+    Owned<PaintShader> paintShader = new PaintShader;
+    {
+        Shader vertexShader = Shader::compile(
+            GL_VERTEX_SHADER,
+            "in vec3 vertPosition;\n"
+            "in vec3 vertNormal;\n"
+            "uniform mat4 modelToCamera;\n"
+            "uniform mat4 cameraToViewport;\n"
+            "out vec3 fragNormal;\n"
+            "\n"
+            "void main() {\n"
+            "    fragNormal = vec3(modelToCamera * vec4(vertNormal, 0.0));\n"
+            "    gl_Position = cameraToViewport * (modelToCamera * vec4(vertPosition, 1.0));\n"
+            "}\n");
+
+        Shader fragmentShader = Shader::compile(
+            GL_FRAGMENT_SHADER,
+            "in vec3 fragNormal;\n"
+            "uniform vec3 diffuse;\n"
+            "uniform vec4 shade;\n"
+            "uniform vec4 specular;\n"
+            "uniform float specPower;\n"
+            "uniform vec4 rim;\n"
+            "vec3 lightDir = normalize(vec3(1.0, -1.0, -0.5));\n"
+            "vec3 specLightDir = normalize(vec3(0.8, -1.0, 0.0));\n"
+            "out vec4 fragColor;\n"
+            "\n"
+            "void main() {\n"
+            "    vec3 color = diffuse;\n"
+            "    vec3 fn = normalize(fragNormal);\n"
+            "    float diffAmt = 0.5 - dot(fn, lightDir) * 0.5;\n"
+            "    color *= mix(vec3(1.0), shade.rgb, min(shade.a * (1.0 - diffAmt), 1.0));\n"
+            "    vec3 reflect = lightDir - fn * (dot(fn, specLightDir) * 2.0);\n"
+            "    float specAmt = pow(max(reflect.z, 0.0), specPower);\n"
+            "    color = mix(color, specular.rgb, specular.a * specAmt);\n"
+            "    float rimAmt = clamp(1.0 - 2.5 * fn.z, 0.0, 1.0);\n"
+            "    color = mix(color, rim.rgb, rim.a * rimAmt);\n"
+            "    fragColor = vec4(color, 1.0);\n"
+            "}\n");
+
+        // Link shader program
+        paintShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
+    }
+
+    // Get shader program's vertex attribute and uniform locations
+    paintShader->vertPositionAttrib =
+        GL_NO_CHECK(GetAttribLocation(paintShader->shader.id, "vertPosition"));
+    PLY_ASSERT(paintShader->vertPositionAttrib >= 0);
+    paintShader->vertNormalAttrib =
+        GL_NO_CHECK(GetAttribLocation(paintShader->shader.id, "vertNormal"));
+    PLY_ASSERT(paintShader->vertNormalAttrib >= 0);
+    paintShader->modelToCameraUniform =
+        GL_NO_CHECK(GetUniformLocation(paintShader->shader.id, "modelToCamera"));
+    PLY_ASSERT(paintShader->modelToCameraUniform >= 0);
+    paintShader->cameraToViewportUniform =
+        GL_NO_CHECK(GetUniformLocation(paintShader->shader.id, "cameraToViewport"));
+    PLY_ASSERT(paintShader->cameraToViewportUniform >= 0);
+    paintShader->diffuseUniform =
+        GL_NO_CHECK(GetUniformLocation(paintShader->shader.id, "diffuse"));
+    PLY_ASSERT(paintShader->diffuseUniform >= 0);
+    paintShader->shadeUniform = GL_NO_CHECK(GetUniformLocation(paintShader->shader.id, "shade"));
+    PLY_ASSERT(paintShader->shadeUniform >= 0);
+    paintShader->specularUniform =
+        GL_NO_CHECK(GetUniformLocation(paintShader->shader.id, "specular"));
+    PLY_ASSERT(paintShader->specularUniform >= 0);
+    paintShader->specPowerUniform =
+        GL_NO_CHECK(GetUniformLocation(paintShader->shader.id, "specPower"));
+    PLY_ASSERT(paintShader->specPowerUniform >= 0);
+    paintShader->rimUniform = GL_NO_CHECK(GetUniformLocation(paintShader->shader.id, "rim"));
+    PLY_ASSERT(paintShader->rimUniform >= 0);
+
+    return paintShader;
+}
+
+PaintShader::Props PaintShader::defaultProps;
+
+PLY_NO_INLINE void PaintShader::draw(const Float4x4& cameraToViewport,
+                                     const Float4x4& modelToCamera, const DrawMesh* drawMesh,
+                                     const PaintShader::Props* props) {
+    GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Enable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_TRUE));
+    GL_CHECK(Disable(GL_BLEND));
+
+    GL_CHECK(
+        UniformMatrix4fv(this->cameraToViewportUniform, 1, GL_FALSE, (GLfloat*) &cameraToViewport));
+    GL_CHECK(UniformMatrix4fv(this->modelToCameraUniform, 1, GL_FALSE, (GLfloat*) &modelToCamera));
+
+    // Set remaining uniforms and vertex attributes
+    if (!props) {
+        props = &PaintShader::defaultProps;
+    }
+    GL_CHECK(Uniform3fv(this->diffuseUniform, 1, (const GLfloat*) &props->diffuse));
+    GL_CHECK(Uniform4fv(this->shadeUniform, 1, (const GLfloat*) &props->shade));
+    GL_CHECK(Uniform4fv(this->specularUniform, 1, (const GLfloat*) &props->specular));
+    GL_CHECK(Uniform1f(this->specPowerUniform, props->specPower));
+    GL_CHECK(Uniform4fv(this->rimUniform, 1, (const GLfloat*) &props->rim));
+
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
+    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::TexturedNormal);
+    GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPNT), (GLvoid*) offsetof(VertexPNT, pos)));
+    GL_CHECK(EnableVertexAttribArray(this->vertNormalAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertNormalAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPNT),
+                                 (GLvoid*) offsetof(VertexPNT, normal)));
+
+    // Draw this VBO
+    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh->indexBuffer.id));
+    GL_CHECK(
+        DrawElements(GL_TRIANGLES, (GLsizei) drawMesh->numIndices, GL_UNSIGNED_SHORT, (void*) 0));
 }
 
 //---------------------------------------------------------
@@ -498,20 +615,30 @@ PLY_NO_INLINE Owned<SkinnedShader> SkinnedShader::create() {
             "}\n");
 
         Shader fragmentShader = Shader::compile(
-            GL_FRAGMENT_SHADER, "in vec3 fragNormal;\n"
-                                "uniform vec3 color;\n"
-                                "vec3 lightDir = normalize(vec3(1.0, -1.0, -0.5));\n"
-                                "out vec4 fragColor;"
-                                "\n"
-                                "void main() {\n"
-                                "    vec3 fn = normalize(fragNormal);\n"
-                                "    float d = (dot(-fn, lightDir) * 0.5 + 0.5) * 2.0 + 0.2;\n"
-                                "    vec3 reflect = lightDir - fn * (dot(fn, lightDir) * 2.0);\n"
-                                "    float spec = pow(max(reflect.z, 0.0), 5.0) * 0.2;\n"
-                                "    vec3 linear = color * d + vec3(spec);\n"
-                                "    vec3 toneMapped = linear / (vec3(0.4) + linear);\n"
-                                "    fragColor = vec4(toneMapped, 1.0);\n"
-                                "}\n");
+            GL_FRAGMENT_SHADER,
+            "in vec3 fragNormal;\n"
+            "uniform vec3 diffuse;\n"
+            "uniform vec4 shade;\n"
+            "uniform vec4 specular;\n"
+            "uniform float specPower;\n"
+            "uniform vec4 rim;\n"
+            "uniform float rimFactor;\n"
+            "vec3 lightDir = normalize(vec3(1.0, -1.0, -0.5));\n"
+            "vec3 specLightDir = normalize(vec3(0.8, -1.0, -0.2));\n"
+            "out vec4 fragColor;"
+            "\n"
+            "void main() {\n"
+            "    vec3 fn = normalize(fragNormal);\n"
+            "    vec3 color = diffuse;\n"
+            "    float diffAmt = 0.5 - dot(fn, lightDir) * 0.5;\n"
+            "    color *= mix(vec3(1.0), shade.rgb, min(shade.a * (1.0 - diffAmt), 1.0));\n"
+            "    vec3 reflect = lightDir - fn * (dot(fn, specLightDir) * 2.0);\n"
+            "    float specAmt = pow(max(reflect.z, 0.0), specPower);\n"
+            "    color = mix(color, specular.rgb, specular.a * specAmt);\n"
+            "    float rimAmt = clamp(1.0 - rimFactor * fn.z, 0.0, 1.0);\n"
+            "    color = mix(color, rim.rgb, rim.a * rimAmt);\n"
+            "    fragColor = vec4(color, 1.0);\n"
+            "}\n");
 
         // Link shader program
         skinnedShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
@@ -536,20 +663,36 @@ PLY_NO_INLINE Owned<SkinnedShader> SkinnedShader::create() {
     skinnedShader->cameraToViewportUniform =
         GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "cameraToViewport"));
     PLY_ASSERT(skinnedShader->cameraToViewportUniform >= 0);
-    skinnedShader->colorUniform =
-        GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "color"));
-    PLY_ASSERT(skinnedShader->colorUniform >= 0);
     skinnedShader->boneXformsUniform =
         GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "boneXforms"));
     PLY_ASSERT(skinnedShader->boneXformsUniform >= 0);
+    skinnedShader->diffuseUniform =
+        GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "diffuse"));
+    PLY_ASSERT(skinnedShader->diffuseUniform >= 0);
+    skinnedShader->shadeUniform =
+        GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "shade"));
+    PLY_ASSERT(skinnedShader->shadeUniform >= 0);
+    skinnedShader->specularUniform =
+        GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "specular"));
+    PLY_ASSERT(skinnedShader->specularUniform >= 0);
+    skinnedShader->specPowerUniform =
+        GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "specPower"));
+    PLY_ASSERT(skinnedShader->specPowerUniform >= 0);
+    skinnedShader->rimUniform = GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "rim"));
+    PLY_ASSERT(skinnedShader->rimUniform >= 0);
+    skinnedShader->rimFactorUniform =
+        GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "rimFactor"));
+    PLY_ASSERT(skinnedShader->rimFactorUniform >= 0);
 
     return skinnedShader;
 }
 
+SkinnedShader::Props SkinnedShader::defaultProps;
+
 PLY_NO_INLINE void SkinnedShader::draw(const Float4x4& cameraToViewport,
                                        const Float4x4& modelToCamera,
                                        ArrayView<const Float4x4> boneToModel,
-                                       const DrawMesh* drawMesh) {
+                                       const DrawMesh* drawMesh, const Props* props) {
     GL_CHECK(UseProgram(this->shader.id));
     GL_CHECK(Enable(GL_DEPTH_TEST));
     GL_CHECK(DepthMask(GL_TRUE));
@@ -565,13 +708,23 @@ PLY_NO_INLINE void SkinnedShader::draw(const Float4x4& cameraToViewport,
     for (u32 i = 0; i < drawMesh->bones.numItems(); i++) {
         u32 indexInSkel = drawMesh->bones[i].indexInSkel;
         boneXforms[i] = boneToModel[indexInSkel] * drawMesh->bones[i].baseModelToBone;
-
     }
     GL_CHECK(UniformMatrix4fv(this->boneXformsUniform, boneXforms.numItems(), GL_FALSE,
                               (const GLfloat*) boneXforms.get()));
 
     // Set remaining uniforms and vertex attributes
-    GL_CHECK(Uniform3fv(this->colorUniform, 1, (const GLfloat*) &drawMesh->diffuse));
+    if (!props) {
+        props = &SkinnedShader::defaultProps;
+        GL_CHECK(Uniform3fv(this->diffuseUniform, 1, (const GLfloat*) &drawMesh->diffuse));
+    } else {
+        GL_CHECK(Uniform3fv(this->diffuseUniform, 1, (const GLfloat*) &props->diffuse));
+    }
+    GL_CHECK(Uniform4fv(this->shadeUniform, 1, (const GLfloat*) &props->shade));
+    GL_CHECK(Uniform4fv(this->specularUniform, 1, (const GLfloat*) &props->specular));
+    GL_CHECK(Uniform1f(this->specPowerUniform, props->specPower));
+    GL_CHECK(Uniform4fv(this->rimUniform, 1, (const GLfloat*) &props->rim));
+    GL_CHECK(Uniform1f(this->rimFactorUniform, props->rimFactor));
+
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
     PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::Skinned);
     GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
@@ -676,7 +829,7 @@ PLY_NO_INLINE void FlatShader::draw(const Float4x4& modelToViewport, const DrawM
     GL_CHECK(
         DrawElements(GL_TRIANGLES, (GLsizei) drawMesh->numIndices, GL_UNSIGNED_SHORT, (void*) 0));
 
-	GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
+    GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
 }
 
 PLY_NO_INLINE void FlatShader::drawQuad(const Float4x4& modelToViewport,
