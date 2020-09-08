@@ -367,23 +367,26 @@ void renderGamePanel(const DrawContext* dc) {
 
         // Draw shrubs
         {
-            ShrubShader::Props shrubProps;
-            shrubProps.diffuse[0] = mix(fromSRGB(Float3{0.2f, 0.7f, 0.f} * 0.85f), skyColor, 0.25f);
-            shrubProps.diffuse[1] = mix(fromSRGB(Float3{0.3f, 0.85f, 0.3f}), skyColor, 0.15f);
-            shrubProps.specular = {mix(Float3{1, 1, 1}, skyColor, 0.25f), 0.15f};
-            shrubProps.specPower = 1.f;
-            shrubProps.shade = {mix(Float3{0, 0.2f, 0.4f}, skyColor, 0.2f), 0.6f};
-            shrubProps.rim = {mix(Float3{1, 1, 1}, skyColor, 0.5f), 0.5f};
+            UberShader::Props props;
+            props.lightDir = Float3{1, -1, 0}.normalized();
+            props.diffuse = mix(Float3{0.07f, 0.9f, 0.12f} * 0.9f, skyColor, 0.1f);
+            props.diffuse2 = mix(Float3{0.1f, 0.6f, 0.2f} * 0.5f, skyColor, 0.1f);
+            props.diffuseClamp = {0.2f, 0.8f, 0.2f};
+            props.specLightDir = Float3{1, -1, 0.2f}.normalized();
+            props.specular = Float3{0.5f, 1, 0} * 0.04f;
+            props.specPower = 4.f;
+            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.5f) * 0.1f, 1.f};
+            props.rimFactor = {1.5f, 4.5f};
             for (u32 i = 0; i < 3; i++) {
                 for (const DrawGroup::Instance& inst : a->shrubGroup.instances) {
-                    GLuint texID =
+                    props.texID =
                         (inst.drawMesh == a->shrub[0]) ? a->shrubTexture.id : a->shrub2Texture.id;
                     a->shrubShader->draw(cameraToViewport,
                                          worldToCamera * a->shrubGroup.groupToWorld *
                                              Float4x4::makeTranslation(
                                                  {gs->shrubX + GameState::ShrubRepeat * i, 0, 0}) *
                                              inst.itemToGroup,
-                                         inst.drawMesh, texID, &shrubProps);
+                                         inst.drawMesh, &props);
                 }
             }
         }

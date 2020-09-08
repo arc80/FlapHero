@@ -91,7 +91,7 @@ struct Assets {
     Owned<MaterialShader> matShader;
     Owned<TexturedMaterialShader> texMatShader;
     Owned<PaintShader> paintShader;
-    Owned<ShrubShader> shrubShader;
+    Owned<UberShader> shrubShader;
     Owned<PipeShader> pipeShader;
     Owned<UberShader> skinnedShader;
     Owned<FlatShader> flatShader;
