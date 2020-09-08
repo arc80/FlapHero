@@ -368,10 +368,13 @@ void Assets::load(StringView assetsPath) {
         MeshMap mm;
         assets->floor =
             getMeshes(nullptr, scene, scene->mRootNode->FindNode("Floor"), VT::NotSkinned, {},
-                      [](StringView matName) { return matName != "Stripes"; });
+                      [](StringView matName) { return matName != "Stripes" && matName != "Dirt"; });
         assets->floorStripe =
             getMeshes(nullptr, scene, scene->mRootNode->FindNode("Floor"), VT::TexturedNormal, {},
                       [](StringView matName) { return matName == "Stripes"; });
+        assets->dirt =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Floor"), VT::TexturedNormal, {},
+                      [](StringView matName) { return matName == "Dirt"; });
         assets->pipe =
             getMeshes(nullptr, scene, scene->mRootNode->FindNode("Pipe"), VT::NotSkinned);
         assets->shrub =
@@ -498,6 +501,15 @@ void Assets::load(StringView assetsPath) {
         params.repeatX = false;
         params.repeatY = false;
         assets->eyeWhiteTexture.init(im, 3, params);
+    }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "gradient.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        SamplerParams params;
+        params.repeatY = false;
+        assets->gradientTexture.init(im, 2, params);
     }
 
     // Load font resources

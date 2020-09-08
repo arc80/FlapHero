@@ -56,6 +56,7 @@ struct Assets {
     BirdParts bird;
     Array<Owned<DrawMesh>> floor;
     Array<Owned<DrawMesh>> floorStripe;
+    Array<Owned<DrawMesh>> dirt;
     Array<Owned<DrawMesh>> pipe;
     Array<Owned<DrawMesh>> shrub;
     Array<Owned<DrawMesh>> shrub2;
@@ -83,6 +84,7 @@ struct Assets {
     Texture shrub2Texture;
     Texture pipeEnvTexture;
     Texture eyeWhiteTexture;
+    Texture gradientTexture;
 
     Owned<SDFCommon> sdfCommon;
     Owned<SDFOutline> sdfOutline;

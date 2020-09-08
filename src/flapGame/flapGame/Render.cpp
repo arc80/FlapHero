@@ -364,6 +364,18 @@ void renderGamePanel(const DrawContext* dc) {
                     Float4x4::makeRotation({0, 0, 1}, Pi / 2.f),
                 dm);
         }
+        for (const DrawMesh* dm : a->dirt) {
+            UberShader::Props props;
+            props.diffuse = {1.1f, 0.9f, 0.2f};
+            props.diffuse2 = {0.08f, 0.02f, 0};
+            props.texID = a->gradientTexture.id;
+            a->duotoneShader->draw(
+                cameraToViewport,
+                worldToCamera *
+                    Float4x4::makeTranslation({0.f, 0.f, dc->visibleExtents.mins.y + 4.f}) *
+                    Float4x4::makeRotation({0, 0, 1}, Pi / 2.f),
+                dm, &props);
+        }
 
         // Draw shrubs
         {
