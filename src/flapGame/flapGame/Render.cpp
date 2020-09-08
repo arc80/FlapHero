@@ -278,8 +278,8 @@ void renderGamePanel(const DrawContext* dc) {
             UberShader::Props props;
             props.diffuse = Float3{0.45f, 0.065f, 0.02f};
             props.diffuseClamp = {-0.f, 1.5f, 0.1f};
-            props.rim = mix(Float3{1, 1, 1}, skyColor, 0.4f) * 0.3f;
-            props.rimFactor = 3.f;
+            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.2f, 1.f};
+            props.rimFactor = {2.2f, 4.5f};
             props.specular = Float3{0.9f, 0.6f, 0.2f} * 0.12f;
             props.specPower = 2.f;
             props.boneToModel = boneToModel.view();
@@ -289,10 +289,10 @@ void renderGamePanel(const DrawContext* dc) {
             UberShader::Props props;
             props.diffuse = Float3{1, 0.7f, 0.025f} * 0.75f;
             props.diffuseClamp = {-0.1f, 1.3f, 0.2f};
-            props.rim = mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.3f;
-            props.rimFactor = 3.f;
+            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.25f, 1.f};
+            props.rimFactor = {2.2f, 4.5f};
             props.specLightDir = Float3{0.65f, -1.f, 0.f}.normalized();
-            props.specular = Float3{1, 1, 0.1f} * 0.5f;
+            props.specular = Float3{1, 1, 0.25f} * 0.4f;
             props.specPower = 3.f;
             props.boneToModel = boneToModel.view();
             a->skinnedShader->draw(cameraToViewport, modelToCamera, dm, &props);
@@ -301,8 +301,8 @@ void renderGamePanel(const DrawContext* dc) {
             UberShader::Props props;
             props.diffuse = Float3{1, 0.8f, 0.13f} * 1.f;
             props.diffuseClamp = {0.1f, 1.1f, 0.15f};
-            props.rim = mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.3f;
-            props.rimFactor = 3.f;
+            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.2f, 1.f};
+            props.rimFactor = {2.7f, 4.5f};
             props.specLightDir = Float3{0.65f, -1.f, 0.5f}.normalized();
             props.specular = Float3{1, 0.6f, 0.6f} * 0.3f;
             props.specPower = 4.f;
@@ -313,8 +313,8 @@ void renderGamePanel(const DrawContext* dc) {
             UberShader::Props props;
             props.diffuse = Float3{0.95f, 0.3f, 0.08f};
             props.diffuseClamp = {-0.1f, 1.5f, 0.2f};
-            props.rim = mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.3f;
-            props.rimFactor = 3.f;
+            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.2f, 1.f};
+            props.rimFactor = {2.2f, 4.5f};
             props.specLightDir = Float3{0.65f, -1.f, 0.5f}.normalized();
             props.specular = Float3{1, 0.6f, 0.6f} * 0.15f;
             props.specPower = 4.f;
@@ -327,7 +327,7 @@ void renderGamePanel(const DrawContext* dc) {
         for (const DrawMesh* dm : a->bird.pupil) {
             UberShader::Props props;
             props.diffuse = Float3{0.5f, 0.5f, 0.5f} * 0.08f;
-            props.rim = {0, 0, 0};
+            props.rim = {0, 0, 0, 1};
             props.rimFactor = 1.5f;
             props.specLightDir = Float3{0.65f, -1.f, 0.1f}.normalized();
             props.specular = Float3{1, 1, 1} * 0.015f;

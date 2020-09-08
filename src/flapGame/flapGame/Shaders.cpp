@@ -641,8 +641,8 @@ uniform vec3 diffuse;
 uniform vec3 diffuseClamp;
 uniform vec3 specular;
 uniform float specPower;
-uniform vec3 rim;
-uniform float rimFactor;
+uniform vec4 rim;
+uniform vec2 rimFactor;
 uniform vec3 lightDir;
 uniform vec3 specLightDir;
 out vec4 outColor;
@@ -657,8 +657,8 @@ void main() {
     float specAmt = pow(max(reflect.z, 0.0), specPower);
     color += specular * specAmt;
     // Add rim
-    float rimAmt = clamp(1.0 - rimFactor * fn.z, 0.0, 1.0);
-    color += rim * rimAmt;
+    float rimAmt = clamp(rimFactor.x - rimFactor.y * fn.z, 0.0, 1.0);
+    color = color * mix(1.0, rim.a, rimAmt) + rim.rgb * rimAmt;
     // Tone map
     vec3 toneMapped = color / (vec3(0.35) + color);
     outColor = vec4(toneMapped, 1.0);
@@ -742,8 +742,8 @@ PLY_NO_INLINE void UberShader::draw(const Float4x4& cameraToViewport, const Floa
     GL_CHECK(Uniform3fv(this->diffuseClampUniform, 1, (const GLfloat*) &props->diffuseClamp));
     GL_CHECK(Uniform3fv(this->specularUniform, 1, (const GLfloat*) &props->specular));
     GL_CHECK(Uniform1f(this->specPowerUniform, props->specPower));
-    GL_CHECK(Uniform3fv(this->rimUniform, 1, (const GLfloat*) &props->rim));
-    GL_CHECK(Uniform1f(this->rimFactorUniform, props->rimFactor));
+    GL_CHECK(Uniform4fv(this->rimUniform, 1, (const GLfloat*) &props->rim));
+    GL_CHECK(Uniform2fv(this->rimFactorUniform, 1, (const GLfloat*) &props->rimFactor));
     GL_CHECK(Uniform3fv(this->lightDirUniform, 1, (const GLfloat*) &props->lightDir));
     GL_CHECK(Uniform3fv(this->specLightDirUniform, 1, (const GLfloat*) &props->specLightDir));
 

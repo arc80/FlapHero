@@ -134,8 +134,8 @@ struct UberShader {
         Float3 diffuseClamp = {-0.5f, 1.5f, 0.1f};
         Float3 specular = {1, 1, 1};
         float specPower = 5.f;
-        Float3 rim = {1, 1, 1};
-        float rimFactor = 2.5f;
+        Float4 rim = {1, 1, 1, 1};
+        Float2 rimFactor = {1.f, 2.5f};
         Float3 lightDir = Float3{1.f, -1.f, -0.5f}.normalized();
         Float3 specLightDir = Float3{0.8f, -1.f, -0.2f}.normalized();
         ArrayView<const Float4x4> boneToModel;
