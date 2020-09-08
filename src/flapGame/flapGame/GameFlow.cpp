@@ -88,7 +88,8 @@ void init(StringView assetsPath) {
 }
 
 void reloadAssets() {
-    Assets::load(Assets::instance->rootPath);
+    String rootPath = Assets::instance->rootPath;
+    Assets::load(rootPath);
 }
 
 void shutdown() {

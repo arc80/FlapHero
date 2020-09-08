@@ -128,18 +128,26 @@ struct PipeShader {
               const Float2& normalSkew, const DrawMesh* drawMesh, GLuint texID);
 };
 
-struct SkinnedShader {
+struct UberShader {
     struct Props {
         Float3 diffuse = {1, 1, 1};
-        Float4 shade = {0, 0, 0, 0.8f};
-        Float4 specular = {1, 1, 1, 0.5f};
+        Float3 diffuseClamp = {-0.5f, 1.5f, 0.1f};
+        Float3 specular = {1, 1, 1};
         float specPower = 5.f;
-        Float4 rim = {1, 1, 1, 0};
+        Float3 rim = {1, 1, 1};
         float rimFactor = 2.5f;
+        Float3 lightDir = Float3{1.f, -1.f, -0.5f}.normalized();
+        Float3 specLightDir = Float3{0.8f, -1.f, -0.2f}.normalized();
+        ArrayView<const Float4x4> boneToModel;
     };
 
     static Props defaultProps;
 
+    struct Flags {
+        static constexpr u32 Skinned = 1;
+    };
+
+    u32 flags = 0;
     ShaderProgram shader;
     GLint vertPositionAttrib = 0;
     GLint vertNormalAttrib = 0;
@@ -147,19 +155,20 @@ struct SkinnedShader {
     GLint vertBlendWeightsAttrib = 0;
     GLint modelToCameraUniform = 0;
     GLint cameraToViewportUniform = 0;
-    GLint boneXformsUniform = 0;
     GLint diffuseUniform = 0;
-    GLint shadeUniform = 0;
+    GLint diffuseClampUniform = 0;
     GLint specularUniform = 0;
+    GLint specPowerUniform = 0;
     GLint rimUniform = 0;
     GLint rimFactorUniform = 0;
-    GLint specPowerUniform = 0;
+    GLint lightDirUniform = 0;
+    GLint specLightDirUniform = 0;
+    GLint boneXformsUniform = 0;
 
-    static Owned<SkinnedShader> create();
+    static Owned<UberShader> create(u32 flags);
 
     void draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
-              ArrayView<const Float4x4> boneToModel, const DrawMesh* drawMesh,
-              const Props* props = nullptr);
+              const DrawMesh* drawMesh, const Props* props = nullptr);
 };
 
 struct FlatShader {

@@ -93,7 +93,7 @@ struct Assets {
     Owned<PaintShader> paintShader;
     Owned<ShrubShader> shrubShader;
     Owned<PipeShader> pipeShader;
-    Owned<SkinnedShader> skinnedShader;
+    Owned<UberShader> skinnedShader;
     Owned<FlatShader> flatShader;
     Owned<FlatShaderInstanced> flatShaderInstanced;
     Owned<FlashShader> flashShader;

@@ -275,57 +275,65 @@ void renderGamePanel(const DrawContext* dc) {
                                  rot.toFloat4x4() * Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) *
                                  Float4x4::makeScale(1.0833f);
         for (const DrawMesh* dm : a->bird.beak) {
-            SkinnedShader::Props props;
-            props.diffuse = mix(Float3{1, 1, 1}, {0.48f, 0.1f, 0.014f}, 0.97f) * 0.95f;
-            props.shade = {0.3f, 0, 0, 0.8f};
-            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.4f), 0.2f};
-            props.rimFactor = 1.7f;
-            props.specular = {1, 0.9f, 0.3f, 0.22f};
-            props.specPower = 1.2f;
-            a->skinnedShader->draw(cameraToViewport, modelToCamera, boneToModel.view(), dm, &props);
+            UberShader::Props props;
+            props.diffuse = Float3{0.48f, 0.1f, 0.018f};
+            props.diffuseClamp = {-0.f, 1.5f, 0.1f};
+            props.rim = mix(Float3{1, 1, 1}, skyColor, 0.4f) * 0.3f;
+            props.rimFactor = 3.f;
+            props.specular = Float3{0.9f, 0.9f, 0.2f} * 0.13f;
+            props.specPower = 1.5f;
+            props.boneToModel = boneToModel.view();
+            a->skinnedShader->draw(cameraToViewport, modelToCamera, dm, &props);
         }
         for (const DrawMesh* dm : a->bird.skin) {
-            SkinnedShader::Props props;
-            props.diffuse = Float3{1, 0.8f, 0.1f} * 0.85f;
-            props.shade = {0.2f, 0.08f, 0, 1.f};
-            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.6f), 0.2f};
-            props.rimFactor = 1.8f;
-            props.specular = {Float3{1, 1, 0.3f} * 0.85f, 0.15f};
-            props.specPower = 2.f;
-            a->skinnedShader->draw(cameraToViewport, modelToCamera, boneToModel.view(), dm, &props);
+            UberShader::Props props;
+            props.diffuse = Float3{1, 0.8f, 0.05f} * 0.65f;
+            props.diffuseClamp = {-0.3f, 1.5f, 0.15f};
+            props.rim = mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.3f;
+            props.rimFactor = 3.f;
+            props.specLightDir = Float3{0.65f, -1.f, 0.f}.normalized();
+            props.specular = Float3{1, 1, 0.1f} * 0.4f;
+            props.specPower = 4.f;
+            props.boneToModel = boneToModel.view();
+            a->skinnedShader->draw(cameraToViewport, modelToCamera, dm, &props);
         }
         for (const DrawMesh* dm : a->bird.wings) {
-            SkinnedShader::Props props;
-            props.diffuse = Float3{1, 0.8f, 0.22f} * 0.9f;
-            props.shade = {0.2f, 0.1f, 0, 0.9f};
-            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.5f), 0.15f};
-            props.rimFactor = 1.5f;
-            props.specular = {Float3{1, 1, 1}, 0.06f};
-            props.specPower = 2.f;
-            a->skinnedShader->draw(cameraToViewport, modelToCamera, boneToModel.view(), dm, &props);
+            UberShader::Props props;
+            props.diffuse = Float3{1, 0.8f, 0.13f} * 1.f;
+            props.diffuseClamp = {0.1f, 1.1f, 0.2f};
+            props.rim = mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.3f;
+            props.rimFactor = 3.f;
+            props.specLightDir = Float3{0.65f, -1.f, 0.5f}.normalized();
+            props.specular = Float3{1, 0.6f, 0.6f} * 0.1f;
+            props.specPower = 4.f;
+            props.boneToModel = boneToModel.view();
+            a->skinnedShader->draw(cameraToViewport, modelToCamera, dm, &props);
         }
         for (const DrawMesh* dm : a->bird.belly) {
-            SkinnedShader::Props props;
-            props.diffuse = Float3{0.78f, 0.42f, 0.08f} * 0.99f;
-            props.shade = {0.4f, 0, 0, 0.7f};
-            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.3f), 0.2f};
-            props.rimFactor = 1.5f;
-            props.specular = {Float3{1, 1, 1}, 0.0f};
-            props.specPower = 2.f;
-            a->skinnedShader->draw(cameraToViewport, modelToCamera, boneToModel.view(), dm, &props);
+            UberShader::Props props;
+            props.diffuse = Float3{0.95f, 0.4f, 0.08f};
+            props.diffuseClamp = {-0.1f, 1.5f, 0.2f};
+            props.rim = mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.3f;
+            props.rimFactor = 3.f;
+            props.specLightDir = Float3{0.65f, -1.f, 0.5f}.normalized();
+            props.specular = Float3{1, 0.6f, 0.6f} * 0.15f;
+            props.specPower = 4.f;
+            props.boneToModel = boneToModel.view();
+            a->skinnedShader->draw(cameraToViewport, modelToCamera, dm, &props);
         }
         for (const DrawMesh* dm : a->bird.eyeWhite) {
             a->pipeShader->draw(cameraToViewport, modelToCamera, {0, 0}, dm, a->eyeWhiteTexture.id);
         }
         for (const DrawMesh* dm : a->bird.pupil) {
-            SkinnedShader::Props props;
-            props.diffuse = Float3{0.5f, 0.5f, 0.5f} * 0.12f;
-            props.shade = {0, 0, 0, 1.f};
-            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.3f), 0.f};
+            UberShader::Props props;
+            props.diffuse = Float3{0.5f, 0.5f, 0.5f} * 0.08f;
+            props.rim = {0, 0, 0};
             props.rimFactor = 1.5f;
-            props.specular = {Float3{1, 1, 1}, 0.4f};
+            props.specLightDir = Float3{0.65f, -1.f, 0.1f}.normalized();
+            props.specular = Float3{1, 1, 1} * 0.015f;
             props.specPower = 1.f;
-            a->skinnedShader->draw(cameraToViewport, modelToCamera, boneToModel.view(), dm, &props);
+            props.boneToModel = boneToModel.view();
+            a->skinnedShader->draw(cameraToViewport, modelToCamera, dm, &props);
         }
         GL_CHECK(Disable(GL_STENCIL_TEST));
     }

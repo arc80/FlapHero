@@ -587,162 +587,208 @@ PLY_NO_INLINE void PipeShader::draw(const Float4x4& cameraToViewport, const Floa
 
 //---------------------------------------------------------
 
-PLY_NO_INLINE Owned<SkinnedShader> SkinnedShader::create() {
-    Owned<SkinnedShader> skinnedShader = new SkinnedShader;
-    {
-        Shader vertexShader = Shader::compile(
-            GL_VERTEX_SHADER,
-            "in vec3 vertPosition;\n"
-            "in vec3 vertNormal;\n"
-            "in vec2 vertBlendIndices;\n"
-            "in vec2 vertBlendWeights;\n"
-            "uniform mat4 modelToCamera;\n"
-            "uniform mat4 cameraToViewport;\n"
-            "uniform mat4 boneXforms[16];\n"
-            "out vec3 fragNormal;\n"
-            "\n"
-            "void main() {\n"
-            "    vec4 pos = boneXforms[int(vertBlendIndices.x)] * vec4(vertPosition, 1.0)\n"
-            "               * vertBlendWeights.x;\n"
-            "    pos += boneXforms[int(vertBlendIndices.y)] * vec4(vertPosition, 1.0)\n"
-            "           * vertBlendWeights.y;\n"
-            "    vec4 norm = boneXforms[int(vertBlendIndices.x)] * vec4(vertNormal, 0.0)\n"
-            "               * vertBlendWeights.x;\n"
-            "    norm += boneXforms[int(vertBlendIndices.y)] * vec4(vertNormal, 0.0)\n"
-            "            * vertBlendWeights.y;\n"
-            "    fragNormal = vec3(modelToCamera * normalize(norm));\n"
-            "    gl_Position = cameraToViewport * (modelToCamera * pos);\n"
-            "}\n");
+PLY_NO_INLINE Owned<UberShader> UberShader::create(u32 flags) {
+    using F = UberShader::Flags;
+    const bool skinned = (flags & F::Skinned) != 0;
 
-        Shader fragmentShader = Shader::compile(
-            GL_FRAGMENT_SHADER,
-            "in vec3 fragNormal;\n"
-            "uniform vec3 diffuse;\n"
-            "uniform vec4 shade;\n"
-            "uniform vec4 specular;\n"
-            "uniform float specPower;\n"
-            "uniform vec4 rim;\n"
-            "uniform float rimFactor;\n"
-            "vec3 lightDir = normalize(vec3(1.0, -1.0, -0.5));\n"
-            "vec3 specLightDir = normalize(vec3(0.8, -1.0, -0.2));\n"
-            "out vec4 fragColor;"
-            "\n"
-            "void main() {\n"
-            "    vec3 fn = normalize(fragNormal);\n"
-            "    vec3 color = diffuse;\n"
-            "    float diffAmt = 0.5 - dot(fn, lightDir) * 0.5;\n"
-            "    color *= mix(vec3(1.0), shade.rgb, min(shade.a * (1.0 - diffAmt), 1.0));\n"
-            "    vec3 reflect = lightDir - fn * (dot(fn, specLightDir) * 2.0);\n"
-            "    float specAmt = pow(max(reflect.z, 0.0), specPower);\n"
-            "    color = mix(color, specular.rgb, specular.a * specAmt);\n"
-            "    float rimAmt = clamp(1.0 - rimFactor * fn.z, 0.0, 1.0);\n"
-            "    color = mix(color, rim.rgb, rim.a * rimAmt);\n"
-            "    fragColor = vec4(color, 1.0);\n"
-            "}\n");
+    Owned<UberShader> uberShader = new UberShader;
+    uberShader->flags = flags;
+    {
+        String defines = [&]{
+            StringWriter sw;
+            if (skinned) {
+                sw << "#define SKINNED 1\n";
+            }
+            return sw.moveToString();
+        }();
+
+        Shader vertexShader = Shader::compile(GL_VERTEX_SHADER, defines + R"(
+in vec3 vertPosition;
+in vec3 vertNormal;
+uniform mat4 modelToCamera;
+uniform mat4 cameraToViewport;
+#if SKINNED
+in vec2 vertBlendIndices;
+in vec2 vertBlendWeights;
+uniform mat4 boneXforms[16];
+#endif
+out vec3 fragNormal;
+            
+void main() {
+#if SKINNED
+    // Skinned
+    vec4 pos = boneXforms[int(vertBlendIndices.x)] * vec4(vertPosition, 1.0)
+                * vertBlendWeights.x;
+    pos += boneXforms[int(vertBlendIndices.y)] * vec4(vertPosition, 1.0)
+            * vertBlendWeights.y;
+    vec4 norm = boneXforms[int(vertBlendIndices.x)] * vec4(vertNormal, 0.0)
+                * vertBlendWeights.x;
+    norm += boneXforms[int(vertBlendIndices.y)] * vec4(vertNormal, 0.0)
+            * vertBlendWeights.y;
+#else
+    // Not skinned
+    vec4 pos = vec4(vertPosition, 1.0);
+    vec4 norm = vec4(vertNormal, 1.0);
+#endif
+    fragNormal = vec3(modelToCamera * normalize(norm));
+    gl_Position = cameraToViewport * (modelToCamera * pos);
+}
+)");
+
+        Shader fragmentShader = Shader::compile(GL_FRAGMENT_SHADER, defines + R"(
+in vec3 fragNormal;
+uniform vec3 diffuse;
+uniform vec3 diffuseClamp;
+uniform vec3 specular;
+uniform float specPower;
+uniform vec3 rim;
+uniform float rimFactor;
+uniform vec3 lightDir;
+uniform vec3 specLightDir;
+out vec4 outColor;
+
+void main() {
+    vec3 fn = normalize(fragNormal);
+    // Diffuse
+    float diffAmt = 0.5 - dot(fn, lightDir) * 0.5;
+    vec3 color = diffuse * clamp(mix(diffuseClamp.x, diffuseClamp.y, diffAmt), diffuseClamp.z, 1.0);
+    vec3 reflect = specLightDir - fn * (dot(fn, specLightDir) * 2.0);
+    // Add specular
+    float specAmt = pow(max(reflect.z, 0.0), specPower);
+    color += specular * specAmt;
+    // Add rim
+    float rimAmt = clamp(1.0 - rimFactor * fn.z, 0.0, 1.0);
+    color += rim * rimAmt;
+    // Tone map
+    vec3 toneMapped = color / (vec3(0.4) + color);
+    outColor = vec4(toneMapped, 1.0);
+}
+)");
 
         // Link shader program
-        skinnedShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
+        uberShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
     }
 
     // Get shader program's vertex attribute and uniform locations
-    skinnedShader->vertPositionAttrib =
-        GL_NO_CHECK(GetAttribLocation(skinnedShader->shader.id, "vertPosition"));
-    PLY_ASSERT(skinnedShader->vertPositionAttrib >= 0);
-    skinnedShader->vertNormalAttrib =
-        GL_NO_CHECK(GetAttribLocation(skinnedShader->shader.id, "vertNormal"));
-    PLY_ASSERT(skinnedShader->vertNormalAttrib >= 0);
-    skinnedShader->vertBlendIndicesAttrib =
-        GL_NO_CHECK(GetAttribLocation(skinnedShader->shader.id, "vertBlendIndices"));
-    PLY_ASSERT(skinnedShader->vertBlendIndicesAttrib >= 0);
-    skinnedShader->vertBlendWeightsAttrib =
-        GL_NO_CHECK(GetAttribLocation(skinnedShader->shader.id, "vertBlendWeights"));
-    PLY_ASSERT(skinnedShader->vertBlendWeightsAttrib >= 0);
-    skinnedShader->modelToCameraUniform =
-        GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "modelToCamera"));
-    PLY_ASSERT(skinnedShader->modelToCameraUniform >= 0);
-    skinnedShader->cameraToViewportUniform =
-        GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "cameraToViewport"));
-    PLY_ASSERT(skinnedShader->cameraToViewportUniform >= 0);
-    skinnedShader->boneXformsUniform =
-        GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "boneXforms"));
-    PLY_ASSERT(skinnedShader->boneXformsUniform >= 0);
-    skinnedShader->diffuseUniform =
-        GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "diffuse"));
-    PLY_ASSERT(skinnedShader->diffuseUniform >= 0);
-    skinnedShader->shadeUniform =
-        GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "shade"));
-    PLY_ASSERT(skinnedShader->shadeUniform >= 0);
-    skinnedShader->specularUniform =
-        GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "specular"));
-    PLY_ASSERT(skinnedShader->specularUniform >= 0);
-    skinnedShader->specPowerUniform =
-        GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "specPower"));
-    PLY_ASSERT(skinnedShader->specPowerUniform >= 0);
-    skinnedShader->rimUniform = GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "rim"));
-    PLY_ASSERT(skinnedShader->rimUniform >= 0);
-    skinnedShader->rimFactorUniform =
-        GL_NO_CHECK(GetUniformLocation(skinnedShader->shader.id, "rimFactor"));
-    PLY_ASSERT(skinnedShader->rimFactorUniform >= 0);
+    uberShader->vertPositionAttrib =
+        GL_NO_CHECK(GetAttribLocation(uberShader->shader.id, "vertPosition"));
+    PLY_ASSERT(uberShader->vertPositionAttrib >= 0);
+    uberShader->vertNormalAttrib =
+        GL_NO_CHECK(GetAttribLocation(uberShader->shader.id, "vertNormal"));
+    PLY_ASSERT(uberShader->vertNormalAttrib >= 0);
+    uberShader->vertBlendIndicesAttrib =
+        GL_NO_CHECK(GetAttribLocation(uberShader->shader.id, "vertBlendIndices"));
+    PLY_ASSERT(skinned == (uberShader->vertBlendIndicesAttrib >= 0));
+    uberShader->vertBlendWeightsAttrib =
+        GL_NO_CHECK(GetAttribLocation(uberShader->shader.id, "vertBlendWeights"));
+    PLY_ASSERT(skinned == (uberShader->vertBlendIndicesAttrib >= 0));
+    uberShader->modelToCameraUniform =
+        GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "modelToCamera"));
+    PLY_ASSERT(uberShader->modelToCameraUniform >= 0);
+    uberShader->cameraToViewportUniform =
+        GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "cameraToViewport"));
+    PLY_ASSERT(uberShader->cameraToViewportUniform >= 0);
+    uberShader->diffuseUniform = GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "diffuse"));
+    PLY_ASSERT(uberShader->diffuseUniform >= 0);
+    uberShader->diffuseClampUniform = GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "diffuseClamp"));
+    PLY_ASSERT(uberShader->diffuseClampUniform >= 0);
+    uberShader->specularUniform =
+        GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "specular"));
+    PLY_ASSERT(uberShader->specularUniform >= 0);
+    uberShader->specPowerUniform =
+        GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "specPower"));
+    PLY_ASSERT(uberShader->specPowerUniform >= 0);
+    uberShader->rimUniform = GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "rim"));
+    PLY_ASSERT(uberShader->rimUniform >= 0);
+    uberShader->rimFactorUniform =
+        GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "rimFactor"));
+    PLY_ASSERT(uberShader->rimFactorUniform >= 0);
+    uberShader->lightDirUniform =
+        GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "lightDir"));
+    PLY_ASSERT(uberShader->lightDirUniform >= 0);
+    uberShader->specLightDirUniform =
+        GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "specLightDir"));
+    PLY_ASSERT(uberShader->specLightDirUniform >= 0);
+    uberShader->boneXformsUniform =
+        GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "boneXforms"));
+    PLY_ASSERT(skinned == (uberShader->boneXformsUniform >= 0));
 
-    return skinnedShader;
+    return uberShader;
 }
 
-SkinnedShader::Props SkinnedShader::defaultProps;
+UberShader::Props UberShader::defaultProps;
 
-PLY_NO_INLINE void SkinnedShader::draw(const Float4x4& cameraToViewport,
-                                       const Float4x4& modelToCamera,
-                                       ArrayView<const Float4x4> boneToModel,
-                                       const DrawMesh* drawMesh, const Props* props) {
+PLY_NO_INLINE void UberShader::draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
+                                    const DrawMesh* drawMesh, const Props* props) {
+    using F = UberShader::Flags;
+    const bool skinned = (this->flags & F::Skinned) != 0;
+
     GL_CHECK(UseProgram(this->shader.id));
     GL_CHECK(Enable(GL_DEPTH_TEST));
     GL_CHECK(DepthMask(GL_TRUE));
     GL_CHECK(Disable(GL_BLEND));
 
+    // Uniforms
     GL_CHECK(
         UniformMatrix4fv(this->cameraToViewportUniform, 1, GL_FALSE, (GLfloat*) &cameraToViewport));
     GL_CHECK(UniformMatrix4fv(this->modelToCameraUniform, 1, GL_FALSE, (GLfloat*) &modelToCamera));
 
-    // Compute boneXforms
-    Array<Float4x4> boneXforms;
-    boneXforms.resize(drawMesh->bones.numItems());
-    for (u32 i = 0; i < drawMesh->bones.numItems(); i++) {
-        u32 indexInSkel = drawMesh->bones[i].indexInSkel;
-        boneXforms[i] = boneToModel[indexInSkel] * drawMesh->bones[i].baseModelToBone;
-    }
-    GL_CHECK(UniformMatrix4fv(this->boneXformsUniform, boneXforms.numItems(), GL_FALSE,
-                              (const GLfloat*) boneXforms.get()));
-
-    // Set remaining uniforms and vertex attributes
     if (!props) {
-        props = &SkinnedShader::defaultProps;
+        props = &UberShader::defaultProps;
         GL_CHECK(Uniform3fv(this->diffuseUniform, 1, (const GLfloat*) &drawMesh->diffuse));
     } else {
         GL_CHECK(Uniform3fv(this->diffuseUniform, 1, (const GLfloat*) &props->diffuse));
     }
-    GL_CHECK(Uniform4fv(this->shadeUniform, 1, (const GLfloat*) &props->shade));
-    GL_CHECK(Uniform4fv(this->specularUniform, 1, (const GLfloat*) &props->specular));
+    GL_CHECK(Uniform3fv(this->diffuseClampUniform, 1, (const GLfloat*) &props->diffuseClamp));
+    GL_CHECK(Uniform3fv(this->specularUniform, 1, (const GLfloat*) &props->specular));
     GL_CHECK(Uniform1f(this->specPowerUniform, props->specPower));
-    GL_CHECK(Uniform4fv(this->rimUniform, 1, (const GLfloat*) &props->rim));
+    GL_CHECK(Uniform3fv(this->rimUniform, 1, (const GLfloat*) &props->rim));
     GL_CHECK(Uniform1f(this->rimFactorUniform, props->rimFactor));
+    GL_CHECK(Uniform3fv(this->lightDirUniform, 1, (const GLfloat*) &props->lightDir));
+    GL_CHECK(Uniform3fv(this->specLightDirUniform, 1, (const GLfloat*) &props->specLightDir));
 
+    if (this->boneXformsUniform >= 0) {
+        Array<Float4x4> boneXforms;
+        boneXforms.resize(drawMesh->bones.numItems());
+        for (u32 i = 0; i < drawMesh->bones.numItems(); i++) {
+            u32 indexInSkel = drawMesh->bones[i].indexInSkel;
+            boneXforms[i] = props->boneToModel[indexInSkel] * drawMesh->bones[i].baseModelToBone;
+        }
+        GL_CHECK(UniformMatrix4fv(this->boneXformsUniform, boneXforms.numItems(), GL_FALSE,
+                                  (const GLfloat*) boneXforms.get()));
+    }
+
+    // Vertex attributes
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
-    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::Skinned);
-    GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
-    GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
-                                 (GLsizei) sizeof(VertexPNW2),
-                                 (GLvoid*) offsetof(VertexPNW2, pos)));
-    GL_CHECK(EnableVertexAttribArray(this->vertNormalAttrib));
-    GL_CHECK(VertexAttribPointer(this->vertNormalAttrib, 3, GL_FLOAT, GL_FALSE,
-                                 (GLsizei) sizeof(VertexPNW2),
-                                 (GLvoid*) offsetof(VertexPNW2, normal)));
-    GL_CHECK(EnableVertexAttribArray(this->vertBlendIndicesAttrib));
-    GL_CHECK(VertexAttribPointer(this->vertBlendIndicesAttrib, 2, GL_UNSIGNED_SHORT, GL_FALSE,
-                                 (GLsizei) sizeof(VertexPNW2),
-                                 (GLvoid*) offsetof(VertexPNW2, blendIndices)));
-    GL_CHECK(EnableVertexAttribArray(this->vertBlendWeightsAttrib));
-    GL_CHECK(VertexAttribPointer(this->vertBlendWeightsAttrib, 2, GL_FLOAT, GL_FALSE,
-                                 (GLsizei) sizeof(VertexPNW2),
-                                 (GLvoid*) offsetof(VertexPNW2, blendWeights)));
+    if (skinned) {
+        PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::Skinned);
+        GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
+        GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
+                                     (GLsizei) sizeof(VertexPNW2),
+                                     (GLvoid*) offsetof(VertexPNW2, pos)));
+        GL_CHECK(EnableVertexAttribArray(this->vertNormalAttrib));
+        GL_CHECK(VertexAttribPointer(this->vertNormalAttrib, 3, GL_FLOAT, GL_FALSE,
+                                     (GLsizei) sizeof(VertexPNW2),
+                                     (GLvoid*) offsetof(VertexPNW2, normal)));
+        GL_CHECK(EnableVertexAttribArray(this->vertBlendIndicesAttrib));
+        GL_CHECK(VertexAttribPointer(this->vertBlendIndicesAttrib, 2, GL_UNSIGNED_SHORT, GL_FALSE,
+                                     (GLsizei) sizeof(VertexPNW2),
+                                     (GLvoid*) offsetof(VertexPNW2, blendIndices)));
+        GL_CHECK(EnableVertexAttribArray(this->vertBlendWeightsAttrib));
+        GL_CHECK(VertexAttribPointer(this->vertBlendWeightsAttrib, 2, GL_FLOAT, GL_FALSE,
+                                     (GLsizei) sizeof(VertexPNW2),
+                                     (GLvoid*) offsetof(VertexPNW2, blendWeights)));
+    } else {
+        PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::NotSkinned);
+        GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
+        GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
+                                     (GLsizei) sizeof(VertexPN),
+                                     (GLvoid*) offsetof(VertexPN, pos)));
+        GL_CHECK(EnableVertexAttribArray(this->vertNormalAttrib));
+        GL_CHECK(VertexAttribPointer(this->vertNormalAttrib, 3, GL_FLOAT, GL_FALSE,
+                                     (GLsizei) sizeof(VertexPN),
+                                     (GLvoid*) offsetof(VertexPN, normal)));
+    }
 
     // Draw this VBO
     GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh->indexBuffer.id));
@@ -751,8 +797,10 @@ PLY_NO_INLINE void SkinnedShader::draw(const Float4x4& cameraToViewport,
 
     GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
     GL_CHECK(DisableVertexAttribArray(this->vertNormalAttrib));
-    GL_CHECK(DisableVertexAttribArray(this->vertBlendIndicesAttrib));
-    GL_CHECK(DisableVertexAttribArray(this->vertBlendWeightsAttrib));
+    if (skinned) {
+        GL_CHECK(DisableVertexAttribArray(this->vertBlendIndicesAttrib));
+        GL_CHECK(DisableVertexAttribArray(this->vertBlendWeightsAttrib));
+    }
 }
 
 //---------------------------------------------------------

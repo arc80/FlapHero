@@ -516,7 +516,7 @@ void Assets::load(StringView assetsPath) {
     assets->paintShader = PaintShader::create();
     assets->shrubShader = ShrubShader::create();
     assets->pipeShader = PipeShader::create();
-    assets->skinnedShader = SkinnedShader::create();
+    assets->skinnedShader = UberShader::create(UberShader::Flags::Skinned);
     assets->flatShader = FlatShader::create();
     assets->flatShaderInstanced = FlatShaderInstanced::create();
     assets->flashShader = FlashShader::create();
