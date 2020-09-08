@@ -529,12 +529,12 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     if (ts->showPrompt) {
         TextBuffers tapToPlay = generateTextBuffers(a->sdfFont, "TAP TO PLAY");
         drawText(a->sdfCommon, a->sdfFont, tapToPlay,
-                 Float4x4::makeOrtho({{0, 0}, vpSize}, -1.f, 1.f) *
+                 Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
                      Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
                      Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
                  {0.85f, 1.75f}, {0, 0, 0, 0.8f});
         drawOutlinedText(a->sdfOutline, a->sdfFont, tapToPlay,
-                         Float4x4::makeOrtho({{0, 0}, vpSize}, -1.f, 1.f) *
+                         Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
                              Float4x4::makeTranslation({240, 24, 0}) * Float4x4::makeScale(0.9f) *
                              Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
                          {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.6f, 16.f}, {0.75f, 12.f}});
