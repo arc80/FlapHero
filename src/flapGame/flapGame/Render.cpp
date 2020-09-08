@@ -278,8 +278,8 @@ void renderGamePanel(const DrawContext* dc) {
             UberShader::Props props;
             props.diffuse = Float3{0.45f, 0.065f, 0.02f};
             props.diffuseClamp = {-0.f, 1.5f, 0.1f};
-            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.2f, 1.f};
-            props.rimFactor = {2.2f, 4.5f};
+            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.1f, 1.f};
+            props.rimFactor = {4.5f, 9.f};
             props.specular = Float3{0.9f, 0.6f, 0.2f} * 0.12f;
             props.specPower = 2.f;
             props.boneToModel = boneToModel.view();
@@ -289,8 +289,8 @@ void renderGamePanel(const DrawContext* dc) {
             UberShader::Props props;
             props.diffuse = Float3{1, 0.7f, 0.025f} * 0.75f;
             props.diffuseClamp = {-0.1f, 1.3f, 0.2f};
-            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.25f, 1.f};
-            props.rimFactor = {2.2f, 4.5f};
+            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.15f, 1.f};
+            props.rimFactor = {4.5f, 9.f};
             props.specLightDir = Float3{0.65f, -1.f, 0.f}.normalized();
             props.specular = Float3{1, 1, 0.25f} * 0.4f;
             props.specPower = 3.f;
@@ -302,7 +302,7 @@ void renderGamePanel(const DrawContext* dc) {
             props.diffuse = Float3{1, 0.8f, 0.13f} * 1.f;
             props.diffuseClamp = {0.1f, 1.1f, 0.15f};
             props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.2f, 1.f};
-            props.rimFactor = {2.7f, 4.5f};
+            props.rimFactor = {5.f, 9.f};
             props.specLightDir = Float3{0.65f, -1.f, 0.5f}.normalized();
             props.specular = Float3{1, 0.6f, 0.6f} * 0.3f;
             props.specPower = 4.f;
@@ -313,8 +313,8 @@ void renderGamePanel(const DrawContext* dc) {
             UberShader::Props props;
             props.diffuse = Float3{0.95f, 0.3f, 0.08f};
             props.diffuseClamp = {-0.1f, 1.5f, 0.2f};
-            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.2f, 1.f};
-            props.rimFactor = {2.2f, 4.5f};
+            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.15f, 1.f};
+            props.rimFactor = {4.5f, 9.f};
             props.specLightDir = Float3{0.65f, -1.f, 0.5f}.normalized();
             props.specular = Float3{1, 0.6f, 0.6f} * 0.15f;
             props.specPower = 4.f;
@@ -381,12 +381,13 @@ void renderGamePanel(const DrawContext* dc) {
                 for (const DrawGroup::Instance& inst : a->shrubGroup.instances) {
                     props.texID =
                         (inst.drawMesh == a->shrub[0]) ? a->shrubTexture.id : a->shrub2Texture.id;
-                    a->shrubShader->draw(cameraToViewport,
-                                         worldToCamera * a->shrubGroup.groupToWorld *
-                                             Float4x4::makeTranslation(
-                                                 {gs->shrubX + GameState::ShrubRepeat * i, 0, 0}) *
-                                             inst.itemToGroup,
-                                         inst.drawMesh, &props);
+                    a->duotoneShader->draw(
+                        cameraToViewport,
+                        worldToCamera * a->shrubGroup.groupToWorld *
+                            Float4x4::makeTranslation(
+                                {gs->shrubX + GameState::ShrubRepeat * i, 0, 0}) *
+                            inst.itemToGroup,
+                        inst.drawMesh, &props);
                 }
             }
         }
@@ -395,18 +396,23 @@ void renderGamePanel(const DrawContext* dc) {
         Float4x4 skyBoxW2C = worldToCamera;
         skyBoxW2C[3].asFloat2() = {0, 0};
         {
-            MaterialShader::Props matProps;
-            matProps.specular = 0.0025f;
-            matProps.fog = {mix(Float3{1, 1, 1}, skyColor, 0.4f), 0.5f};
+            UberShader::Props props;
+            props.diffuse = Float3{0.95f, 1.15f, 0.45f} * 2.2f;
+            props.diffuse2 = Float3{0.3f, 1.f, 1.f} * 2.f;
+            props.diffuseClamp = {-1.f, 1.f, 0.4f};
+            props.rim = {Float3{0.25f, 1.f, 1.f} * 0.7f, 0.3f};
+            props.rimFactor = {2.f, 2.f};
+            props.specular = {0, 0, 0};
+            props.texID = a->windowTexture.id;
             for (float r = -3; r <= 3; r++) {
                 for (const DrawGroup::Instance& inst : a->cityGroup.instances) {
-                    a->texMatShader->draw(
+                    a->duotoneShader->draw(
                         cameraToViewport,
                         worldToCamera * a->cityGroup.groupToWorld *
                             Float4x4::makeTranslation(
                                 {gs->buildingX + GameState::BuildingRepeat * r, 0, 0}) *
                             inst.itemToGroup,
-                        inst.drawMesh, a->windowTexture.id, &matProps);
+                        inst.drawMesh, &props);
                 }
             }
         }

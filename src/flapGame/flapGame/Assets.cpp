@@ -513,8 +513,7 @@ void Assets::load(StringView assetsPath) {
     // Load shaders
     assets->matShader = MaterialShader::create();
     assets->texMatShader = TexturedMaterialShader::create();
-    assets->paintShader = PaintShader::create();
-    assets->shrubShader = UberShader::create(UberShader::Flags::Duotone);
+    assets->duotoneShader = UberShader::create(UberShader::Flags::Duotone);
     assets->pipeShader = PipeShader::create();
     assets->skinnedShader = UberShader::create(UberShader::Flags::Skinned);
     assets->flatShader = FlatShader::create();
