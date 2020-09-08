@@ -369,14 +369,14 @@ void renderGamePanel(const DrawContext* dc) {
         {
             UberShader::Props props;
             props.lightDir = Float3{1, -1, 0}.normalized();
-            props.diffuse = mix(Float3{0.07f, 0.9f, 0.12f} * 0.9f, skyColor, 0.1f);
-            props.diffuse2 = mix(Float3{0.1f, 0.6f, 0.2f} * 0.5f, skyColor, 0.1f);
-            props.diffuseClamp = {0.2f, 0.8f, 0.2f};
+            props.diffuse = mix(Float3{0.1f, 0.99f, 0.1f} * 1.f, skyColor, 0.f);
+            props.diffuse2 = mix(Float3{0.1f, 0.6f, 0.2f} * 0.4f, skyColor, 0.1f);
+            props.diffuseClamp = {0.3f, 1.1f, 0.3f};
             props.specLightDir = Float3{1, -1, 0.2f}.normalized();
-            props.specular = Float3{0.5f, 1, 0} * 0.04f;
+            props.specular = Float3{0.7f, 1, 0} * 0.06f;
             props.specPower = 4.f;
-            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.5f) * 0.1f, 1.f};
-            props.rimFactor = {1.5f, 4.5f};
+            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.5f) * 0.2f, 1.f};
+            props.rimFactor = {1.6f, 4.5f};
             for (u32 i = 0; i < 3; i++) {
                 for (const DrawGroup::Instance& inst : a->shrubGroup.instances) {
                     props.texID =
