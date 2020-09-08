@@ -660,7 +660,7 @@ void main() {
     float rimAmt = clamp(1.0 - rimFactor * fn.z, 0.0, 1.0);
     color += rim * rimAmt;
     // Tone map
-    vec3 toneMapped = color / (vec3(0.4) + color);
+    vec3 toneMapped = color / (vec3(0.35) + color);
     outColor = vec4(toneMapped, 1.0);
 }
 )");
