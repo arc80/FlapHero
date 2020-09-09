@@ -185,6 +185,7 @@ struct HypnoShader {
     ShaderProgram shader;
     GLint positionAttrib = 0;
     GLint instPlacementAttrib = 0;
+    GLint instScaleAttrib = 0;
     GLint modelToViewportUniform = 0;
     GLint textureUniform = 0;
     GLint paletteUniform = 0;
@@ -195,7 +196,7 @@ struct HypnoShader {
 
     static PLY_NO_INLINE Owned<HypnoShader> create();
     void draw(const Float4x4& modelToViewport, GLuint textureID, const Texture& palette,
-              float atScale) const;
+              float atScale, float timeParam) const;
 };
 
 struct CopyShader {

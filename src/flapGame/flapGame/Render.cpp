@@ -535,16 +535,15 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     GL_CHECK(ClearStencil(0));
     GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
     drawTitle(ts);
-    drawStars(ts);
+//    drawStars(ts);
     {
         // Draw background
         float hypnoAngle = mix(ts->hypnoAngle[0], ts->hypnoAngle[1], dc->intervalFrac);
         float hypnoScale = powf(1.3f, mix(ts->hypnoZoom[0], ts->hypnoZoom[1], dc->intervalFrac));
         a->hypnoShader->draw(Float4x4::makeOrtho({{-3.f, -4.f}, {3.f, 4.f}}, -1.f, 0.01f) *
                                  Float4x4::makeTranslation({0, -1.7f, 0}) *
-                                 Float4x4::makeRotation({0, 0, 1}, hypnoAngle) *
                                  Float4x4::makeScale(hypnoScale),
-                             a->waveTexture.id, a->hypnoPaletteTexture, hypnoScale);
+                             a->waveTexture.id, a->hypnoPaletteTexture, hypnoScale, hypnoAngle);
     }
     // Draw prompt
     if (ts->showPrompt) {

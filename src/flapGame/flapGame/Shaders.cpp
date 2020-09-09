@@ -988,22 +988,23 @@ PLY_NO_INLINE Owned<HypnoShader> HypnoShader::create() {
     {
         Shader vertexShader = Shader::compile(GL_VERTEX_SHADER, R"(
 in vec2 vertPosition;
-in vec4 instPlacement;
-out vec4 fragTexCoord;
+in vec3 instPlacement;
+in vec2 instScale;
+out vec3 fragTexCoord;
 uniform mat4 modelToViewport;
 
 void main() {
     float angle = mod(vertPosition.x + instPlacement.x, 24.0) * (3.1415926 * 2.0 / 24.0);
     vec2 warped = vec2(cos(angle), -sin(angle));
-    float scale = mix(instPlacement.y, instPlacement.z, vertPosition.y);
+    float scale = mix(instScale.x, instScale.y, vertPosition.y);
     vec2 modelPos = warped * scale;
-    fragTexCoord = vec4(vertPosition.x, vertPosition.y, scale, instPlacement.w);
+    fragTexCoord = vec3(vertPosition.x + instPlacement.y, vertPosition.y, instPlacement.z);
     gl_Position = modelToViewport * vec4(modelPos, 0.0, 1.0);
 }
 )");
 
         Shader fragmentShader = Shader::compile(GL_FRAGMENT_SHADER, R"(
-in vec4 fragTexCoord;
+in vec3 fragTexCoord;
 uniform sampler2D texImage;
 uniform sampler2D palette;
 uniform float paletteSize;
@@ -1011,8 +1012,8 @@ out vec4 fragColor;
 
 void main() {
     vec4 sam = texture(texImage, fragTexCoord.xy);
-    vec3 c0 = texture(palette, vec2((0.5 - fragTexCoord.w) / paletteSize, 0.5)).rgb * sam.r;
-    vec3 c1 = texture(palette, vec2((1.5 - fragTexCoord.w) / paletteSize, 0.5)).rgb;
+    vec3 c0 = texture(palette, vec2((0.5 - fragTexCoord.z) / paletteSize, 0.5)).rgb * sam.r;
+    vec3 c1 = texture(palette, vec2((1.5 - fragTexCoord.z) / paletteSize, 0.5)).rgb;
     fragColor = vec4(mix(c0, c1, sam.g), 1.0);
 }
 )");
@@ -1027,6 +1028,8 @@ void main() {
     result->instPlacementAttrib =
         GL_NO_CHECK(GetAttribLocation(result->shader.id, "instPlacement"));
     PLY_ASSERT(result->instPlacementAttrib >= 0);
+    result->instScaleAttrib = GL_NO_CHECK(GetAttribLocation(result->shader.id, "instScale"));
+    PLY_ASSERT(result->instScaleAttrib >= 0);
     result->modelToViewportUniform =
         GL_NO_CHECK(GetUniformLocation(result->shader.id, "modelToViewport"));
     PLY_ASSERT(result->modelToViewportUniform >= 0);
@@ -1059,23 +1062,33 @@ void main() {
 }
 
 PLY_NO_INLINE void HypnoShader::draw(const Float4x4& modelToViewport, GLuint textureID,
-                                     const Texture& palette, float atScale) const {
+                                     const Texture& palette, float atScale, float timeParam) const {
     static constexpr float base = 1.3f;
     static constexpr float minScale = 0.1f;
     static constexpr float maxScale = 6.5f;
 
-    Array<Float4> instPlacement;
+    struct InstanceAttribs {
+        Float3 placement = {0, 0, 0};
+        Float2 scale = {0, 0};
+    };
+
+    Array<InstanceAttribs> instAttribs;
     float exp = quantizeUp((logf(minScale) - logf(atScale)) / logf(base), 1.f);
     float maxExp = quantizeDown((logf(maxScale) - logf(atScale)) / logf(base), 1.f);
+
     while (exp <= maxExp) {
         float s0 = powf(base, exp);
         float s1 = powf(base, exp + 1);
+        float rr = sinf(timeParam - exp * (2.f * Pi / 48.f)) * 0.5f + 0.5f;
+        float rowRot = interpolateCubic(0.f, 0.15f, 0.85f, 1.f, rr) * 6.f;
         for (u32 u = 0; u < 24; u++) {
-            instPlacement.append({(float) u, s0, s1, exp});
+            InstanceAttribs& attribs = instAttribs.append();
+            attribs.placement = {(float) u, rowRot, exp};
+            attribs.scale = {s0, s1};
         }
         exp += 1;
     }
-    GLuint ibo = DynamicArrayBuffers::instance->upload(instPlacement.view().bufferView());
+    GLuint ibo = DynamicArrayBuffers::instance->upload(instAttribs.view().bufferView());
 
     GL_CHECK(UseProgram(this->shader.id));
     GL_CHECK(Enable(GL_DEPTH_TEST));
@@ -1096,9 +1109,15 @@ PLY_NO_INLINE void HypnoShader::draw(const Float4x4& modelToViewport, GLuint tex
     // Instance attributes
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, ibo));
     GL_CHECK(EnableVertexAttribArray(this->instPlacementAttrib));
-    GL_CHECK(VertexAttribPointer(this->instPlacementAttrib, 4, GL_FLOAT, GL_FALSE,
-                                 (GLsizei) sizeof(Float4), (GLvoid*) 0));
+    GL_CHECK(VertexAttribPointer(this->instPlacementAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(InstanceAttribs),
+                                 (GLvoid*) offsetof(InstanceAttribs, placement)));
     GL_CHECK(VertexAttribDivisor(this->instPlacementAttrib, 1));
+    GL_CHECK(EnableVertexAttribArray(this->instScaleAttrib));
+    GL_CHECK(VertexAttribPointer(this->instScaleAttrib, 2, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(InstanceAttribs),
+                                 (GLvoid*) offsetof(InstanceAttribs, scale)));
+    GL_CHECK(VertexAttribDivisor(this->instScaleAttrib, 1));
 
     // Draw
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, this->vbo.id));
@@ -1107,11 +1126,12 @@ PLY_NO_INLINE void HypnoShader::draw(const Float4x4& modelToViewport, GLuint tex
                                  (GLsizei) sizeof(Float2), (GLvoid*) 0));
     GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->indices.id));
     GL_CHECK(DrawElementsInstanced(GL_TRIANGLES, (GLsizei) this->numIndices, GL_UNSIGNED_SHORT,
-                                   (void*) 0, instPlacement.numItems()));
+                                   (void*) 0, instAttribs.numItems()));
 
     GL_CHECK(VertexAttribDivisor(this->instPlacementAttrib, 0));
-
+    GL_CHECK(VertexAttribDivisor(this->instScaleAttrib, 0));
     GL_CHECK(DisableVertexAttribArray(this->instPlacementAttrib));
+    GL_CHECK(DisableVertexAttribArray(this->instScaleAttrib));
     GL_CHECK(DisableVertexAttribArray(this->positionAttrib));
 }
 

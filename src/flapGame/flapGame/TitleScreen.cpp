@@ -67,12 +67,14 @@ void timeStep(StarSystem* starSys) {
     }
 }
 
-void wrapInterval(ArrayView<float> arr, float delta, float positiveRange) {
+float wrapInterval(ArrayView<float> arr, float delta, float positiveRange) {
     arr[0] = arr[1];
     arr[1] += delta;
     float w = wrap(arr[1], positiveRange);
-    arr[0] += (w - arr[1]);
+    float dw = w - arr[1];
+    arr[0] += dw;
     arr[1] = w;
+    return dw;
 }
 
 void updateTitleScreen(TitleScreen* titleScreen) {
@@ -86,8 +88,11 @@ void updateTitleScreen(TitleScreen* titleScreen) {
     }
     timeStep(&titleScreen->titleRot);
     timeStep(&titleScreen->starSys);
-    wrapInterval({titleScreen->hypnoAngle, 2}, dt * 0.5f, Pi * 2.f);
-    wrapInterval({titleScreen->hypnoZoom, 2}, dt * 1.75f, 12.f);
+    float dw = wrapInterval({titleScreen->hypnoZoom, 2}, dt * 1.2f, 12.f);
+    float adjustAngle = dw * (2.f * Pi / 48.f);
+    titleScreen->hypnoAngle[0] -= adjustAngle;
+    titleScreen->hypnoAngle[1] -= adjustAngle;
+    wrapInterval({titleScreen->hypnoAngle, 2}, dt * 1.2f, Pi * 2.f);
 }
 
 } // namespace flap
