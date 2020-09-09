@@ -87,7 +87,7 @@ void updateTitleScreen(TitleScreen* titleScreen) {
     timeStep(&titleScreen->titleRot);
     timeStep(&titleScreen->starSys);
     wrapInterval({titleScreen->hypnoAngle, 2}, dt * 0.5f, Pi * 2.f);
-    wrapInterval({titleScreen->hypnoZoom, 2}, dt * 1.5f, 6.f);
+    wrapInterval({titleScreen->hypnoZoom, 2}, dt * 1.75f, 12.f);
 }
 
 } // namespace flap

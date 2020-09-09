@@ -455,7 +455,8 @@ void main() {
     PLY_ASSERT(uberShader->cameraToViewportUniform >= 0);
     uberShader->diffuseUniform = GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "diffuse"));
     PLY_ASSERT(uberShader->diffuseUniform >= 0);
-    uberShader->diffuse2Uniform = GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "diffuse2"));
+    uberShader->diffuse2Uniform =
+        GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "diffuse2"));
     PLY_ASSERT(duotone == (uberShader->diffuse2Uniform >= 0));
     uberShader->diffuseClampUniform =
         GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "diffuseClamp"));
@@ -985,38 +986,36 @@ PLY_NO_INLINE Owned<HypnoShader> HypnoShader::create() {
     Owned<HypnoShader> result = new HypnoShader;
 
     {
-        Shader vertexShader = Shader::compile(
-            GL_VERTEX_SHADER,
-            "in vec2 vertPosition;\n"
-            "in vec4 instPlacement;\n"
-            "out vec4 fragTexCoord;\n"
-            "uniform mat4 modelToViewport;\n"
-            "\n"
-            "void main() {\n"
-            "    float angle = mod(vertPosition.x + instPlacement.x, 24.0) "
-            "* (3.1415926 * 2.0 / 24.0);\n"
-            "    vec2 warped = vec2(cos(angle), -sin(angle));\n"
-            "    float scale = mix(instPlacement.y, instPlacement.z, vertPosition.y);\n"
-            "    vec2 modelPos = warped * scale;\n"
-            "    fragTexCoord = vec4(vertPosition.x, vertPosition.y, scale, instPlacement.w);\n"
-            "    gl_Position = modelToViewport * vec4(modelPos, 0.0, 1.0);\n"
-            "}\n");
+        Shader vertexShader = Shader::compile(GL_VERTEX_SHADER, R"(
+in vec2 vertPosition;
+in vec4 instPlacement;
+out vec4 fragTexCoord;
+uniform mat4 modelToViewport;
 
-        Shader fragmentShader = Shader::compile(
-            GL_FRAGMENT_SHADER,
-            "in vec4 fragTexCoord;\n"
-            "uniform sampler2D texImage;\n"
-            "uniform sampler2D palette;\n"
-            "uniform float paletteSize;\n"
-            "out vec4 fragColor;\n"
-            "\n"
-            "void main() {\n"
-            "    vec4 sam = texture(texImage, fragTexCoord.xy);\n"
-            "    float c = sam.b;\n"
-            "    float i = fragTexCoord.w + float(int(sam.r > sam.g));\n"
-            "    vec4 palColor = texture(palette, vec2((0.5 - i) / paletteSize, 0.5));\n"
-            "    fragColor = vec4(mix(palColor.rgb, vec3(1.0), c), 1.0);\n"
-            "}\n");
+void main() {
+    float angle = mod(vertPosition.x + instPlacement.x, 24.0) * (3.1415926 * 2.0 / 24.0);
+    vec2 warped = vec2(cos(angle), -sin(angle));
+    float scale = mix(instPlacement.y, instPlacement.z, vertPosition.y);
+    vec2 modelPos = warped * scale;
+    fragTexCoord = vec4(vertPosition.x, vertPosition.y, scale, instPlacement.w);
+    gl_Position = modelToViewport * vec4(modelPos, 0.0, 1.0);
+}
+)");
+
+        Shader fragmentShader = Shader::compile(GL_FRAGMENT_SHADER, R"(
+in vec4 fragTexCoord;
+uniform sampler2D texImage;
+uniform sampler2D palette;
+uniform float paletteSize;
+out vec4 fragColor;
+
+void main() {
+    vec4 sam = texture(texImage, fragTexCoord.xy);
+    vec3 c0 = texture(palette, vec2((0.5 - fragTexCoord.w) / paletteSize, 0.5)).rgb * sam.r;
+    vec3 c1 = texture(palette, vec2((1.5 - fragTexCoord.w) / paletteSize, 0.5)).rgb;
+    fragColor = vec4(mix(c0, c1, sam.g), 1.0);
+}
+)");
 
         // Link shader program
         result->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
@@ -1069,8 +1068,8 @@ PLY_NO_INLINE void HypnoShader::draw(const Float4x4& modelToViewport, GLuint tex
     float exp = quantizeUp((logf(minScale) - logf(atScale)) / logf(base), 1.f);
     float maxExp = quantizeDown((logf(maxScale) - logf(atScale)) / logf(base), 1.f);
     while (exp <= maxExp) {
-        float s0 = powf(1.3f, exp);
-        float s1 = powf(1.3f, exp + 1);
+        float s0 = powf(base, exp);
+        float s1 = powf(base, exp + 1);
         for (u32 u = 0; u < 24; u++) {
             instPlacement.append({(float) u, s0, s1, exp});
         }

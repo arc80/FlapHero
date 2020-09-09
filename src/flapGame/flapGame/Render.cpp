@@ -301,7 +301,7 @@ void renderGamePanel(const DrawContext* dc) {
             UberShader::Props props;
             props.diffuse = Float3{1, 0.8f, 0.13f} * 1.f;
             props.diffuseClamp = {0.1f, 1.1f, 0.15f};
-            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.2f, 1.f};
+            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.15f, 1.f};
             props.rimFactor = {5.f, 9.f};
             props.specLightDir = Float3{0.65f, -1.f, 0.5f}.normalized();
             props.specular = Float3{1, 0.6f, 0.6f} * 0.3f;
