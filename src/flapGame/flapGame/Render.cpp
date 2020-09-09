@@ -152,9 +152,9 @@ Array<Float4x4> composeBirdBones(const GameState* gs, float intervalFrac) {
 
     // Apply eye pose
     {
-        ArrayView<const PoseBone> from = a->bad.eyePoses[gs->birdAnim.eyePos].view();
-        ArrayView<const PoseBone> to = a->bad.eyePoses[(gs->birdAnim.eyePos + 1) % 3].view();
-        float f = 0;
+        ArrayView<const PoseBone> from = a->bad.eyePoses[gs->birdAnim.eyePos[0]].view();
+        ArrayView<const PoseBone> to = a->bad.eyePoses[gs->birdAnim.eyePos[1]].view();
+        float f = 1;
         if (gs->birdAnim.eyeMoving) {
             float eyeTime = mix(gs->birdAnim.eyeTime[0], gs->birdAnim.eyeTime[1], intervalFrac);
             f = applySimpleCubic(eyeTime);
@@ -291,9 +291,9 @@ void renderGamePanel(const DrawContext* dc) {
             props.diffuseClamp = {-0.1f, 1.3f, 0.2f};
             props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.15f, 1.f};
             props.rimFactor = {4.5f, 9.f};
-            props.specLightDir = Float3{0.65f, -1.f, 0.f}.normalized();
-            props.specular = Float3{1, 1, 0.25f} * 0.4f;
-            props.specPower = 3.f;
+            props.specLightDir = Float3{1.f, -1.f, 0.f}.normalized();
+            props.specular = Float3{1, 1, 0.25f} * 0.3f;
+            props.specPower = 3.5f;
             props.boneToModel = boneToModel.view();
             a->skinnedShader->draw(cameraToViewport, modelToCamera, dm, &props);
         }

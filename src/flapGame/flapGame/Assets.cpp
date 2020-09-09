@@ -275,6 +275,8 @@ void extractBirdAnimData(BirdAnimData* bad, const aiScene* scene) {
         extractPose(bad->birdSkel.view(), scene->mAnimations[0], 8, {"Pupil_L", "Pupil_R"});
     bad->eyePoses[2] =
         extractPose(bad->birdSkel.view(), scene->mAnimations[0], 16, {"Pupil_L", "Pupil_R"});
+    bad->eyePoses[3] =
+        extractPose(bad->birdSkel.view(), scene->mAnimations[0], 24, {"Pupil_L", "Pupil_R"});
 }
 
 Array<FallAnimFrame> extractFallAnimation(const aiScene* scene, u32 numFrames) {

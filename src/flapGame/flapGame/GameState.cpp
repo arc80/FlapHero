@@ -391,17 +391,33 @@ void timeStep(UpdateContext* uc) {
         if (gs->birdAnim.eyeMoving) {
             gs->birdAnim.eyeTime[1] = gs->birdAnim.eyeTime[0] + dt * 4;
             if (gs->birdAnim.eyeTime[1] >= 1.f) {
-                gs->birdAnim.eyePos = (gs->birdAnim.eyePos + 1) % 3;
                 gs->birdAnim.eyeMoving = false;
                 gs->birdAnim.eyeTime[0] = 0;
                 gs->birdAnim.eyeTime[1] = 0;
             }
         } else {
-            gs->birdAnim.eyeTime[1] = gs->birdAnim.eyeTime[0] + dt * 1.5f;
-            if (gs->birdAnim.eyeTime[1] >= 1.f) {
+            auto beginEyeMove = [&](u32 nextPos) {
+                gs->birdAnim.eyePos[0] = gs->birdAnim.eyePos[1];
+                gs->birdAnim.eyePos[1] = nextPos;
                 gs->birdAnim.eyeMoving = true;
                 gs->birdAnim.eyeTime[0] = 0;
                 gs->birdAnim.eyeTime[1] = 0;
+            };
+            gs->birdAnim.eyeTime[1] = gs->birdAnim.eyeTime[0] + dt;
+            if (gs->mode.title()) {
+                if (gs->birdAnim.eyeTime[1] >= 0.66f) {
+                    beginEyeMove((gs->birdAnim.eyePos[1] + 1) % 3);
+                }
+            } else {
+                if (gs->birdAnim.eyePos[1] == 3) {
+                    if (gs->birdAnim.eyeTime[1] >= 6.f) {
+                        beginEyeMove(0);
+                    }
+                } else {
+                    if (gs->birdAnim.eyeTime[1] >= 0.8f) {
+                        beginEyeMove(3);
+                    }
+                }
             }
         }
 

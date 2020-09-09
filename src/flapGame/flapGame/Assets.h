@@ -23,7 +23,7 @@ struct BirdAnimData {
     Array<Bone> birdSkel;
     Array<PoseBone> loWingPose;
     Array<PoseBone> hiWingPose;
-    Array<PoseBone> eyePoses[3];
+    Array<PoseBone> eyePoses[4];
 };
 
 struct FallAnimFrame {
