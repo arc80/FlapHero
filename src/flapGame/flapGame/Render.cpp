@@ -233,7 +233,7 @@ void drawStars(const TitleScreen* titleScreen) {
         float scale = clamp((life - 0.35f) * 0.5f, 0.f, 1.f);
         float alpha = 1.f - clamp((life - 3.2f) * 1.f, 0.f, 1.f);
         ins.modelToViewport = worldToViewport * Float4x4::makeTranslation({pos, -star.z}) *
-                              Float4x4::makeRotation({0, 0, 1}, angle) * Float4x4::makeScale(scale * 0.09f);
+                              Float4x4::makeRotation({0, 0, 1}, angle) * Float4x4::makeScale(scale * 0.08f);
         ins.colorAlpha = {star.brightness, alpha};
     }
     GL_CHECK(DepthRange(0.5, 1.0));
