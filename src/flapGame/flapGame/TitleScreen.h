@@ -21,6 +21,8 @@ struct TitleRotator {
 };
 
 struct StarSystem {
+    static constexpr u32 StarsPerBurst = 30;
+
     struct Star {
         float life[2] = {0, 0};
         Float2 pos[2] = {{0, 0}, {0, 0}};
@@ -32,7 +34,7 @@ struct StarSystem {
     };
 
     Array<Star> stars;
-    u32 burstNumber = 0;
+    u32 burstNumber = StarsPerBurst;
     Float2 burstPos = {0, 0};
     float countdown = 0.f;
     float side = -1.f;

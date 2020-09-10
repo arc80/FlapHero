@@ -63,7 +63,7 @@ void timeStep(StarSystem* starSys) {
             starSys->burstNumber--;
         } else {
             starSys->countdown = 0.35f;
-            starSys->burstNumber = 30;
+            starSys->burstNumber = StarSystem::StarsPerBurst;
             starSys->side *= -1.f;
             starSys->burstPos = {0.5f + 0.5f * starSys->side * random.nextFloat(),
                                  1.f - powf(random.nextFloat(), 5.f)};
