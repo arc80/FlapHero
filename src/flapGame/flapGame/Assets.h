@@ -66,6 +66,7 @@ struct Assets {
     Array<Owned<DrawMesh>> outline;
     Array<Owned<DrawMesh>> blackOutline;
     Array<Owned<DrawMesh>> star;
+    Array<Owned<DrawMesh>> rays;
     DrawGroup shrubGroup;
     DrawGroup cloudGroup;
     DrawGroup cityGroup;
@@ -97,6 +98,7 @@ struct Assets {
     Owned<UberShader> skinnedShader;
     Owned<FlatShader> flatShader;
     Owned<FlatShaderInstanced> flatShaderInstanced;
+    Owned<RayShader> rayShader;
     Owned<FlashShader> flashShader;
     Owned<TexturedShader> texturedShader;
     Owned<HypnoShader> hypnoShader;

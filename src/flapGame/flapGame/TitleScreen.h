@@ -43,6 +43,7 @@ struct TitleScreen {
     float promptTime = 0;
     float hypnoAngle[2] = {0, 0};
     float hypnoZoom[2] = {3, 3};
+    float raysAngle[2] = {0, 0};
 };
 
 void updateTitleScreen(TitleScreen* titleScreen);

@@ -535,7 +535,7 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     GL_CHECK(ClearStencil(0));
     GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
     drawTitle(ts);
-//    drawStars(ts);
+    //drawStars(ts);
     {
         // Draw background
         float hypnoAngle = mix(ts->hypnoAngle[0], ts->hypnoAngle[1], dc->intervalFrac);
@@ -544,6 +544,16 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
                                  Float4x4::makeTranslation({0, -1.7f, 0}) *
                                  Float4x4::makeScale(hypnoScale),
                              a->waveTexture.id, a->hypnoPaletteTexture, hypnoScale, hypnoAngle);
+    }
+    for (const DrawMesh* dm : a->rays) {
+        // Draw rays
+        GL_CHECK(DepthRange(0.5, 0.5));
+        float angle = mix(ts->raysAngle[0], ts->raysAngle[1], dc->intervalFrac);
+        a->rayShader->draw(Float4x4::makeProjection(Pi / 2, vpSize.x / vpSize.y, 0.001f, 2.f) *
+                               Float4x4::makeRotation({1, 0, 0}, -0.33f * Pi) *
+                               Float4x4::makeTranslation({0, 0.55f, -1}) * Float4x4::makeScale(2.f) *
+                               Float4x4::makeRotation({0, 0, 1}, angle),
+                           dm);
     }
     // Draw prompt
     if (ts->showPrompt) {

@@ -150,6 +150,16 @@ struct FlatShaderInstanced {
     void draw(const DrawMesh* drawMesh, ArrayView<const InstanceData> instanceData);
 };
 
+struct RayShader {
+    ShaderProgram shader;
+    GLint vertPositionAttrib = 0;
+    GLint modelToViewportUniform = 0;
+
+    static Owned<RayShader> create();
+
+    void draw(const Float4x4& modelToViewport, const DrawMesh* drawMesh);
+};
+
 struct FlashShader {
     ShaderProgram shader;
     GLint positionAttrib = 0;

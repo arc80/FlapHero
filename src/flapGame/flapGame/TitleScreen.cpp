@@ -88,11 +88,12 @@ void updateTitleScreen(TitleScreen* titleScreen) {
     }
     timeStep(&titleScreen->titleRot);
     timeStep(&titleScreen->starSys);
-    float dw = wrapInterval({titleScreen->hypnoZoom, 2}, dt * 1.2f, 12.f);
+    float dw = wrapInterval({titleScreen->hypnoZoom, 2}, dt * 1.8f, 12.f);
     float adjustAngle = dw * (2.f * Pi / 48.f);
     titleScreen->hypnoAngle[0] -= adjustAngle;
     titleScreen->hypnoAngle[1] -= adjustAngle;
-    wrapInterval({titleScreen->hypnoAngle, 2}, dt * 1.2f, Pi * 2.f);
+    wrapInterval({titleScreen->hypnoAngle, 2}, dt * 1.3f, Pi * 2.f);
+    wrapInterval({titleScreen->raysAngle, 2}, dt * 0.5f, Pi * 2.f);
 }
 
 } // namespace flap

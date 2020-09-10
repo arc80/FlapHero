@@ -784,6 +784,71 @@ PLY_NO_INLINE void FlatShaderInstanced::draw(const DrawMesh* drawMesh,
 
 //---------------------------------------------------------
 
+PLY_NO_INLINE Owned<RayShader> RayShader::create() {
+    Owned<RayShader> rayShader = new RayShader;
+    {
+        Shader vertexShader = Shader::compile(
+            GL_VERTEX_SHADER, "in vec3 vertPosition;\n"
+                              "uniform mat4 modelToViewport;\n"
+                              "out float fragZ;\n"
+                              "\n"
+                              "void main() {\n"
+                              "    fragZ = vertPosition.z;\n"
+                              "    gl_Position = modelToViewport * vec4(vertPosition, 1.0);\n"
+                              "}\n");
+
+        Shader fragmentShader =
+            Shader::compile(GL_FRAGMENT_SHADER, "in float fragZ;\n"
+                                                "out vec4 fragColor;\n"
+                                                "\n"
+                                                "void main() {\n"
+                                                "    float a = clamp((fragZ - 0.17) * 20.0, 0.0, 1.0);\n;"
+                                                "    fragColor = vec4(1.0, 1.0, 1.0, 0.25 * a);\n"
+                                                "}\n");
+
+        // Link shader program
+        rayShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
+    }
+
+    // Get shader program's vertex attribute and uniform locations
+    rayShader->vertPositionAttrib =
+        GL_NO_CHECK(GetAttribLocation(rayShader->shader.id, "vertPosition"));
+    PLY_ASSERT(rayShader->vertPositionAttrib >= 0);
+    rayShader->modelToViewportUniform =
+        GL_NO_CHECK(GetUniformLocation(rayShader->shader.id, "modelToViewport"));
+    PLY_ASSERT(rayShader->modelToViewportUniform >= 0);
+
+    return rayShader;
+}
+
+PLY_NO_INLINE void RayShader::draw(const Float4x4& modelToViewport, const DrawMesh* drawMesh) {
+    GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Enable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_FALSE));
+    GL_CHECK(Enable(GL_BLEND));
+    GL_CHECK(BlendEquation(GL_FUNC_ADD));
+    GL_CHECK(BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+
+    GL_CHECK(
+        UniformMatrix4fv(this->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));
+
+    // Set remaining uniforms and vertex attributes
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
+    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::NotSkinned);
+    GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPN), (GLvoid*) offsetof(VertexPN, pos)));
+
+    // Draw this VBO
+    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh->indexBuffer.id));
+    GL_CHECK(
+        DrawElements(GL_TRIANGLES, (GLsizei) drawMesh->numIndices, GL_UNSIGNED_SHORT, (void*) 0));
+
+    GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
+}
+
+//---------------------------------------------------------
+
 PLY_NO_INLINE Owned<FlashShader> FlashShader::create() {
     Owned<FlashShader> result = new FlashShader;
 

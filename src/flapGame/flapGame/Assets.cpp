@@ -404,6 +404,8 @@ void Assets::load(StringView assetsPath) {
             getMeshes(nullptr, scene, scene->mRootNode->FindNode("BlackOutline"), VT::NotSkinned);
         assets->star =
             getMeshes(nullptr, scene, scene->mRootNode->FindNode("Star"), VT::NotSkinned);
+        assets->rays =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Rays"), VT::NotSkinned);
     }
     {
         Assimp::Importer importer;
@@ -532,6 +534,7 @@ void Assets::load(StringView assetsPath) {
     assets->skinnedShader = UberShader::create(UberShader::Flags::Skinned);
     assets->flatShader = FlatShader::create();
     assets->flatShaderInstanced = FlatShaderInstanced::create();
+    assets->rayShader = RayShader::create();
     assets->flashShader = FlashShader::create();
     assets->texturedShader = TexturedShader::create();
     assets->hypnoShader = HypnoShader::create();
