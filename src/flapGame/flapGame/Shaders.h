@@ -135,19 +135,22 @@ struct FlatShader {
     void drawQuad(const Float4x4& modelToViewport, const Float3& linearColor);
 };
 
-struct FlatShaderInstanced {
+struct StarShader {
     struct InstanceData {
         Float4x4 modelToViewport;
-        Float4 color;
+        Float2 colorAlpha;
     };
 
     ShaderProgram shader;
     GLint vertPositionAttrib = 0;
+    GLint vertTexCoordAttrib = 0;
     GLint instModelToViewportAttrib = 0;
-    GLint instColorAttrib = 0;
+    GLint instColorAlphaAttrib = 0;
+    GLint textureUniform = 0;
 
-    static Owned<FlatShaderInstanced> create();
-    void draw(const DrawMesh* drawMesh, ArrayView<const InstanceData> instanceData);
+    static Owned<StarShader> create();
+    void draw(const DrawMesh* drawMesh, GLuint textureID,
+              ArrayView<const InstanceData> instanceData);
 };
 
 struct RayShader {

@@ -86,6 +86,7 @@ struct Assets {
     Texture pipeEnvTexture;
     Texture eyeWhiteTexture;
     Texture gradientTexture;
+    Texture starTexture;
 
     Owned<SDFCommon> sdfCommon;
     Owned<SDFOutline> sdfOutline;
@@ -97,7 +98,7 @@ struct Assets {
     Owned<PipeShader> pipeShader;
     Owned<UberShader> skinnedShader;
     Owned<FlatShader> flatShader;
-    Owned<FlatShaderInstanced> flatShaderInstanced;
+    Owned<StarShader> starShader;
     Owned<RayShader> rayShader;
     Owned<FlashShader> flashShader;
     Owned<TexturedShader> texturedShader;

@@ -22,16 +22,20 @@ struct TitleRotator {
 
 struct StarSystem {
     struct Star {
+        float life[2] = {0, 0};
         Float2 pos[2] = {{0, 0}, {0, 0}};
         Float2 vel = {0, 0};
         float angle[2] = {0, 0};
         float avel = 0;
         float z = 0.f;
-        Float3 color = {1, 1, 1};
+        float brightness = 1.f;
     };
 
     Array<Star> stars;
+    u32 burstNumber = 0;
+    Float2 burstPos = {0, 0};
     float countdown = 0.f;
+    float side = -1.f;
 };
 
 struct TitleScreen {

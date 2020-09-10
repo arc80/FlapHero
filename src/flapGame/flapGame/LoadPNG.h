@@ -3,6 +3,6 @@
 
 namespace flap {
 
-image::OwnImage loadPNG(ConstBufferView src);
+image::OwnImage loadPNG(ConstBufferView src, bool premultiply = true);
 
 } // namespace flap

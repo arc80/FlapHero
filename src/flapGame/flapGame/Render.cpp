@@ -221,20 +221,23 @@ void drawStars(const TitleScreen* titleScreen) {
     const Rect& fullBounds2D = dc->fullVF.bounds2D;
 
     // Draw stars
-    Array<FlatShaderInstanced::InstanceData> insData;
+    Array<StarShader::InstanceData> insData;
     insData.reserve(titleScreen->starSys.stars.numItems());
     Float4x4 worldToViewport = Float4x4::makeOrtho(
         (fullBounds2D - fullBounds2D.mid()) * (2.f / fullBounds2D.width()), -10.f, 1.01f);
     for (StarSystem::Star& star : titleScreen->starSys.stars) {
         auto& ins = insData.append();
+        float life = mix(star.life[0], star.life[1], dc->intervalFrac);
         float angle = mix(star.angle[0], star.angle[1], dc->intervalFrac);
         Float2 pos = mix(star.pos[0], star.pos[1], dc->intervalFrac);
+        float scale = clamp((life - 0.35f) * 0.5f, 0.f, 1.f);
+        float alpha = 1.f - clamp((life - 3.2f) * 1.f, 0.f, 1.f);
         ins.modelToViewport = worldToViewport * Float4x4::makeTranslation({pos, -star.z}) *
-                              Float4x4::makeRotation({0, 0, 1}, angle) * Float4x4::makeScale(0.1f);
-        ins.color = {star.color, 1};
+                              Float4x4::makeRotation({0, 0, 1}, angle) * Float4x4::makeScale(scale * 0.09f);
+        ins.colorAlpha = {star.brightness, alpha};
     }
     GL_CHECK(DepthRange(0.5, 1.0));
-    a->flatShaderInstanced->draw(a->star[0], insData.view());
+    a->starShader->draw(a->star[0], a->starTexture.id, insData.view());
 }
 
 void applyTitleScreen(const DrawContext* dc, float opacity) {
@@ -535,7 +538,6 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     GL_CHECK(ClearStencil(0));
     GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
     drawTitle(ts);
-    //drawStars(ts);
     {
         // Draw background
         float hypnoAngle = mix(ts->hypnoAngle[0], ts->hypnoAngle[1], dc->intervalFrac);
@@ -551,10 +553,11 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
         float angle = mix(ts->raysAngle[0], ts->raysAngle[1], dc->intervalFrac);
         a->rayShader->draw(Float4x4::makeProjection(Pi / 2, vpSize.x / vpSize.y, 0.001f, 2.f) *
                                Float4x4::makeRotation({1, 0, 0}, -0.33f * Pi) *
-                               Float4x4::makeTranslation({0, 0.55f, -1}) * Float4x4::makeScale(2.f) *
-                               Float4x4::makeRotation({0, 0, 1}, angle),
+                               Float4x4::makeTranslation({0, 0.55f, -1}) *
+                               Float4x4::makeScale(2.f) * Float4x4::makeRotation({0, 0, 1}, angle),
                            dm);
     }
+    drawStars(ts);
     // Draw prompt
     if (ts->showPrompt) {
         TextBuffers tapToPlay = generateTextBuffers(a->sdfFont, "TAP TO PLAY");

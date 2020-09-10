@@ -701,51 +701,74 @@ PLY_NO_INLINE void FlatShader::drawQuad(const Float4x4& modelToViewport,
 
 //---------------------------------------------------------
 
-PLY_NO_INLINE Owned<FlatShaderInstanced> FlatShaderInstanced::create() {
-    Owned<FlatShaderInstanced> flatShaderInst = new FlatShaderInstanced;
+PLY_NO_INLINE Owned<StarShader> StarShader::create() {
+    Owned<StarShader> starShader = new StarShader;
     {
-        Shader vertexShader = Shader::compile(
-            GL_VERTEX_SHADER, "in vec3 vertPosition;\n"
-                              "in mat4 instModelToViewport;\n"
-                              "in vec4 instColor;\n"
-                              "out vec4 fragColor;\n"
-                              "\n"
-                              "void main() {\n"
-                              "    fragColor = instColor;\n"
-                              "    gl_Position = instModelToViewport * vec4(vertPosition, 1.0);\n"
-                              "}\n");
+        Shader vertexShader = Shader::compile(GL_VERTEX_SHADER, R"(
+in vec3 vertPosition;
+in vec2 vertTexCoord;
+in mat4 instModelToViewport;
+in vec2 instColorAlpha;
+out vec2 fragColorAlpha;
+out vec2 fragTexCoord;
 
-        Shader fragmentShader = Shader::compile(GL_FRAGMENT_SHADER, "in vec4 fragColor;\n"
-                                                                    "out vec4 outColor;\n"
-                                                                    "\n"
-                                                                    "void main() {\n"
-                                                                    "    outColor = fragColor;\n"
-                                                                    "}\n");
+void main() {
+    fragColorAlpha = instColorAlpha;
+    fragTexCoord = vertTexCoord;
+    gl_Position = instModelToViewport * vec4(vertPosition, 1.0);
+}
+)");
+
+        Shader fragmentShader = Shader::compile(GL_FRAGMENT_SHADER, R"(
+in vec2 fragColorAlpha;
+in vec2 fragTexCoord;
+uniform sampler2D texImage;
+out vec4 outColor;
+
+void main() {
+    vec4 sam = texture2D(texImage, fragTexCoord);
+    float b = fragColorAlpha.x;
+    outColor = mix(vec4(1.0, 1.0, 0.0, 0.5), vec4(1.0, 1.0, 1.0, 0.7), b);
+    outColor.a *= sam.a * fragColorAlpha.y;
+}
+)");
 
         // Link shader program
-        flatShaderInst->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
+        starShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
     }
 
     // Get shader program's vertex attribute and uniform locations
-    flatShaderInst->vertPositionAttrib =
-        GL_NO_CHECK(GetAttribLocation(flatShaderInst->shader.id, "vertPosition"));
-    PLY_ASSERT(flatShaderInst->vertPositionAttrib >= 0);
-    flatShaderInst->instModelToViewportAttrib =
-        GL_NO_CHECK(GetAttribLocation(flatShaderInst->shader.id, "instModelToViewport"));
-    PLY_ASSERT(flatShaderInst->instModelToViewportAttrib >= 0);
-    flatShaderInst->instColorAttrib =
-        GL_NO_CHECK(GetAttribLocation(flatShaderInst->shader.id, "instColor"));
-    PLY_ASSERT(flatShaderInst->instColorAttrib >= 0);
+    starShader->vertPositionAttrib =
+        GL_NO_CHECK(GetAttribLocation(starShader->shader.id, "vertPosition"));
+    PLY_ASSERT(starShader->vertPositionAttrib >= 0);
+    starShader->vertTexCoordAttrib =
+        GL_NO_CHECK(GetAttribLocation(starShader->shader.id, "vertTexCoord"));
+    PLY_ASSERT(starShader->vertTexCoordAttrib >= 0);
+    starShader->instModelToViewportAttrib =
+        GL_NO_CHECK(GetAttribLocation(starShader->shader.id, "instModelToViewport"));
+    PLY_ASSERT(starShader->instModelToViewportAttrib >= 0);
+    starShader->instColorAlphaAttrib =
+        GL_NO_CHECK(GetAttribLocation(starShader->shader.id, "instColorAlpha"));
+    PLY_ASSERT(starShader->instColorAlphaAttrib >= 0);
+    starShader->textureUniform =
+        GL_NO_CHECK(GetUniformLocation(starShader->shader.id, "texImage"));
+    PLY_ASSERT(starShader->textureUniform >= 0);
 
-    return flatShaderInst;
+    return starShader;
 }
 
-PLY_NO_INLINE void FlatShaderInstanced::draw(const DrawMesh* drawMesh,
-                                             ArrayView<const InstanceData> instanceData) {
+PLY_NO_INLINE void StarShader::draw(const DrawMesh* drawMesh, GLuint textureID,
+                                    ArrayView<const InstanceData> instanceData) {
     GL_CHECK(UseProgram(this->shader.id));
     GL_CHECK(Enable(GL_DEPTH_TEST));
-    GL_CHECK(DepthMask(GL_TRUE));
-    GL_CHECK(Disable(GL_BLEND));
+    GL_CHECK(DepthMask(GL_FALSE));
+    GL_CHECK(Enable(GL_BLEND));
+    GL_CHECK(BlendEquation(GL_FUNC_ADD));
+    GL_CHECK(BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+
+    GL_CHECK(ActiveTexture(GL_TEXTURE0));
+    GL_CHECK(BindTexture(GL_TEXTURE_2D, textureID));
+    GL_CHECK(Uniform1i(this->textureUniform, 0));
 
     // Instance attributes
     GLuint ibo = DynamicArrayBuffers::instance->upload(instanceData.bufferView());
@@ -757,18 +780,21 @@ PLY_NO_INLINE void FlatShaderInstanced::draw(const DrawMesh* drawMesh,
                                      (GLvoid*) offsetof(InstanceData, modelToViewport.col[c])));
         GL_CHECK(VertexAttribDivisor(this->instModelToViewportAttrib + c, 1));
     }
-    GL_CHECK(EnableVertexAttribArray(this->instColorAttrib));
-    GL_CHECK(VertexAttribPointer(this->instColorAttrib, 4, GL_FLOAT, GL_FALSE,
+    GL_CHECK(EnableVertexAttribArray(this->instColorAlphaAttrib));
+    GL_CHECK(VertexAttribPointer(this->instColorAlphaAttrib, 2, GL_FLOAT, GL_FALSE,
                                  (GLsizei) sizeof(InstanceData),
-                                 (GLvoid*) offsetof(InstanceData, color)));
-    GL_CHECK(VertexAttribDivisor(this->instColorAttrib, 1));
+                                 (GLvoid*) offsetof(InstanceData, colorAlpha)));
+    GL_CHECK(VertexAttribDivisor(this->instColorAlphaAttrib, 1));
 
     // Draw
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
-    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::NotSkinned);
+    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::TexturedFlat);
     GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
     GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
-                                 (GLsizei) sizeof(VertexPN), (GLvoid*) offsetof(VertexPN, pos)));
+                                 (GLsizei) sizeof(VertexPT), (GLvoid*) offsetof(VertexPT, pos)));
+    GL_CHECK(EnableVertexAttribArray(this->vertTexCoordAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertTexCoordAttrib, 2, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPT), (GLvoid*) offsetof(VertexPT, uv)));
     GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh->indexBuffer.id));
     GL_CHECK(DrawElementsInstanced(GL_TRIANGLES, (GLsizei) drawMesh->numIndices, GL_UNSIGNED_SHORT,
                                    (void*) 0, instanceData.numItems));
@@ -777,8 +803,8 @@ PLY_NO_INLINE void FlatShaderInstanced::draw(const DrawMesh* drawMesh,
         GL_CHECK(VertexAttribDivisor(this->instModelToViewportAttrib + c, 0));
         GL_CHECK(DisableVertexAttribArray(this->instModelToViewportAttrib + c));
     }
-    GL_CHECK(VertexAttribDivisor(this->instColorAttrib, 0));
-    GL_CHECK(DisableVertexAttribArray(this->instColorAttrib));
+    GL_CHECK(VertexAttribDivisor(this->instColorAlphaAttrib, 0));
+    GL_CHECK(DisableVertexAttribArray(this->instColorAlphaAttrib));
     GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
 }
 
@@ -797,14 +823,14 @@ PLY_NO_INLINE Owned<RayShader> RayShader::create() {
                               "    gl_Position = modelToViewport * vec4(vertPosition, 1.0);\n"
                               "}\n");
 
-        Shader fragmentShader =
-            Shader::compile(GL_FRAGMENT_SHADER, "in float fragZ;\n"
-                                                "out vec4 fragColor;\n"
-                                                "\n"
-                                                "void main() {\n"
-                                                "    float a = clamp((fragZ - 0.17) * 20.0, 0.0, 1.0);\n;"
-                                                "    fragColor = vec4(1.0, 1.0, 1.0, 0.25 * a);\n"
-                                                "}\n");
+        Shader fragmentShader = Shader::compile(
+            GL_FRAGMENT_SHADER, "in float fragZ;\n"
+                                "out vec4 fragColor;\n"
+                                "\n"
+                                "void main() {\n"
+                                "    float a = clamp((fragZ - 0.17) * 20.0, 0.0, 1.0);\n;"
+                                "    fragColor = vec4(1.0, 1.0, 1.0, 0.25 * a);\n"
+                                "}\n");
 
         // Link shader program
         rayShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});

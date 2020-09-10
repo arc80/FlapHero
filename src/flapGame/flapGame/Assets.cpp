@@ -403,7 +403,7 @@ void Assets::load(StringView assetsPath) {
         assets->blackOutline =
             getMeshes(nullptr, scene, scene->mRootNode->FindNode("BlackOutline"), VT::NotSkinned);
         assets->star =
-            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Star"), VT::NotSkinned);
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Star"), VT::TexturedFlat);
         assets->rays =
             getMeshes(nullptr, scene, scene->mRootNode->FindNode("Rays"), VT::NotSkinned);
     }
@@ -515,6 +515,16 @@ void Assets::load(StringView assetsPath) {
         params.repeatY = false;
         assets->gradientTexture.init(im, 2, params);
     }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "star.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData, false);
+        SamplerParams params;
+        params.repeatX = false;
+        params.repeatY = false;
+        assets->starTexture.init(im, 3, params);
+    }
 
     // Load font resources
     assets->sdfCommon = SDFCommon::create();
@@ -533,7 +543,7 @@ void Assets::load(StringView assetsPath) {
     assets->pipeShader = PipeShader::create();
     assets->skinnedShader = UberShader::create(UberShader::Flags::Skinned);
     assets->flatShader = FlatShader::create();
-    assets->flatShaderInstanced = FlatShaderInstanced::create();
+    assets->starShader = StarShader::create();
     assets->rayShader = RayShader::create();
     assets->flashShader = FlashShader::create();
     assets->texturedShader = TexturedShader::create();

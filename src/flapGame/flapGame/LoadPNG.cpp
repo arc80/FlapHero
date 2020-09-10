@@ -31,7 +31,7 @@ void premultiplySRGB(image::Image& dst) {
     }
 }
 
-image::OwnImage loadPNG(ConstBufferView src) {
+image::OwnImage loadPNG(ConstBufferView src, bool premultiply) {
     s32 w = 0;
     s32 h = 0;
     s32 numChannels = 0;
@@ -56,7 +56,7 @@ image::OwnImage loadPNG(ConstBufferView src) {
     result.bytespp = bytespp;
     result.format = fmt;
 
-    if (numChannels == 4) {
+    if (premultiply && numChannels == 4) {
         premultiplySRGB(result);
     }
     return result;
