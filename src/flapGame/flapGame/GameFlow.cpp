@@ -17,6 +17,9 @@ void GameFlow::onGameStart() {
 void GameFlow::resetGame(bool isPlaying) {
     this->gameState = new GameState;
     this->gameState->outerCtx = this;
+    UpdateContext uc;
+    uc.gs = this->gameState;
+    PLY_SET_IN_SCOPE(UpdateContext::instance_, &uc);
     if (isPlaying) {
         this->gameState->startPlaying();
     } else {

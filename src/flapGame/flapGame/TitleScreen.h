@@ -38,6 +38,8 @@ struct StarSystem {
     Float2 burstPos = {0, 0};
     float countdown = 0.f;
     float side = -1.f;
+
+    StarSystem();
 };
 
 struct TitleScreen {

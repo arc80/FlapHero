@@ -137,7 +137,7 @@ struct GameState {
     static constexpr float CloudRadiansPerCameraX = 0.0005f;
 
     OuterContext* outerCtx = nullptr;
-    Random random;
+    Random random{6};
     bool buttonPressed = false;
     Mode mode;
     Owned<TitleScreen> titleScreen;

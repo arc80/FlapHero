@@ -59,7 +59,7 @@ void timeStep(StarSystem* starSys) {
             star.angle[1] = star.angle[0];
             star.avel = mix(1.5f, 2.5f, random.nextFloat()) * (s32(random.next32() & 2) - 1);
             star.brightness = random.nextFloat();
-            starSys->countdown = 0.02f;
+            starSys->countdown = 0.016f;
             starSys->burstNumber--;
         } else {
             starSys->countdown = 0.35f;
@@ -86,6 +86,12 @@ void timeStep(StarSystem* starSys) {
         } else {
             i++;
         }
+    }
+}
+
+StarSystem::StarSystem() {
+    for (u32 i = 0; i < 500; i++) {
+        timeStep(this);
     }
 }
 
