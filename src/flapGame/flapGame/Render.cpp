@@ -223,17 +223,22 @@ void drawStars(const TitleScreen* titleScreen) {
     // Draw stars
     Array<StarShader::InstanceData> insData;
     insData.reserve(titleScreen->starSys.stars.numItems());
-    Float4x4 worldToViewport = Float4x4::makeOrtho(
-        (fullBounds2D - fullBounds2D.mid()) * (2.f / fullBounds2D.width()), -10.f, 1.01f);
+    float lensDist = 2.f;
+    Float4x4 worldToViewport =
+        Float4x4::makeProjection((fullBounds2D - fullBounds2D.mid()) *
+                                     (2.f / (lensDist * fullBounds2D.width())),
+                                 0.01f, 10.f) *
+        Float4x4::makeTranslation({0, 0, -lensDist});
     for (StarSystem::Star& star : titleScreen->starSys.stars) {
         auto& ins = insData.append();
         float life = mix(star.life[0], star.life[1], dc->intervalFrac);
         float angle = mix(star.angle[0], star.angle[1], dc->intervalFrac);
-        Float2 pos = mix(star.pos[0], star.pos[1], dc->intervalFrac);
-        float scale = clamp((life - 0.35f) * 0.5f, 0.f, 1.f);
-        float alpha = 1.f - clamp((life - 3.2f) * 1.f, 0.f, 1.f);
-        ins.modelToViewport = worldToViewport * Float4x4::makeTranslation({pos, -star.z}) *
-                              Float4x4::makeRotation({0, 0, 1}, angle) * Float4x4::makeScale(scale * 0.08f);
+        Float3 pos = mix(star.pos[0], star.pos[1], dc->intervalFrac);
+        float scale = clamp(life * 1.2f + 0.2f, 0.f, 1.f);
+        float alpha = 1.f - clamp((life - 1.5f) * 1.f, 0.f, 1.f);
+        ins.modelToViewport = worldToViewport * Float4x4::makeTranslation(pos) *
+                              Float4x4::makeRotation({0, 0, 1}, angle) *
+                              Float4x4::makeScale(scale * 0.09f);
         ins.colorAlpha = {star.brightness, alpha};
     }
     GL_CHECK(DepthRange(0.5, 1.0));

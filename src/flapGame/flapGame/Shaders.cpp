@@ -728,7 +728,7 @@ out vec4 outColor;
 void main() {
     vec4 sam = texture2D(texImage, fragTexCoord);
     float b = fragColorAlpha.x;
-    outColor = mix(vec4(1.0, 1.0, 0.2, 0.65), vec4(1.0, 1.0, 1.0, 0.9), b);
+    outColor = mix(vec4(1.0, 1.0, 0.2, 0.75), vec4(1.0, 1.0, 1.0, 0.95), b * b);
     outColor.a *= sam.a * fragColorAlpha.y;
 }
 )");

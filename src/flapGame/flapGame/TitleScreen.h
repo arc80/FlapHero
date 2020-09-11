@@ -25,11 +25,10 @@ struct StarSystem {
 
     struct Star {
         float life[2] = {0, 0};
-        Float2 pos[2] = {{0, 0}, {0, 0}};
-        Float2 vel = {0, 0};
+        Float3 pos[2] = {{0, 0, 0}, {0, 0, 0}};
+        Float3 vel = {0, 0, 0};
         float angle[2] = {0, 0};
         float avel = 0;
-        float z = 0.f;
         float brightness = 1.f;
     };
 

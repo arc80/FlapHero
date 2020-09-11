@@ -30,58 +30,83 @@ void timeStep(TitleRotator* rot) {
     }
 }
 
-Float2 circularRand(Random& random) {
-    float r = random.nextFloat();
-    float a = random.nextFloat() * 2.f * Pi;
-    return (Complex::fromAngle(a) * mix(0.8f, 0.f, r * r)) * 0.5f + 0.5f;
+Float3 sphericalRand(Random& random) {
+    float z = mix(-1.f, 1.f, random.nextFloat());
+    float r = sqrtf(max(0.f, 1.f - z * z));
+    float a = mix(0.f, 2.f * Pi, random.nextFloat());
+    return Float3{Complex::fromAngle(a) * r, z};
 };
+
+Float3 circularRand(Random& random) {
+    float r = sqrtf(random.nextFloat());
+    float a = mix(0.f, 2.f * Pi, random.nextFloat());
+    return Float3{Complex::fromAngle(a) * r, 0.f};
+}
+
+Array<Float3> getMitchellSpherePoints(Random& random, u32 numPts) {
+    Array<Float3> result;
+    result.reserve(numPts);
+    result.append(circularRand(random));
+    for (u32 i = 1; i < numPts; i++) {
+        Float3 best = {0, 0, 0};
+        float bestDist = -1.f;
+        for (u32 j = 1; j < 4; j++) {
+            Float3 cand = circularRand(random);
+            float minDist = INFINITY;
+            for (u32 k = 0; k < i; k++) {
+                minDist = min(minDist, (result[k] - cand).length2());
+            }
+            if (minDist >bestDist) {
+                best = cand;
+                bestDist = minDist;
+            }
+        }
+        result.append(best);
+    }
+    return result;
+}
 
 void timeStep(StarSystem* starSys) {
     UpdateContext* uc = UpdateContext::instance();
     Random& random = uc->gs->random;
-    float dt = uc->gs->outerCtx->simulationTimeStep * 1.1f;
+    float dt = uc->gs->outerCtx->simulationTimeStep;
 
     starSys->countdown -= dt;
     if (starSys->countdown <= 0) {
-        if (starSys->burstNumber > 0) {
+        Float2 burstPos = {0.5f + 0.5f * starSys->side * random.nextFloat(),
+                           1.f - 0.8f * powf(random.nextFloat(), 1.8f) - 0.2f * random.nextFloat()};
+        Array<Float3> sphPoints = getMitchellSpherePoints(random, 22);
+        for (const Float3& sr : sphPoints) {
             auto randRange = [&](float v, float bias, float spread) {
                 float lo = mix(0.f, 1.f - spread, bias);
                 return lo + v * spread;
             };
-            Float2 cr = circularRand(random);
             StarSystem::Star& star = starSys->stars.append();
-            star.pos[0] = {0.f, -1.6f};
+            star.pos[0] = {Rect{{-0.8f, -0.3f}, {0.8f, 1.1f}}.mix(burstPos), 0.f};
             star.pos[1] = star.pos[0];
-            star.z = randRange(cr.y, starSys->burstPos.y, 0.3f);
-            star.vel = Float2{mix(-1.1f, 1.1f, randRange(cr.x, starSys->burstPos.x, 0.2f)),
-                              3.1f * mix(0.7f, 1.f, star.z)};
+            star.vel = sr * 0.85f;
+            star.vel.asFloat2() += Rect{{-1.0f, 0.5f}, {1.0f, 1.3f}}.mix(burstPos);
             star.angle[0] = mix(0.f, 2.f * Pi, random.nextFloat());
             star.angle[1] = star.angle[0];
-            star.avel = mix(1.5f, 2.5f, random.nextFloat()) * (s32(random.next32() & 2) - 1);
+            star.avel = mix(1.f, 2.4f, random.nextFloat()) * (s32(random.next32() & 2) - 1);
             star.brightness = random.nextFloat();
-            starSys->countdown = 0.016f;
-            starSys->burstNumber--;
-        } else {
-            starSys->countdown = 0.35f;
-            starSys->burstNumber = StarSystem::StarsPerBurst;
-            starSys->side *= -1.f;
-            starSys->burstPos = {0.5f + 0.5f * starSys->side * random.nextFloat(),
-                                 1.f - powf(random.nextFloat(), 5.f)};
         }
+        starSys->countdown = 0.75f;
+        starSys->side *= -1.f;
     }
     for (u32 i = 0; i < starSys->stars.numItems();) {
         StarSystem::Star& star = starSys->stars[i];
         star.life[0] = star.life[1];
         star.life[1] += dt;
-        star.vel.y = approach(star.vel.y, -0.3f, dt * 1.5f);
-        star.vel.x *= 0.998f;
+        star.vel *= 0.99f;
+        star.vel.y = approach(star.vel.y, -0.45f, dt * 0.35f);
         star.pos[0] = star.pos[1];
         star.pos[1] = star.pos[0] + star.vel * dt;
         star.angle[0] = star.angle[1];
         float a1 = star.angle[0] + star.avel * dt;
         star.angle[1] = wrap(a1, 2 * Pi);
         star.angle[0] += (star.angle[1] - a1);
-        if (star.pos[1].y < -2.f || star.life[1] >= 5.f) {
+        if (star.pos[1].y < -2.f || star.life[1] >= 3.3f) {
             starSys->stars.eraseQuick(i);
         } else {
             i++;
