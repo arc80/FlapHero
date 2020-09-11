@@ -120,6 +120,20 @@ struct UberShader {
               const DrawMesh* drawMesh, const Props* props = nullptr);
 };
 
+struct GradientShader {
+    ShaderProgram shader;
+    GLint vertPositionAttrib = -1;
+    GLint vertTexCoordAttrib = -1;
+    GLint modelToViewportUniform = -1;
+    GLint color0Uniform = -1;
+    GLint color1Uniform = -1;
+
+    static Owned<GradientShader> create();
+
+    void draw(const Float4x4& modelToViewport, 
+              const DrawMesh* drawMesh, const Float4& color0, const Float4& color1);
+};
+
 struct FlatShader {
     ShaderProgram shader;
     GLint vertPositionAttrib = 0;

@@ -397,7 +397,14 @@ void Assets::load(StringView assetsPath) {
             importer.ReadFile(NativePath::join(assetsPath, "Title.fbx").withNullTerminator().bytes,
                               aiProcess_Triangulate);
         assets->title =
-            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Title"), VT::NotSkinned);
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Title"), VT::NotSkinned, {},
+                      [](StringView matName) { return !matName.startsWith("Side"); });
+        assets->titleSideBlue =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Title"), VT::TexturedFlat, {},
+                      [](StringView matName) { return matName == "SideBlue"; });
+        assets->titleSideRed =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Title"), VT::TexturedFlat, {},
+                      [](StringView matName) { return matName == "SideRed"; });
         assets->outline =
             getMeshes(nullptr, scene, scene->mRootNode->FindNode("Outline"), VT::NotSkinned);
         assets->blackOutline =
@@ -516,8 +523,7 @@ void Assets::load(StringView assetsPath) {
         assets->gradientTexture.init(im, 2, params);
     }
     {
-        Buffer pngData =
-            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "star.png"));
+        Buffer pngData = FileSystem::native()->loadBinary(NativePath::join(assetsPath, "star.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData, false);
         SamplerParams params;
@@ -549,6 +555,7 @@ void Assets::load(StringView assetsPath) {
     assets->texturedShader = TexturedShader::create();
     assets->hypnoShader = HypnoShader::create();
     assets->copyShader = CopyShader::create();
+    assets->gradientShader = GradientShader::create();
 
     // Load sounds
     assets->titleMusic.load(

@@ -206,6 +206,14 @@ void drawTitle(const TitleScreen* titleScreen) {
     for (const DrawMesh* dm : a->title) {
         a->flatShader->draw(mat, dm, true);
     }
+    for (const DrawMesh* dm : a->titleSideBlue) {
+        Float3 linear = toSRGB(dm->diffuse);
+        a->gradientShader->draw(mat, dm, {mix(linear, {0.1f, 1.f, 1.f}, 0.1f), 1.f}, {linear * 0.85f, 1.f});
+    }
+    for (const DrawMesh* dm : a->titleSideRed) {
+        Float3 linear = toSRGB(dm->diffuse);
+        a->gradientShader->draw(mat, dm, {mix(linear, {1.f, 0.8f, 0.1f}, 0.08f), 1.f}, {linear * 0.8f, 1.f});
+    }
     GL_CHECK(DepthRange(0.5, 0.5));
     for (const DrawMesh* dm : a->outline) {
         a->flatShader->draw(mat, dm, true);

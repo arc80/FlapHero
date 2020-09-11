@@ -63,6 +63,8 @@ struct Assets {
     Array<Owned<DrawMesh>> city;
     Array<Owned<DrawMesh>> cloud;
     Array<Owned<DrawMesh>> title;
+    Array<Owned<DrawMesh>> titleSideBlue;
+    Array<Owned<DrawMesh>> titleSideRed;
     Array<Owned<DrawMesh>> outline;
     Array<Owned<DrawMesh>> blackOutline;
     Array<Owned<DrawMesh>> star;
@@ -104,6 +106,7 @@ struct Assets {
     Owned<TexturedShader> texturedShader;
     Owned<HypnoShader> hypnoShader;
     Owned<CopyShader> copyShader;
+    Owned<GradientShader> gradientShader;
     
     // Sounds
     SoLoud::Wav titleMusic;

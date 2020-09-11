@@ -601,6 +601,91 @@ PLY_NO_INLINE void UberShader::draw(const Float4x4& cameraToViewport, const Floa
 
 //---------------------------------------------------------
 
+PLY_NO_INLINE Owned<GradientShader> GradientShader::create() {
+    Owned<GradientShader> gradientShader = new GradientShader;
+    {
+        Shader vertexShader = Shader::compile(GL_VERTEX_SHADER, R"(
+in vec3 vertPosition;
+in vec2 vertTexCoord;
+uniform mat4 modelToViewport;
+out vec2 fragTexCoord;
+            
+void main() {
+    gl_Position = modelToViewport * vec4(vertPosition, 1.0);
+    fragTexCoord = vertTexCoord;
+}
+)");
+
+        Shader fragmentShader = Shader::compile(GL_FRAGMENT_SHADER, R"(
+uniform vec4 color0;
+uniform vec4 color1;
+in vec2 fragTexCoord;
+out vec4 outColor;
+
+void main() {
+    outColor = mix(color0, color1, fragTexCoord.y);
+}
+)");
+
+        // Link shader program
+        gradientShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
+    }
+
+    // Get shader program's vertex attribute and uniform locations
+    gradientShader->vertPositionAttrib =
+        GL_NO_CHECK(GetAttribLocation(gradientShader->shader.id, "vertPosition"));
+    PLY_ASSERT(gradientShader->vertPositionAttrib >= 0);
+    gradientShader->vertTexCoordAttrib =
+        GL_NO_CHECK(GetAttribLocation(gradientShader->shader.id, "vertTexCoord"));
+    PLY_ASSERT(gradientShader->vertTexCoordAttrib >= 0);
+    gradientShader->modelToViewportUniform =
+        GL_NO_CHECK(GetUniformLocation(gradientShader->shader.id, "modelToViewport"));
+    PLY_ASSERT(gradientShader->modelToViewportUniform >= 0);
+    gradientShader->color0Uniform =
+        GL_NO_CHECK(GetUniformLocation(gradientShader->shader.id, "color0"));
+    PLY_ASSERT(gradientShader->color0Uniform >= 0);
+    gradientShader->color1Uniform =
+        GL_NO_CHECK(GetUniformLocation(gradientShader->shader.id, "color1"));
+    PLY_ASSERT(gradientShader->color1Uniform >= 0);
+
+    return gradientShader;
+}
+
+PLY_NO_INLINE void GradientShader::draw(const Float4x4& modelToViewport, const DrawMesh* drawMesh,
+                                        const Float4& color0, const Float4& color1) {
+    GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Enable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_TRUE));
+    GL_CHECK(Disable(GL_BLEND));
+
+    // Uniforms
+    GL_CHECK(
+        UniformMatrix4fv(this->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));
+    GL_CHECK(Uniform4fv(this->color0Uniform, 1, (GLfloat*) &color0));
+    GL_CHECK(Uniform4fv(this->color1Uniform, 1, (GLfloat*) &color1));
+
+    // Vertex attributes
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
+
+    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::TexturedFlat);
+    GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPT), (GLvoid*) offsetof(VertexPT, pos)));
+    GL_CHECK(EnableVertexAttribArray(this->vertTexCoordAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertTexCoordAttrib, 2, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPT), (GLvoid*) offsetof(VertexPT, uv)));
+
+    // Draw this VBO
+    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh->indexBuffer.id));
+    GL_CHECK(
+        DrawElements(GL_TRIANGLES, (GLsizei) drawMesh->numIndices, GL_UNSIGNED_SHORT, (void*) 0));
+
+    GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
+    GL_CHECK(DisableVertexAttribArray(this->vertTexCoordAttrib));
+}
+
+//---------------------------------------------------------
+
 PLY_NO_INLINE Owned<FlatShader> FlatShader::create() {
     Owned<FlatShader> flatShader = new FlatShader;
     {
@@ -749,8 +834,7 @@ void main() {
     starShader->instColorAttrib =
         GL_NO_CHECK(GetAttribLocation(starShader->shader.id, "instColor"));
     PLY_ASSERT(starShader->instColorAttrib >= 0);
-    starShader->textureUniform =
-        GL_NO_CHECK(GetUniformLocation(starShader->shader.id, "texImage"));
+    starShader->textureUniform = GL_NO_CHECK(GetUniformLocation(starShader->shader.id, "texImage"));
     PLY_ASSERT(starShader->textureUniform >= 0);
 
     return starShader;
