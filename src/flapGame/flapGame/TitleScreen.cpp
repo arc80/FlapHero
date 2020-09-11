@@ -56,7 +56,7 @@ Array<Float3> getMitchellSpherePoints(Random& random, u32 numPts) {
             for (u32 k = 0; k < i; k++) {
                 minDist = min(minDist, (result[k] - cand).length2());
             }
-            if (minDist >bestDist) {
+            if (minDist > bestDist) {
                 best = cand;
                 bestDist = minDist;
             }
@@ -74,7 +74,7 @@ void timeStep(StarSystem* starSys) {
     starSys->countdown -= dt;
     if (starSys->countdown <= 0) {
         Float2 burstPos = {0.5f + 0.5f * starSys->side * random.nextFloat(),
-                           1.f - 0.8f * powf(random.nextFloat(), 1.8f) - 0.2f * random.nextFloat()};
+                           1.f - 0.8f * powf(random.nextFloat(), 1.5f) - 0.2f * random.nextFloat()};
         Array<Float3> sphPoints = getMitchellSpherePoints(random, 22);
         for (const Float3& sr : sphPoints) {
             auto randRange = [&](float v, float bias, float spread) {
@@ -82,23 +82,26 @@ void timeStep(StarSystem* starSys) {
                 return lo + v * spread;
             };
             StarSystem::Star& star = starSys->stars.append();
-            star.pos[0] = {Rect{{-0.8f, -0.3f}, {0.8f, 1.1f}}.mix(burstPos), 0.f};
+            star.pos[0] = {Rect{{-0.8f, -0.5f}, {0.8f, 1.1f}}.mix(burstPos), 0.f};
             star.pos[1] = star.pos[0];
-            star.vel = sr * 0.85f;
-            star.vel.asFloat2() += Rect{{-1.0f, 0.5f}, {1.0f, 1.3f}}.mix(burstPos);
+            star.vel = sr * 1.f;
+            star.vel.x *= 0.88f;
+            star.vel.asFloat2() += Rect{{-1.0f, 0.8f}, {1.0f, 1.3f}}.mix(burstPos);
             star.angle[0] = mix(0.f, 2.f * Pi, random.nextFloat());
             star.angle[1] = star.angle[0];
             star.avel = mix(1.f, 2.4f, random.nextFloat()) * (s32(random.next32() & 2) - 1);
-            star.brightness = random.nextFloat();
+            float c = random.nextFloat();
+            star.color =
+                mix(Float4{1.0f, 1.0f, 0.2f, 0.87f}, Float4{1.0f, 1.0f, 1.0f, 0.97f}, c * c * 0.8f);
         }
-        starSys->countdown = 0.75f;
+        starSys->countdown = 0.5f;
         starSys->side *= -1.f;
     }
     for (u32 i = 0; i < starSys->stars.numItems();) {
         StarSystem::Star& star = starSys->stars[i];
         star.life[0] = star.life[1];
         star.life[1] += dt;
-        star.vel *= 0.99f;
+        star.vel *= powf(0.985f, star.vel.length());
         star.vel.y = approach(star.vel.y, -0.45f, dt * 0.35f);
         star.pos[0] = star.pos[1];
         star.pos[1] = star.pos[0] + star.vel * dt;

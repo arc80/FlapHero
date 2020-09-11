@@ -29,7 +29,7 @@ struct StarSystem {
         Float3 vel = {0, 0, 0};
         float angle[2] = {0, 0};
         float avel = 0;
-        float brightness = 1.f;
+        Float4 color = {0, 0, 0, 0};
     };
 
     Array<Star> stars;

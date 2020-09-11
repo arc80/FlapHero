@@ -708,28 +708,27 @@ PLY_NO_INLINE Owned<StarShader> StarShader::create() {
 in vec3 vertPosition;
 in vec2 vertTexCoord;
 in mat4 instModelToViewport;
-in vec2 instColorAlpha;
-out vec2 fragColorAlpha;
+in vec4 instColor;
+out vec4 fragColor;
 out vec2 fragTexCoord;
 
 void main() {
-    fragColorAlpha = instColorAlpha;
+    fragColor = instColor;
     fragTexCoord = vertTexCoord;
     gl_Position = instModelToViewport * vec4(vertPosition, 1.0);
 }
 )");
 
         Shader fragmentShader = Shader::compile(GL_FRAGMENT_SHADER, R"(
-in vec2 fragColorAlpha;
+in vec4 fragColor;
 in vec2 fragTexCoord;
 uniform sampler2D texImage;
 out vec4 outColor;
 
 void main() {
     vec4 sam = texture2D(texImage, fragTexCoord);
-    float b = fragColorAlpha.x;
-    outColor = mix(vec4(1.0, 1.0, 0.2, 0.75), vec4(1.0, 1.0, 1.0, 0.95), b * b);
-    outColor.a *= sam.a * fragColorAlpha.y;
+    outColor = fragColor;
+    outColor.a *= sam.a;
 }
 )");
 
@@ -747,9 +746,9 @@ void main() {
     starShader->instModelToViewportAttrib =
         GL_NO_CHECK(GetAttribLocation(starShader->shader.id, "instModelToViewport"));
     PLY_ASSERT(starShader->instModelToViewportAttrib >= 0);
-    starShader->instColorAlphaAttrib =
-        GL_NO_CHECK(GetAttribLocation(starShader->shader.id, "instColorAlpha"));
-    PLY_ASSERT(starShader->instColorAlphaAttrib >= 0);
+    starShader->instColorAttrib =
+        GL_NO_CHECK(GetAttribLocation(starShader->shader.id, "instColor"));
+    PLY_ASSERT(starShader->instColorAttrib >= 0);
     starShader->textureUniform =
         GL_NO_CHECK(GetUniformLocation(starShader->shader.id, "texImage"));
     PLY_ASSERT(starShader->textureUniform >= 0);
@@ -780,11 +779,11 @@ PLY_NO_INLINE void StarShader::draw(const DrawMesh* drawMesh, GLuint textureID,
                                      (GLvoid*) offsetof(InstanceData, modelToViewport.col[c])));
         GL_CHECK(VertexAttribDivisor(this->instModelToViewportAttrib + c, 1));
     }
-    GL_CHECK(EnableVertexAttribArray(this->instColorAlphaAttrib));
-    GL_CHECK(VertexAttribPointer(this->instColorAlphaAttrib, 2, GL_FLOAT, GL_FALSE,
+    GL_CHECK(EnableVertexAttribArray(this->instColorAttrib));
+    GL_CHECK(VertexAttribPointer(this->instColorAttrib, 4, GL_FLOAT, GL_FALSE,
                                  (GLsizei) sizeof(InstanceData),
-                                 (GLvoid*) offsetof(InstanceData, colorAlpha)));
-    GL_CHECK(VertexAttribDivisor(this->instColorAlphaAttrib, 1));
+                                 (GLvoid*) offsetof(InstanceData, color)));
+    GL_CHECK(VertexAttribDivisor(this->instColorAttrib, 1));
 
     // Draw
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
@@ -803,8 +802,8 @@ PLY_NO_INLINE void StarShader::draw(const DrawMesh* drawMesh, GLuint textureID,
         GL_CHECK(VertexAttribDivisor(this->instModelToViewportAttrib + c, 0));
         GL_CHECK(DisableVertexAttribArray(this->instModelToViewportAttrib + c));
     }
-    GL_CHECK(VertexAttribDivisor(this->instColorAlphaAttrib, 0));
-    GL_CHECK(DisableVertexAttribArray(this->instColorAlphaAttrib));
+    GL_CHECK(VertexAttribDivisor(this->instColorAttrib, 0));
+    GL_CHECK(DisableVertexAttribArray(this->instColorAttrib));
     GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
 }
 

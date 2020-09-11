@@ -234,12 +234,13 @@ void drawStars(const TitleScreen* titleScreen) {
         float life = mix(star.life[0], star.life[1], dc->intervalFrac);
         float angle = mix(star.angle[0], star.angle[1], dc->intervalFrac);
         Float3 pos = mix(star.pos[0], star.pos[1], dc->intervalFrac);
-        float scale = clamp(life * 1.2f + 0.2f, 0.f, 1.f);
+        float scale = clamp(life * 1.f + 0.1f, 0.f, 1.f);
         float alpha = 1.f - clamp((life - 1.5f) * 1.f, 0.f, 1.f);
         ins.modelToViewport = worldToViewport * Float4x4::makeTranslation(pos) *
                               Float4x4::makeRotation({0, 0, 1}, angle) *
                               Float4x4::makeScale(scale * 0.09f);
-        ins.colorAlpha = {star.brightness, alpha};
+        ins.color = mix(Float4{1.5f, 1.5f, 1.5f, 1.f}, star.color, min(1.f, life * 1.5f));
+        ins.color.a() *= alpha;
     }
     GL_CHECK(DepthRange(0.5, 1.0));
     a->starShader->draw(a->star[0], a->starTexture.id, insData.view());

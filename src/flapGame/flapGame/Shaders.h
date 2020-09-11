@@ -138,14 +138,14 @@ struct FlatShader {
 struct StarShader {
     struct InstanceData {
         Float4x4 modelToViewport;
-        Float2 colorAlpha;
+        Float4 color;
     };
 
     ShaderProgram shader;
     GLint vertPositionAttrib = 0;
     GLint vertTexCoordAttrib = 0;
     GLint instModelToViewportAttrib = 0;
-    GLint instColorAlphaAttrib = 0;
+    GLint instColorAttrib = 0;
     GLint textureUniform = 0;
 
     static Owned<StarShader> create();
