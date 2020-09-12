@@ -291,10 +291,14 @@ void updateMovement(UpdateContext* uc) {
 }
 
 void adjustX(GameState* gs, float amount) {
-    gs->bird.pos[0].x += amount;
-    gs->bird.pos[1].x += amount;
-    gs->camToWorld[0].pos.x += amount;
-    gs->camToWorld[1].pos.x += amount;
+    const Assets* a = Assets::instance;
+
+    for (u32 i = 0; i < 2; i++) {
+        gs->bird.pos[i].x += amount;
+        gs->camToWorld[i].pos.x += amount;
+        gs->shrubX[i] += amount;
+        gs->buildingX[i] += amount;
+    }
     for (ObstacleSequence* seq : gs->playfield.sequences) {
         seq->xSeqRelWorld += amount;
     }
@@ -310,8 +314,6 @@ void adjustX(GameState* gs, float amount) {
         recovering->curve[0].pos.x += amount;
         recovering->curve[1].pos.x += amount;
     }
-    gs->shrubX = wrap(gs->shrubX + amount, GameState::ShrubRepeat) - GameState::ShrubRepeat;
-    gs->buildingX = wrap(gs->buildingX + amount, GameState::BuildingRepeat);
     gs->cloudAngleOffset =
         wrap(gs->cloudAngleOffset - amount * GameState::CloudRadiansPerCameraX, 2 * Pi);
 }
@@ -362,6 +364,8 @@ void timeStep(UpdateContext* uc) {
     gs->birdAnim.wingTime[0] = gs->birdAnim.wingTime[1];
     gs->birdAnim.eyeTime[0] = gs->birdAnim.eyeTime[1];
     gs->camToWorld[0] = gs->camToWorld[1];
+    gs->shrubX[0] = gs->shrubX[1];
+    gs->buildingX[0] = gs->buildingX[1];
 
     // Update title screen, if present
     if (gs->titleScreen) {
@@ -450,7 +454,7 @@ void timeStep(UpdateContext* uc) {
             orbit->risingTime = 0;
         }
     } else if (auto trans = gs->camera.transition()) {
-        trans->param += 2.f * dt;
+        trans->param += 1.5f * dt;
         if (trans->param >= 1.f) {
             gs->titleScreen.clear();
             gs->camera.follow().switchTo();
@@ -516,8 +520,18 @@ struct MixCameraParams {
     }
 };
 
+void wrapPair(float& v0, float& v1, float range) {
+    float v1w = wrap(v1, range);
+    v0 += v1w - v1;
+    v1 = v1w;
+}
+
 void GameState::updateCamera(bool cut) {
+    const Assets* a = Assets::instance;
+    GameState* gs = UpdateContext::instance()->gs;
+    float dt = gs->outerCtx->simulationTimeStep;
     MixCameraParams params;
+
     if (auto orbit = this->camera.orbit()) {
         // Orbiting
         params.frameToFocusYaw = orbit->angle + Pi / 2.f;
@@ -529,7 +543,7 @@ void GameState::updateCamera(bool cut) {
         params.shiftRelFrame = {GameState::FollowCamRelBirdX, 0, 0};
     } else if (auto trans = this->camera.transition()) {
         // Transitioning from orbit to follow
-        float angleT = interpolateCubic(0.f, 0.5f, 1.f, 1.f, trans->param);
+        float angleT = interpolateCubic(0.f, 0.f, 1.f, 1.f, trans->param);
         float angle =
             interpolateCubic(trans->startAngle, trans->startAngle * 0.5f, 0.f, 0.f, angleT);
         float t = applySimpleCubic(trans->param);
@@ -545,6 +559,18 @@ void GameState::updateCamera(bool cut) {
     this->camToWorld[1].quat = this->camToWorld[1].quat.negatedIfCloserTo(this->camToWorld[0].quat);
     if (cut) {
         this->camToWorld[0] = this->camToWorld[1];
+    }
+    float truck = 0;
+    if (this->camera.follow()) {
+        truck = this->camToWorld[1].pos.x - this->camToWorld[0].pos.x;
+    } else if (this->camera.transition()) {
+        truck = GameState::ScrollRate * dt;
+    }
+    if (truck != 0) {
+        shrubX[1] = shrubX[0] + truck * (1.f - a->shrubGroup.groupScale);
+        wrapPair(shrubX[0], shrubX[1], GameState::ShrubRepeat * a->shrubGroup.groupScale);
+        buildingX[1] = buildingX[0] + truck * (1.f - a->cityGroup.groupScale);
+        wrapPair(buildingX[0], buildingX[1], GameState::BuildingRepeat * a->cityGroup.groupScale);
     }
 }
 

@@ -208,11 +208,13 @@ void drawTitle(const TitleScreen* titleScreen) {
     }
     for (const DrawMesh* dm : a->titleSideBlue) {
         Float3 linear = toSRGB(dm->diffuse);
-        a->gradientShader->draw(mat, dm, {mix(linear, {0.1f, 1.f, 1.f}, 0.1f), 1.f}, {linear * 0.85f, 1.f});
+        a->gradientShader->draw(mat, dm, {mix(linear, {0.1f, 1.f, 1.f}, 0.1f), 1.f},
+                                {linear * 0.85f, 1.f});
     }
     for (const DrawMesh* dm : a->titleSideRed) {
         Float3 linear = toSRGB(dm->diffuse);
-        a->gradientShader->draw(mat, dm, {mix(linear, {1.f, 0.8f, 0.1f}, 0.08f), 1.f}, {linear * 0.8f, 1.f});
+        a->gradientShader->draw(mat, dm, {mix(linear, {1.f, 0.8f, 0.1f}, 0.08f), 1.f},
+                                {linear * 0.8f, 1.f});
     }
     GL_CHECK(DepthRange(0.5, 0.5));
     for (const DrawMesh* dm : a->outline) {
@@ -406,17 +408,18 @@ void renderGamePanel(const DrawContext* dc) {
             props.specPower = 4.f;
             props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.5f) * 0.2f, 1.f};
             props.rimFactor = {1.6f, 4.5f};
-            for (u32 i = 0; i < 3; i++) {
+            float shrubX = mix(gs->shrubX[0], gs->shrubX[1], dc->intervalFrac);
+            for (s32 i = -1; i <= 1; i++) {
+                Float3 groupPos = a->shrubGroup.groupRelWorld;
+                groupPos.x += shrubX + (GameState::ShrubRepeat * i) * a->shrubGroup.groupScale;
                 for (const DrawGroup::Instance& inst : a->shrubGroup.instances) {
                     props.texID =
                         (inst.drawMesh == a->shrub[0]) ? a->shrubTexture.id : a->shrub2Texture.id;
-                    a->duotoneShader->draw(
-                        cameraToViewport,
-                        worldToCamera * a->shrubGroup.groupToWorld *
-                            Float4x4::makeTranslation(
-                                {gs->shrubX + GameState::ShrubRepeat * i, 0, 0}) *
-                            inst.itemToGroup,
-                        inst.drawMesh, &props);
+                    a->duotoneShader->draw(cameraToViewport,
+                                           worldToCamera * Float4x4::makeTranslation(groupPos) *
+                                               Float4x4::makeScale(a->shrubGroup.groupScale) *
+                                               inst.itemToGroup,
+                                           inst.drawMesh, &props);
                 }
             }
         }
@@ -433,15 +436,16 @@ void renderGamePanel(const DrawContext* dc) {
             props.rimFactor = {2.f, 2.f};
             props.specular = {0, 0, 0};
             props.texID = a->windowTexture.id;
+            float buildingX = mix(gs->buildingX[0], gs->buildingX[1], dc->intervalFrac);
             for (float r = -3; r <= 3; r++) {
+                Float3 groupPos = a->cityGroup.groupRelWorld;
+                groupPos.x += buildingX + (GameState::BuildingRepeat * r) * a->cityGroup.groupScale;
                 for (const DrawGroup::Instance& inst : a->cityGroup.instances) {
-                    a->duotoneShader->draw(
-                        cameraToViewport,
-                        worldToCamera * a->cityGroup.groupToWorld *
-                            Float4x4::makeTranslation(
-                                {gs->buildingX + GameState::BuildingRepeat * r, 0, 0}) *
-                            inst.itemToGroup,
-                        inst.drawMesh, &props);
+                    a->duotoneShader->draw(cameraToViewport,
+                                           worldToCamera * Float4x4::makeTranslation(groupPos) *
+                                               Float4x4::makeScale(a->cityGroup.groupScale) *
+                                               inst.itemToGroup,
+                                           inst.drawMesh, &props);
                 }
             }
         }

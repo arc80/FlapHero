@@ -220,8 +220,8 @@ struct GameState {
         Array<float> sortedCheckpoints;
     };
     Playfield playfield;
-    float shrubX = -ShrubRepeat;
-    float buildingX = 0;
+    float shrubX[2] = {-ShrubRepeat, -ShrubRepeat};
+    float buildingX[2] = {0, 0};
     float cloudAngleOffset = 0.05f;
 
     void updateCamera(bool cut = false);

@@ -38,8 +38,9 @@ struct DrawGroup {
         const DrawMesh* drawMesh = nullptr;
     };
 
-    Float4x4 groupToWorld = Float4x4::identity();
     Array<Instance> instances;
+    Float3 groupRelWorld = {0, 0, 0};
+    float groupScale = 0.f;
 };
 
 struct Assets {
