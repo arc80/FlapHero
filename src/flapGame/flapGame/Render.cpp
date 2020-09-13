@@ -189,14 +189,14 @@ void Pipe::draw(const Obstacle::DrawParams& params) const {
     }
 }
 
-void drawTitle(const TitleScreen* titleScreen) {
+void drawTitle(const TitleScreen* titleScreen, const Float4x4& extraZoom) {
     const Assets* a = Assets::instance;
     const DrawContext* dc = DrawContext::instance();
 
     Float4x4 w2c = {{{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
     float worldDistance = 15.f;
     Float4x4 cameraToViewport =
-        Float4x4::makeProjection(dc->visibleExtents / worldDistance, 1.f, 40.f);
+        extraZoom * Float4x4::makeProjection(dc->visibleExtents / worldDistance, 1.f, 40.f);
     Float3 skewNorm = getNorm(&titleScreen->titleRot, dc->fracTime);
     Float4x4 skewRot = Quaternion::fromUnitVectors(Float3{0, 0, 1}, skewNorm).toFloat4x4();
     Float4x4 mat = cameraToViewport * w2c * Float4x4::makeTranslation({0, worldDistance, 4.f}) *
@@ -225,7 +225,7 @@ void drawTitle(const TitleScreen* titleScreen) {
     }
 }
 
-void drawStars(const TitleScreen* titleScreen) {
+void drawStars(const TitleScreen* titleScreen, const Float4x4& extraZoom) {
     const Assets* a = Assets::instance;
     const DrawContext* dc = DrawContext::instance();
     const Rect& fullBounds2D = dc->fullVF.bounds2D;
@@ -235,6 +235,7 @@ void drawStars(const TitleScreen* titleScreen) {
     insData.reserve(titleScreen->starSys.stars.numItems());
     float lensDist = 2.f;
     Float4x4 worldToViewport =
+        extraZoom *
         Float4x4::makeProjection((fullBounds2D - fullBounds2D.mid()) *
                                      (2.f / (lensDist * fullBounds2D.width())),
                                  0.01f, 10.f) *
@@ -523,7 +524,7 @@ void renderGamePanel(const DrawContext* dc) {
         }
 
         if (auto trans = gs->camera.transition()) {
-            applyTitleScreen(dc, applySimpleCubic(clamp(1.f - trans->param * 1.5f, 0.f, 1.f)));
+            applyTitleScreen(dc, applySimpleCubic(clamp(1.f - trans->param * 2.5f, 0.f, 1.f)));
         }
     } else {
         applyTitleScreen(dc, 1.f);
@@ -550,6 +551,19 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
         ts->tempRTT.init(ts->tempTex, true);
     }
 
+    float ez = 1.f;
+    Float4x4 extraZoom = Float4x4::identity();
+    bool enablePrompt = true;
+    if (auto trans = dc->gs->camera.transition()) {
+        float t = trans->param + dc->fracTime;
+        t = clamp(interpolateCubic(0.f, 0.f, 0.5f, 1.f, trans->param) * 2.5f, 0.f, 1.f);
+        ez = powf(10.f, t);
+        Float3 c = {0, -0.2f, 0};
+        extraZoom = Float4x4::makeTranslation(c) * Float4x4::makeScale({ez, ez, 1.f}) *
+                    Float4x4::makeTranslation(-c);
+        enablePrompt = false;
+    }
+
     // Render to it
     GLint prevFBO;
     GL_CHECK(GetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO));
@@ -560,37 +574,38 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     GL_CHECK(ClearDepth(1.0));
     GL_CHECK(ClearStencil(0));
     GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
-    drawTitle(ts);
+    drawTitle(ts, extraZoom);
     {
         // Draw background
         float hypnoAngle = mix(ts->hypnoAngle[0], ts->hypnoAngle[1], dc->intervalFrac);
         float hypnoScale = powf(1.3f, mix(ts->hypnoZoom[0], ts->hypnoZoom[1], dc->intervalFrac));
-        a->hypnoShader->draw(Float4x4::makeOrtho({{-3.f, -4.f}, {3.f, 4.f}}, -1.f, 0.01f) *
-                                 Float4x4::makeTranslation({0, -1.7f, 0}) *
-                                 Float4x4::makeScale(hypnoScale),
-                             a->waveTexture.id, a->hypnoPaletteTexture, hypnoScale, hypnoAngle);
+        a->hypnoShader->draw(
+            Float4x4::makeOrtho({{-3.f, -4.f}, {3.f, 4.f}}, -1.f, 0.01f) *
+                Float4x4::makeTranslation({0, -1.7f, 0}) * Float4x4::makeScale(ez * hypnoScale),
+            a->waveTexture.id, a->hypnoPaletteTexture, ez * hypnoScale, hypnoAngle);
     }
     for (const DrawMesh* dm : a->rays) {
         // Draw rays
         GL_CHECK(DepthRange(0.5, 0.5));
         float angle = mix(ts->raysAngle[0], ts->raysAngle[1], dc->intervalFrac);
-        a->rayShader->draw(Float4x4::makeProjection(Pi / 2, vpSize.x / vpSize.y, 0.001f, 2.f) *
+        a->rayShader->draw(extraZoom *
+                               Float4x4::makeProjection(Pi / 2, vpSize.x / vpSize.y, 0.001f, 2.f) *
                                Float4x4::makeRotation({1, 0, 0}, -0.33f * Pi) *
                                Float4x4::makeTranslation({0, 0.55f, -1}) *
                                Float4x4::makeScale(2.f) * Float4x4::makeRotation({0, 0, 1}, angle),
                            dm);
     }
-    drawStars(ts);
+    drawStars(ts, extraZoom);
     // Draw prompt
-    if (ts->showPrompt) {
+    if (ts->showPrompt && enablePrompt) {
         TextBuffers tapToPlay = generateTextBuffers(a->sdfFont, "TAP TO PLAY");
         drawText(a->sdfCommon, a->sdfFont, tapToPlay,
-                 Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
+                 extraZoom * Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
                      Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
                      Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
                  {0.85f, 1.75f}, {0, 0, 0, 0.8f});
         drawOutlinedText(a->sdfOutline, a->sdfFont, tapToPlay,
-                         Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
+                         extraZoom * Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
                              Float4x4::makeTranslation({240, 24, 0}) * Float4x4::makeScale(0.9f) *
                              Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
                          {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.6f, 16.f}, {0.75f, 12.f}});
