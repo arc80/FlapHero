@@ -5,6 +5,8 @@
 
 namespace flap {
 
+extern SoLoud::Soloud gSoloud; // SoLoud engine
+
 UpdateContext* UpdateContext::instance_ = nullptr;
 
 bool Pipe::collisionCheck(GameState* gs, const LambdaView<bool(const Hit&)>& cb) {
@@ -550,7 +552,7 @@ void GameState::updateCamera(bool cut) {
     } else if (auto trans = this->camera.transition()) {
         // Transitioning from orbit to follow
         float t = trans->param;
-        float t0 = 1.f - powf(cosf(t * Pi / 2.f), 6.f);
+        float t0 = 1.f - powf(cosf(t * Pi / 2.f), 8.f);
         t = t0 * 0.9f + interpolateCubic(0.f, 0.5f, 1.f, 1.f, t) * 0.1f;
         float angle = mix(trans->startAngle, 0.f, t);
         params.frameToFocusYaw = angle;
@@ -590,6 +592,7 @@ void GameState::startPlaying() {
         auto trans = this->camera.transition().switchTo();
         trans->startAngle = wrap(startAngle + 3 * Pi / 2, 2 * Pi) - Pi;
         trans->startYRise = startYRise;
+        gSoloud.play(Assets::instance->transitionSound, 0.9f);
     } else {
         this->camera.follow().switchTo();
     }
