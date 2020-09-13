@@ -284,15 +284,20 @@ void renderGamePanel(const DrawContext* dc) {
                           mix(gs->camToWorld[0].pos, gs->camToWorld[1].pos, dc->intervalFrac)};
     Float4x4 worldToCamera = camToWorld.inverted().toFloat4x4();
     {
-        Quaternion rot = mix(gs->bird.rot[0], gs->bird.rot[1], dc->intervalFrac);
+        Quaternion birdRot = mix(gs->bird.rot[0], gs->bird.rot[1], dc->intervalFrac);
+        if (auto trans = gs->camera.transition()) {
+            float t = trans->param + dc->fracTime;
+            t = applySimpleCubic(clamp(t * 2.f, 0.f, 1.f));
+            birdRot = mix(Quaternion::identity(), birdRot, t);
+        };
         Array<Float4x4> boneToModel = composeBirdBones(gs, dc->intervalFrac);
         GL_CHECK(Enable(GL_STENCIL_TEST));
         GL_CHECK(StencilFunc(GL_ALWAYS, 1, 0xFF));
         GL_CHECK(StencilOp(GL_KEEP, GL_KEEP, GL_REPLACE));
         GL_CHECK(StencilMask(0xFF));
-        Float4x4 modelToCamera = worldToCamera * Float4x4::makeTranslation(birdRelWorld) *
-                                 rot.toFloat4x4() * Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) *
-                                 Float4x4::makeScale(1.0833f);
+        Float4x4 modelToCamera =
+            worldToCamera * Float4x4::makeTranslation(birdRelWorld) * birdRot.toFloat4x4() *
+            Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) * Float4x4::makeScale(1.0833f);
         for (const DrawMesh* dm : a->bird.beak) {
             UberShader::Props props;
             props.diffuse = Float3{0.45f, 0.065f, 0.02f};
@@ -518,7 +523,7 @@ void renderGamePanel(const DrawContext* dc) {
         }
 
         if (auto trans = gs->camera.transition()) {
-            applyTitleScreen(dc, applySimpleCubic(clamp(1.f - trans->param * 2.f, 0.f, 1.f)));
+            applyTitleScreen(dc, applySimpleCubic(clamp(1.f - trans->param * 1.5f, 0.f, 1.f)));
         }
     } else {
         applyTitleScreen(dc, 1.f);

@@ -140,10 +140,16 @@ void updateMovement(UpdateContext* uc) {
         float dtScaled = dt * playing->timeScale;
         gs->bird.vel[1].x =
             approach(gs->bird.vel[0].x, GameState::ScrollRate, dtScaled * playing->xVelApproach);
-        playing->curGravity = approach(playing->curGravity, GameState::NormalGravity,
-                                       dtScaled * playing->gravApproach);
-        gs->bird.vel[1].z =
-            max(gs->bird.vel[0].z - playing->curGravity * dtScaled, GameState::TerminalVelocity);
+        bool applyGravity = true;
+        if (auto trans = gs->camera.transition()) {
+            applyGravity = trans->param > 0.5f || playing->curGravity == GameState::NormalGravity;
+        }
+        if (applyGravity) {
+            playing->curGravity = approach(playing->curGravity, GameState::NormalGravity,
+                                           dtScaled * playing->gravApproach);
+            gs->bird.vel[1].z = max(gs->bird.vel[0].z - playing->curGravity * dtScaled,
+                                    GameState::TerminalVelocity);
+        }
 
         // Check for impacts
         auto doImpact = [&](const Obstacle::Hit& hit) -> bool {
@@ -183,7 +189,7 @@ void updateMovement(UpdateContext* uc) {
             targetAngle += min(excess * 0.05f, 0.55f * Pi);
         }
         auto angle = gs->rotator.angle();
-        angle->angle = approach(angle->angle, targetAngle, dt * 15.f);
+        angle->angle = approach(angle->angle, targetAngle, dt * 12.f);
     } else if (auto impact = gs->mode.impact()) {
         impact->time += dt;
         if (impact->time >= 0.2f) {
@@ -454,7 +460,7 @@ void timeStep(UpdateContext* uc) {
             orbit->risingTime = 0;
         }
     } else if (auto trans = gs->camera.transition()) {
-        trans->param += 1.5f * dt;
+        trans->param += dt;
         if (trans->param >= 1.f) {
             gs->titleScreen.clear();
             gs->camera.follow().switchTo();
@@ -543,13 +549,13 @@ void GameState::updateCamera(bool cut) {
         params.shiftRelFrame = {GameState::FollowCamRelBirdX, 0, 0};
     } else if (auto trans = this->camera.transition()) {
         // Transitioning from orbit to follow
-        float angleT = interpolateCubic(0.f, 0.f, 1.f, 1.f, trans->param);
-        float angle =
-            interpolateCubic(trans->startAngle, trans->startAngle * 0.5f, 0.f, 0.f, angleT);
-        float t = applySimpleCubic(trans->param);
+        float t = trans->param;
+        float t0 = 1.f - powf(cosf(t * Pi / 2.f), 6.f);
+        t = t0 * 0.9f + interpolateCubic(0.f, 0.5f, 1.f, 1.f, t) * 0.1f;
+        float angle = mix(trans->startAngle, 0.f, t);
         params.frameToFocusYaw = angle;
-        params.lookFromRelFrame =
-            mix(Float3{0, -15.f, 3.5f}, Float3{0, -GameState::WorldDistance, 0}, t);
+        params.lookFromRelFrame = mix(Float3{0, -15.f, 3.5f * mix(1.f, 3.f, t)},
+                                      Float3{0, -GameState::WorldDistance, 0}, t);
         params.shiftRelFrame = mix(Float3{0, 0, 1.5f + trans->startYRise},
                                    Float3{GameState::FollowCamRelBirdX, 0, 0}, t);
     } else {
