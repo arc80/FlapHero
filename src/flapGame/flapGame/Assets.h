@@ -112,6 +112,7 @@ struct Assets {
     // Sounds
     SoLoud::Wav titleMusic;
     SoLoud::Wav transitionSound;
+    SoLoud::Wav swipeSound;
 
     static Owned<Assets> instance;
 

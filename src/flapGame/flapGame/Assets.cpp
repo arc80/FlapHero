@@ -564,6 +564,8 @@ void Assets::load(StringView assetsPath) {
         NativePath::join(assetsPath, "FlapHero.ogg").withNullTerminator().bytes);
     assets->transitionSound.load(
         NativePath::join(assetsPath, "Transition.ogg").withNullTerminator().bytes);
+    assets->swipeSound.load(
+        NativePath::join(assetsPath, "Swipe.ogg").withNullTerminator().bytes);
 }
 
 } // namespace flap

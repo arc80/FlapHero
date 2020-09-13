@@ -40,6 +40,7 @@ void doInput(GameFlow* gf) {
 }
 
 void update(GameFlow* gf, float dt) {
+    Assets* a = Assets::instance;
     dt = min(dt, GameFlow::MaxTimeStep);
 
     // Timestep
@@ -51,6 +52,7 @@ void update(GameFlow* gf, float dt) {
             trans->oldGameState = std::move(gf->gameState);
             gf->resetGame(true);
             gs = gf->gameState;
+            gSoloud.play(a->swipeSound, 1.f);
         } else {
             gs->buttonPressed = true;
         }
