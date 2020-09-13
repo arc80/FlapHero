@@ -274,7 +274,7 @@ void renderGamePanel(const DrawContext* dc) {
     const GameState* gs = dc->gs;
 
     Float3 skyColor = fromSRGB(Float3{113.f / 255, 200.f / 255, 206.f / 255});
-    Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum, 10.f, 10000.f);
+    Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum, 10.f, 500.f);
     GL_CHECK(Viewport((GLint) vf.viewport.mins.x, (GLint) vf.viewport.mins.y,
                       (GLsizei) vf.viewport.width(), (GLsizei) vf.viewport.height()));
 
@@ -457,8 +457,8 @@ void renderGamePanel(const DrawContext* dc) {
         float cloudAngle =
             gs->cloudAngleOffset + camToWorld.pos.x * GameState::CloudRadiansPerCameraX;
         for (const DrawMesh* dm : a->cloud) {
-            a->texturedShader->draw(cameraToViewport * skyBoxW2C *
-                                        Float4x4::makeRotation({0, 0, 1}, cloudAngle),
+            a->texturedShader->draw(Float4x4::makeProjection(vf.frustum * 2.0f, 10.f, 500.f) *
+                                        skyBoxW2C * Float4x4::makeRotation({0, 0, 1}, cloudAngle),
                                     a->cloudTexture.id, {1, 1, 1, 1}, dm, true);
         }
 
