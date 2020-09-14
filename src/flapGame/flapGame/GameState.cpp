@@ -397,7 +397,7 @@ void timeStep(UpdateContext* uc) {
             gs->score++;
 
             const auto& toneParams = NoteMap[gs->note];
-            int handle = gSoloud.play(a->passNotes[toneParams.first]);
+            int handle = gSoloud.play(a->passNotes[toneParams.first], 1.25f);
             gSoloud.setRelativePlaySpeed(handle, powf(2.f, toneParams.second / 12.f));
             gs->note = (gs->note + 1) % NoteMap.numItems();
             gs->scoreTime[0] = 1.f;

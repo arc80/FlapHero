@@ -511,7 +511,7 @@ void renderGamePanel(const DrawContext* dc) {
         if (!gs->mode.dead() && !gs->mode.title()) {
             // Draw score
             float scoreTime = mix(gs->scoreTime[0], gs->scoreTime[1], dc->fracTime);
-            float zoom = powf(1.4f, scoreTime * scoreTime);
+            float zoom = powf(1.5f, scoreTime * scoreTime);
             TextBuffers tb = generateTextBuffers(a->sdfFont, String::from(gs->score));
             Float4x4 zoomMat = Float4x4::makeTranslation({0, 10.f, 0}) *
                                Float4x4::makeScale({zoom, zoom, 1.f}) *
