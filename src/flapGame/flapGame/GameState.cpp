@@ -592,7 +592,7 @@ void GameState::startPlaying() {
         auto trans = this->camera.transition().switchTo();
         trans->startAngle = wrap(startAngle + 3 * Pi / 2, 2 * Pi) - Pi;
         trans->startYRise = startYRise;
-        gSoloud.play(Assets::instance->transitionSound, 0.9f);
+        gSoloud.play(Assets::instance->transitionSound, 1.f);
     } else {
         this->camera.follow().switchTo();
     }
