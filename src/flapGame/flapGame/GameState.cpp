@@ -328,7 +328,11 @@ void adjustX(GameState* gs, float amount) {
 
 //---------------------------------------
 
+const FixedArray<Tuple<s32, s32>, 8> NoteMap = {{0, 0}, {0, 2}, {1, 0}, {1, 1},
+                                                {2, 0}, {2, 2}, {3, 0}, {3, 1}};
+
 void timeStep(UpdateContext* uc) {
+    Assets* a = Assets::instance;
     GameState* gs = uc->gs;
     float dt = gs->outerCtx->simulationTimeStep;
 
@@ -390,6 +394,11 @@ void timeStep(UpdateContext* uc) {
                gs->bird.pos[0].x >= gs->playfield.sortedCheckpoints[0]) {
             gs->playfield.sortedCheckpoints.erase(0);
             gs->score++;
+
+            const auto& toneParams = NoteMap[gs->note];
+            int handle = gSoloud.play(a->passNotes[toneParams.first]);
+            gSoloud.setRelativePlaySpeed(handle, powf(2.f, toneParams.second / 12.f));
+            gs->note = (gs->note + 1) % NoteMap.numItems();
         }
 
         // Flap

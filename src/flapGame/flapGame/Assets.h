@@ -45,7 +45,7 @@ struct DrawGroup {
 
 struct Assets {
     String rootPath;
-    
+
     struct BirdParts {
         Array<Owned<DrawMesh>> beak;
         Array<Owned<DrawMesh>> skin;
@@ -108,11 +108,12 @@ struct Assets {
     Owned<HypnoShader> hypnoShader;
     Owned<CopyShader> copyShader;
     Owned<GradientShader> gradientShader;
-    
+
     // Sounds
     SoLoud::Wav titleMusic;
     SoLoud::Wav transitionSound;
     SoLoud::Wav swipeSound;
+    FixedArray<SoLoud::Wav, 4> passNotes;
 
     static Owned<Assets> instance;
 
@@ -120,4 +121,3 @@ struct Assets {
 };
 
 } // namespace flap
-

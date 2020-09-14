@@ -524,8 +524,8 @@ void renderGamePanel(const DrawContext* dc) {
         }
 
         if (auto trans = gs->camera.transition()) {
-            float opacity = applySimpleCubic(clamp(1.f - trans->param * 2.5f, 0.f, 1.f));
-            float premul = powf(1.f - trans->param, 3.f) * 0.9f;
+            float opacity = applySimpleCubic(clamp(1.f - trans->param * 2.f, 0.f, 1.f));
+            float premul = powf(1.f - trans->param, 2.5f);
             applyTitleScreen(dc, opacity, premul);
         }
     } else {
@@ -559,7 +559,7 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     if (auto trans = dc->gs->camera.transition()) {
         float t = trans->param + dc->fracTime;
         t = clamp(interpolateCubic(0.f, 0.f, 0.5f, 1.f, trans->param) * 2.5f, 0.f, 1.f);
-        ez = powf(10.f, t);
+        ez = powf(15.f, t);
         Float3 c = {0, -0.2f, 0};
         extraZoom = Float4x4::makeTranslation(c) * Float4x4::makeScale({ez, ez, 1.f}) *
                     Float4x4::makeTranslation(-c);
