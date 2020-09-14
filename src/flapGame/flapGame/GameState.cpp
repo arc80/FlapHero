@@ -55,11 +55,6 @@ struct PipeSequence : ObstacleSequence {
         while ((s32) this->pipeIndex <= newPipeIndex) {
             float pipeX = this->xSeqRelWorld + this->pipeIndex * GameState::PipeSpacing;
 
-            if (this->pipeIndex >= 10) {
-                onEndSequence(gs, pipeX, false);
-                return false;
-            }
-
             // Add new obstacles
             float gapHeight = mix(-4.f, 4.f, gs->random.nextFloat());
             gs->playfield.obstacles.append(
@@ -69,6 +64,11 @@ struct PipeSequence : ObstacleSequence {
                          Float3x4::makeRotation({1, 0, 0}, Pi)});
             gs->playfield.sortedCheckpoints.append(pipeX);
             this->pipeIndex++;
+
+            if (this->pipeIndex >= 10) {
+                onEndSequence(gs, pipeX, false);
+                return false;
+            }
         }
         return true;
     }
@@ -615,7 +615,7 @@ void GameState::startPlaying() {
 }
 
 void onEndSequence(GameState* gs, float xEndSeqRelWorld, bool wasSlanted) {
-    if (wasSlanted) {
+    if (1) {//wasSlanted) {
         gs->playfield.sequences.append(new PipeSequence{xEndSeqRelWorld + GameState::PipeSpacing});
     } else {
         gs->playfield.sequences.append(
