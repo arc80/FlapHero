@@ -1329,11 +1329,14 @@ PLY_NO_INLINE Owned<CopyShader> CopyShader::create() {
             Shader::compile(GL_FRAGMENT_SHADER, "in vec2 fragTexCoord;\n"
                                                 "uniform sampler2D texImage;\n"
                                                 "uniform float opacity;\n"
+                                                "uniform vec4 premulColor;\n"
                                                 "out vec4 fragColor;\n"
                                                 "\n"
                                                 "void main() {\n"
                                                 "    fragColor = texture(texImage, fragTexCoord);\n"
-                                                "    fragColor.a = opacity;\n"
+                                                "    fragColor.rgb *= opacity;\n"
+                                                "    fragColor.a = 1.0 - opacity;\n"
+                                                "    fragColor = fragColor + fragColor.a * premulColor;\n"
                                                 "}\n");
 
         // Link shader program
@@ -1354,6 +1357,8 @@ PLY_NO_INLINE Owned<CopyShader> CopyShader::create() {
     PLY_ASSERT(copyShader->textureUniform >= 0);
     copyShader->opacityUniform = GL_NO_CHECK(GetUniformLocation(copyShader->shader.id, "opacity"));
     PLY_ASSERT(copyShader->opacityUniform >= 0);
+    copyShader->premulColorUniform = GL_NO_CHECK(GetUniformLocation(copyShader->shader.id, "premulColor"));
+    PLY_ASSERT(copyShader->premulColorUniform >= 0);
 
     // Create vertex and index buffers
     Array<VertexPT> vertices = {
@@ -1371,7 +1376,7 @@ PLY_NO_INLINE Owned<CopyShader> CopyShader::create() {
 }
 
 PLY_NO_INLINE void CopyShader::drawQuad(const Float4x4& modelToViewport, GLuint textureID,
-                                        float opacity) const {
+                                        float opacity, float premul) const {
     GL_CHECK(UseProgram(this->shader.id));
     GL_CHECK(Disable(GL_DEPTH_TEST));
     if (opacity >= 1.f) {
@@ -1379,7 +1384,7 @@ PLY_NO_INLINE void CopyShader::drawQuad(const Float4x4& modelToViewport, GLuint 
     } else {
         GL_CHECK(Enable(GL_BLEND));
         GL_CHECK(BlendEquation(GL_FUNC_ADD));
-        GL_CHECK(BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+        GL_CHECK(BlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA));
     }
 
     GL_CHECK(
@@ -1388,6 +1393,8 @@ PLY_NO_INLINE void CopyShader::drawQuad(const Float4x4& modelToViewport, GLuint 
     GL_CHECK(BindTexture(GL_TEXTURE_2D, textureID));
     GL_CHECK(Uniform1i(this->textureUniform, 0));
     GL_CHECK(Uniform1f(this->opacityUniform, opacity));
+    Float4 premulColor = {Float3{premul}, 1.f - premul};
+    GL_CHECK(Uniform4fv(this->premulColorUniform, 1, (const GLfloat*) &premulColor));
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, this->quadVBO.id));
     GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
     GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,

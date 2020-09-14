@@ -233,12 +233,13 @@ struct CopyShader {
     GLint modelToViewportUniform = 0;
     GLint textureUniform = 0;
     GLint opacityUniform = 0;
+    GLint premulColorUniform = 0;
     GLBuffer quadVBO;
     GLBuffer quadIndices;
     u32 quadNumIndices = 0;
 
     static PLY_NO_INLINE Owned<CopyShader> create();
-    void drawQuad(const Float4x4& modelToViewport, GLuint textureID, float opacity) const;
+    void drawQuad(const Float4x4& modelToViewport, GLuint textureID, float opacity, float premul) const;
 };
 
 } // namespace flap

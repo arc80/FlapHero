@@ -257,7 +257,7 @@ void drawStars(const TitleScreen* titleScreen, const Float4x4& extraZoom) {
     a->starShader->draw(a->star[0], a->starTexture.id, insData.view());
 }
 
-void applyTitleScreen(const DrawContext* dc, float opacity) {
+void applyTitleScreen(const DrawContext* dc, float opacity, float premul) {
     const Assets* a = Assets::instance;
     const GameState* gs = dc->gs;
     const TitleScreen* ts = gs->titleScreen;
@@ -265,7 +265,7 @@ void applyTitleScreen(const DrawContext* dc, float opacity) {
     GL_CHECK(Enable(GL_STENCIL_TEST));
     GL_CHECK(StencilFunc(GL_EQUAL, 0, 0xFF));
     GL_CHECK(StencilOp(GL_KEEP, GL_KEEP, GL_KEEP));
-    a->copyShader->drawQuad(Float4x4::identity(), ts->tempTex.id, opacity);
+    a->copyShader->drawQuad(Float4x4::identity(), ts->tempTex.id, opacity, premul);
     GL_CHECK(Disable(GL_STENCIL_TEST));
 }
 
@@ -524,10 +524,12 @@ void renderGamePanel(const DrawContext* dc) {
         }
 
         if (auto trans = gs->camera.transition()) {
-            applyTitleScreen(dc, applySimpleCubic(clamp(1.f - trans->param * 2.5f, 0.f, 1.f)));
+            float opacity = applySimpleCubic(clamp(1.f - trans->param * 2.5f, 0.f, 1.f));
+            float premul = powf(1.f - trans->param, 3.f) * 0.9f;
+            applyTitleScreen(dc, opacity, premul);
         }
     } else {
-        applyTitleScreen(dc, 1.f);
+        applyTitleScreen(dc, 1.f, 0.f);
     }
 }
 
