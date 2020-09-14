@@ -552,7 +552,7 @@ void GameState::updateCamera(bool cut) {
     } else if (auto trans = this->camera.transition()) {
         // Transitioning from orbit to follow
         float t = trans->param;
-        float t0 = 1.f - powf(cosf(t * Pi / 2.f), 8.f);
+        float t0 = 1.f - powf(cosf(t * Pi / 2.f), 5.f);
         t = t0 * 0.9f + interpolateCubic(0.f, 0.5f, 1.f, 1.f, t) * 0.1f;
         float angle = mix(trans->startAngle, 0.f, t);
         params.frameToFocusYaw = angle;
