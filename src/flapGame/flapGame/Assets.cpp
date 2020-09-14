@@ -571,6 +571,8 @@ void Assets::load(StringView assetsPath) {
                 .withNullTerminator()
                 .bytes);
     }
+    assets->finalScoreSound.load(
+        NativePath::join(assetsPath, "FinalScore.ogg").withNullTerminator().bytes);
 }
 
 } // namespace flap

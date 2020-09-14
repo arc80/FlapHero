@@ -122,7 +122,7 @@ FallAnimFrame sample(ArrayView<const FallAnimFrame> frames, float t) {
 }
 
 void updateMovement(UpdateContext* uc) {
-    const Assets* a = Assets::instance;
+    Assets* a = Assets::instance;
     GameState* gs = uc->gs;
     float dt = gs->outerCtx->simulationTimeStep;
 
@@ -251,6 +251,7 @@ void updateMovement(UpdateContext* uc) {
             gs->mode.dead().switchTo();
             gs->bird.pos[0].z = GameState::LowestHeight;
             gs->bird.pos[1] = gs->bird.pos[0];
+            gSoloud.play(a->finalScoreSound);
             return;
         }
 

@@ -114,6 +114,7 @@ struct Assets {
     SoLoud::Wav transitionSound;
     SoLoud::Wav swipeSound;
     FixedArray<SoLoud::Wav, 4> passNotes;
+    SoLoud::Wav finalScoreSound;
 
     static Owned<Assets> instance;
 
