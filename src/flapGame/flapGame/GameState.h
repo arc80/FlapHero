@@ -134,7 +134,7 @@ struct GameState {
     static constexpr float FollowCamRelBirdX = 4.5f;
     static constexpr float ShrubRepeat = 26.625f;
     static constexpr float BuildingRepeat = 44.f;
-    static constexpr float CloudRadiansPerCameraX = 0.0005f;
+    static constexpr float CloudRadiansPerCameraX = 0.002f;
 
     OuterContext* outerCtx = nullptr;
     Random random{6};
