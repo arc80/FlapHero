@@ -378,6 +378,7 @@ void timeStep(UpdateContext* uc) {
     gs->camToWorld[0] = gs->camToWorld[1];
     gs->shrubX[0] = gs->shrubX[1];
     gs->buildingX[0] = gs->buildingX[1];
+    gs->scoreTime[0] = gs->scoreTime[1];
 
     // Update title screen, if present
     if (gs->titleScreen) {
@@ -399,6 +400,8 @@ void timeStep(UpdateContext* uc) {
             int handle = gSoloud.play(a->passNotes[toneParams.first]);
             gSoloud.setRelativePlaySpeed(handle, powf(2.f, toneParams.second / 12.f));
             gs->note = (gs->note + 1) % NoteMap.numItems();
+            gs->scoreTime[0] = 1.f;
+            gs->scoreTime[1] = 1.f;
         }
 
         // Flap
@@ -520,6 +523,8 @@ void timeStep(UpdateContext* uc) {
             dead->promptTime = 0.f;
         }
     }
+
+    gs->scoreTime[1] = approach(gs->scoreTime[1], 0.f, dt);
 }
 
 struct MixCameraParams {

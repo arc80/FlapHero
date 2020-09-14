@@ -510,16 +510,21 @@ void renderGamePanel(const DrawContext* dc) {
 
         if (!gs->mode.dead() && !gs->mode.title()) {
             // Draw score
+            float scoreTime = mix(gs->scoreTime[0], gs->scoreTime[1], dc->fracTime);
+            float zoom = powf(1.4f, scoreTime * scoreTime);
             TextBuffers tb = generateTextBuffers(a->sdfFont, String::from(gs->score));
+            Float4x4 zoomMat = Float4x4::makeTranslation({0, 10.f, 0}) *
+                               Float4x4::makeScale({zoom, zoom, 1.f}) *
+                               Float4x4::makeTranslation({0, -10.f, 0});
             drawText(a->sdfCommon, a->sdfFont, tb,
                      Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
                          Float4x4::makeTranslation({244, 570, 0}) * Float4x4::makeScale(1.5f) *
-                         Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
+                         zoomMat * Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
                      {0.85f, 1.75f}, {0, 0, 0, 0.4f});
             drawText(a->sdfCommon, a->sdfFont, tb,
                      Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
                          Float4x4::makeTranslation({240, 574, 0}) * Float4x4::makeScale(1.5f) *
-                         Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
+                         zoomMat * Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
                      {0.75f, 32.f}, {1.f, 1.f, 1.f, 1.f});
         }
 

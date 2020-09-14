@@ -144,6 +144,7 @@ struct GameState {
 
     // Score
     u32 score = 0;
+    float scoreTime[2] = {0, 0};
     u32 damage = 0;
     u32 note = 0;
 
