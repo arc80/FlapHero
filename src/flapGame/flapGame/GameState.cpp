@@ -135,6 +135,7 @@ void updateMovement(UpdateContext* uc) {
             auto angle = gs->rotator.angle();
             angle->isFlipping = false;
             angle->angle = wrap(angle->angle + 1.4f * Pi, 2 * Pi) - 1.4f * Pi;
+            gs->puffs.append(new Puffs{gs->bird.pos[0], gs->random.next32()});
             if (gs->flapVoice != -1) {
                 // Stop previous flap sound
                 gSoLoud.fadeVolume(gs->flapVoice, 0.f, 0.15f);
@@ -335,6 +336,9 @@ void adjustX(GameState* gs, float amount) {
     }
     gs->cloudAngleOffset =
         wrap(gs->cloudAngleOffset - amount * GameState::CloudRadiansPerCameraX, 2 * Pi);
+    for (Puffs* puffs : gs->puffs) {
+        puffs->pos.x += amount;
+    }
 }
 
 //---------------------------------------
@@ -473,6 +477,15 @@ void timeStep(UpdateContext* uc) {
             gs->bird.rot[1] = Quaternion::fromAxisAngle({0, 1, 0}, angle->angle);
         } else {
             PLY_ASSERT(gs->rotator.fromMode());
+        }
+
+        // Puffs
+        for (u32 p = 0; p < gs->puffs.numItems();) {
+            if (gs->puffs[p]->update(dt)) {
+                p++;
+            } else {
+                gs->puffs.eraseQuick(p);
+            }
         }
     }
 

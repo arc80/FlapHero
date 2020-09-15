@@ -533,6 +533,17 @@ void Assets::load(StringView assetsPath) {
         params.repeatY = false;
         assets->starTexture.init(im, 3, params);
     }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "PuffNormal.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData, false);
+        SamplerParams params;
+        params.sRGB = false;
+        params.repeatX = false;
+        params.repeatY = false;
+        assets->puffNormalTexture.init(im, 3, params);
+    }
 
     // Load font resources
     assets->sdfCommon = SDFCommon::create();
@@ -558,6 +569,7 @@ void Assets::load(StringView assetsPath) {
     assets->hypnoShader = HypnoShader::create();
     assets->copyShader = CopyShader::create();
     assets->gradientShader = GradientShader::create();
+    assets->puffShader = PuffShader::create();
 
     // Load sounds
     assets->titleMusic.load(

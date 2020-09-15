@@ -468,6 +468,16 @@ void renderGamePanel(const DrawContext* dc) {
                                     a->cloudTexture.id, {1, 1, 1, 1}, dm, true);
         }
 
+        // Draw puffs
+        {
+            Array<PuffShader::InstanceData> instances;
+            for (const Puffs* puffs : gs->puffs) {
+                puffs->addInstances(instances);
+            }
+            a->puffShader->draw(cameraToViewport * worldToCamera, a->puffNormalTexture.id,
+                                instances.view());
+        }
+
         // Draw flash
         if (auto impact = gs->mode.impact()) {
             a->flashShader->drawQuad(

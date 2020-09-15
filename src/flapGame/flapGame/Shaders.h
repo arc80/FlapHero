@@ -130,8 +130,8 @@ struct GradientShader {
 
     static Owned<GradientShader> create();
 
-    void draw(const Float4x4& modelToViewport, 
-              const DrawMesh* drawMesh, const Float4& color0, const Float4& color1);
+    void draw(const Float4x4& modelToViewport, const DrawMesh* drawMesh, const Float4& color0,
+              const Float4& color1);
 };
 
 struct FlatShader {
@@ -239,7 +239,29 @@ struct CopyShader {
     u32 quadNumIndices = 0;
 
     static PLY_NO_INLINE Owned<CopyShader> create();
-    void drawQuad(const Float4x4& modelToViewport, GLuint textureID, float opacity, float premul) const;
+    void drawQuad(const Float4x4& modelToViewport, GLuint textureID, float opacity,
+                  float premul) const;
+};
+
+struct PuffShader {
+    struct InstanceData {
+        Float4x4 modelToWorld;
+        Float2 colorAlpha;
+    };
+
+    ShaderProgram shader;
+    GLint vertPositionAttrib = 0;
+    GLint instModelToWorldAttrib = 0;
+    GLint instColorAlphaAttrib = 0;
+    GLint worldToViewportUniform = 0;
+    GLint textureUniform = 0;
+    GLBuffer quadVBO;
+    GLBuffer quadIndices;
+    u32 quadNumIndices = 0;
+
+    static Owned<PuffShader> create();
+    void draw(const Float4x4& worldToViewport, GLuint textureID,
+              ArrayView<const InstanceData> instanceData);
 };
 
 } // namespace flap

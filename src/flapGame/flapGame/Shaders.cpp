@@ -1325,19 +1325,19 @@ PLY_NO_INLINE Owned<CopyShader> CopyShader::create() {
                               "    fragTexCoord = vertTexCoord;\n"
                               "}\n");
 
-        Shader fragmentShader =
-            Shader::compile(GL_FRAGMENT_SHADER, "in vec2 fragTexCoord;\n"
-                                                "uniform sampler2D texImage;\n"
-                                                "uniform float opacity;\n"
-                                                "uniform vec4 premulColor;\n"
-                                                "out vec4 fragColor;\n"
-                                                "\n"
-                                                "void main() {\n"
-                                                "    fragColor = texture(texImage, fragTexCoord);\n"
-                                                "    fragColor.rgb *= opacity;\n"
-                                                "    fragColor.a = 1.0 - opacity;\n"
-                                                "    fragColor = fragColor + fragColor.a * premulColor;\n"
-                                                "}\n");
+        Shader fragmentShader = Shader::compile(
+            GL_FRAGMENT_SHADER, "in vec2 fragTexCoord;\n"
+                                "uniform sampler2D texImage;\n"
+                                "uniform float opacity;\n"
+                                "uniform vec4 premulColor;\n"
+                                "out vec4 fragColor;\n"
+                                "\n"
+                                "void main() {\n"
+                                "    fragColor = texture(texImage, fragTexCoord);\n"
+                                "    fragColor.rgb *= opacity;\n"
+                                "    fragColor.a = 1.0 - opacity;\n"
+                                "    fragColor = fragColor + fragColor.a * premulColor;\n"
+                                "}\n");
 
         // Link shader program
         copyShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
@@ -1357,7 +1357,8 @@ PLY_NO_INLINE Owned<CopyShader> CopyShader::create() {
     PLY_ASSERT(copyShader->textureUniform >= 0);
     copyShader->opacityUniform = GL_NO_CHECK(GetUniformLocation(copyShader->shader.id, "opacity"));
     PLY_ASSERT(copyShader->opacityUniform >= 0);
-    copyShader->premulColorUniform = GL_NO_CHECK(GetUniformLocation(copyShader->shader.id, "premulColor"));
+    copyShader->premulColorUniform =
+        GL_NO_CHECK(GetUniformLocation(copyShader->shader.id, "premulColor"));
     PLY_ASSERT(copyShader->premulColorUniform >= 0);
 
     // Create vertex and index buffers
@@ -1409,6 +1410,139 @@ PLY_NO_INLINE void CopyShader::drawQuad(const Float4x4& modelToViewport, GLuint 
         DrawElements(GL_TRIANGLES, (GLsizei) this->quadNumIndices, GL_UNSIGNED_SHORT, (void*) 0));
 
     GL_CHECK(DisableVertexAttribArray(this->vertTexCoordAttrib));
+    GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
+}
+
+//---------------------------------------------------------
+
+PLY_NO_INLINE Owned<PuffShader> PuffShader::create() {
+    Owned<PuffShader> puffShader = new PuffShader;
+    {
+        Shader vertexShader = Shader::compile(GL_VERTEX_SHADER, R"(
+in vec2 vertPosition;
+in mat4 instModelToWorld;
+in vec2 instColorAlpha;
+uniform mat4 worldToViewport;
+out vec2 fragColorAlpha;
+out vec2 fragTexCoord;
+out vec2 fragModelXToWorld;
+
+void main() {
+    fragColorAlpha = instColorAlpha;
+    fragTexCoord = vertPosition * 0.5 + 0.5;
+    fragModelXToWorld = normalize(instModelToWorld[0].xy);
+    gl_Position = worldToViewport * instModelToWorld * vec4(vertPosition, 0.0, 1.0);
+}
+)");
+
+        Shader fragmentShader = Shader::compile(GL_FRAGMENT_SHADER, R"(
+in vec2 fragColorAlpha;
+in vec2 fragTexCoord;
+in vec2 fragModelXToWorld;
+uniform sampler2D texImage;
+out vec4 outColor;
+vec3 lightDir = normalize(vec3(1.0, -1.0, -0.2));
+
+void main() {
+    vec4 sam = texture2D(texImage, fragTexCoord);
+
+    // Get corrected normal
+    vec3 fn = sam.xyz * 2.0 - 1.0;
+    mat2 rot = mat2(fragModelXToWorld, vec2(-fragModelXToWorld.y, fragModelXToWorld.x));
+    fn.xy = rot * fn.xy;
+
+    // Diffuse
+    float d = max(dot(fn, lightDir) * 0.9 + 0.8, 0.1) * 1.8;
+    vec3 baseColor = vec3(1.0, 1.0, 1.0);
+    vec3 color = baseColor * d;
+
+    // Tone map
+    vec3 toneMapped = color / (vec3(0.25) + color);
+    outColor.rgb = toneMapped;
+    outColor.a = clamp((sam.a - fragColorAlpha.x) * 6.0, 0.0, 1.0) * fragColorAlpha.y;
+}
+)");
+
+        // Link shader program
+        puffShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
+    }
+
+    // Get shader program's vertex attribute and uniform locations
+    puffShader->vertPositionAttrib =
+        GL_NO_CHECK(GetAttribLocation(puffShader->shader.id, "vertPosition"));
+    PLY_ASSERT(puffShader->vertPositionAttrib >= 0);
+    puffShader->instModelToWorldAttrib =
+        GL_NO_CHECK(GetAttribLocation(puffShader->shader.id, "instModelToWorld"));
+    PLY_ASSERT(puffShader->instModelToWorldAttrib >= 0);
+    puffShader->instColorAlphaAttrib =
+        GL_NO_CHECK(GetAttribLocation(puffShader->shader.id, "instColorAlpha"));
+    PLY_ASSERT(puffShader->instColorAlphaAttrib >= 0);
+    puffShader->worldToViewportUniform =
+        GL_NO_CHECK(GetUniformLocation(puffShader->shader.id, "worldToViewport"));
+    PLY_ASSERT(puffShader->worldToViewportUniform >= 0);
+    puffShader->textureUniform = GL_NO_CHECK(GetUniformLocation(puffShader->shader.id, "texImage"));
+    PLY_ASSERT(puffShader->textureUniform >= 0);
+
+    Array<Float2> vertices = {
+        {-1.f, -1.f},
+        {1.f, -1.f},
+        {1.f, 1.f},
+        {-1.f, 1.f},
+    };
+    puffShader->quadVBO = GLBuffer::create(vertices.view().bufferView());
+    Array<u16> indices = {(u16) 0, 1, 2, 2, 3, 0};
+    puffShader->quadIndices = GLBuffer::create(indices.view().bufferView());
+    puffShader->quadNumIndices = indices.numItems();
+
+    return puffShader;
+}
+
+PLY_NO_INLINE void PuffShader::draw(const Float4x4& worldToViewport, GLuint textureID,
+                                    ArrayView<const InstanceData> instanceData) {
+    GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Enable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_FALSE));
+    GL_CHECK(Enable(GL_BLEND));
+    GL_CHECK(BlendEquation(GL_FUNC_ADD));
+    GL_CHECK(BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+
+    GL_CHECK(
+        UniformMatrix4fv(this->worldToViewportUniform, 1, GL_FALSE, (GLfloat*) &worldToViewport));
+    GL_CHECK(ActiveTexture(GL_TEXTURE0));
+    GL_CHECK(BindTexture(GL_TEXTURE_2D, textureID));
+    GL_CHECK(Uniform1i(this->textureUniform, 0));
+
+    // Instance attributes
+    GLuint ibo = DynamicArrayBuffers::instance->upload(instanceData.bufferView());
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, ibo));
+    for (u32 c = 0; c < 4; c++) {
+        GL_CHECK(EnableVertexAttribArray(this->instModelToWorldAttrib + c));
+        GL_CHECK(VertexAttribPointer(this->instModelToWorldAttrib + c, 4, GL_FLOAT, GL_FALSE,
+                                     (GLsizei) sizeof(InstanceData),
+                                     (GLvoid*) offsetof(InstanceData, modelToWorld.col[c])));
+        GL_CHECK(VertexAttribDivisor(this->instModelToWorldAttrib + c, 1));
+    }
+    GL_CHECK(EnableVertexAttribArray(this->instColorAlphaAttrib));
+    GL_CHECK(VertexAttribPointer(this->instColorAlphaAttrib, 2, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(InstanceData),
+                                 (GLvoid*) offsetof(InstanceData, colorAlpha)));
+    GL_CHECK(VertexAttribDivisor(this->instColorAlphaAttrib, 1));
+
+    // Draw
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, this->quadVBO.id));
+    GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 2, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(Float2), (GLvoid*) 0));
+    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->quadIndices.id));
+    GL_CHECK(DrawElementsInstanced(GL_TRIANGLES, (GLsizei) this->quadNumIndices, GL_UNSIGNED_SHORT,
+                                   (void*) 0, instanceData.numItems));
+
+    for (u32 c = 0; c < 4; c++) {
+        GL_CHECK(VertexAttribDivisor(this->instModelToWorldAttrib + c, 0));
+        GL_CHECK(DisableVertexAttribArray(this->instModelToWorldAttrib + c));
+    }
+    GL_CHECK(VertexAttribDivisor(this->instColorAlphaAttrib, 0));
+    GL_CHECK(DisableVertexAttribArray(this->instColorAlphaAttrib));
     GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
 }
 

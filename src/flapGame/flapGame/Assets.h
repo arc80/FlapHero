@@ -90,6 +90,7 @@ struct Assets {
     Texture eyeWhiteTexture;
     Texture gradientTexture;
     Texture starTexture;
+    Texture puffNormalTexture;
 
     Owned<SDFCommon> sdfCommon;
     Owned<SDFOutline> sdfOutline;
@@ -108,6 +109,7 @@ struct Assets {
     Owned<HypnoShader> hypnoShader;
     Owned<CopyShader> copyShader;
     Owned<GradientShader> gradientShader;
+    Owned<PuffShader> puffShader;
 
     // Sounds
     SoLoud::Wav titleMusic;

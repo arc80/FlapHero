@@ -1,6 +1,7 @@
 #pragma once
 #include <flapGame/Core.h>
 #include <flapGame/TitleScreen.h>
+#include <flapGame/Puffs.h>
 
 namespace flap {
 
@@ -226,6 +227,9 @@ struct GameState {
     float shrubX[2] = {-ShrubRepeat, -ShrubRepeat};
     float buildingX[2] = {0, 0};
     float cloudAngleOffset = 0.05f;
+
+    // Puffs
+    Array<Owned<Puffs>> puffs;
 
     void updateCamera(bool cut = false);
     void startPlaying();
