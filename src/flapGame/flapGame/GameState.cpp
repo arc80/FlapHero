@@ -5,7 +5,7 @@
 
 namespace flap {
 
-extern SoLoud::Soloud gSoloud; // SoLoud engine
+extern SoLoud::Soloud gSoLoud; // SoLoud engine
 
 UpdateContext* UpdateContext::instance_ = nullptr;
 
@@ -135,6 +135,15 @@ void updateMovement(UpdateContext* uc) {
             auto angle = gs->rotator.angle();
             angle->isFlipping = false;
             angle->angle = wrap(angle->angle + 1.4f * Pi, 2 * Pi) - 1.4f * Pi;
+            if (gs->flapVoice != -1) {
+                // Stop previous flap sound
+                gSoLoud.fadeVolume(gs->flapVoice, 0.f, 0.15f);
+            }
+            // Play new flap sound
+            u32 flapNum = gs->random.next32() % a->flapSounds.numItems();
+            float rate = powf(2.f, mix(-0.08f, 0.08f, gs->random.nextFloat()) + flapNum * 0.02f);
+            gs->flapVoice = gSoLoud.play(a->flapSounds[flapNum], 2.f);
+            gSoLoud.setRelativePlaySpeed(gs->flapVoice, rate);
         }
 
         // Advance
@@ -163,7 +172,7 @@ void updateMovement(UpdateContext* uc) {
             impact->hit = hit;
             impact->time = 0;
             gs->damage++;
-            gSoloud.play(a->playerHitSound, 0.8f);
+            gSoLoud.play(a->playerHitSound, 0.8f);
             return true;
         };
 
@@ -252,7 +261,7 @@ void updateMovement(UpdateContext* uc) {
             gs->mode.dead().switchTo();
             gs->bird.pos[0].z = GameState::LowestHeight;
             gs->bird.pos[1] = gs->bird.pos[0];
-            gSoloud.play(a->finalScoreSound);
+            gSoLoud.play(a->finalScoreSound);
             return;
         }
 
@@ -399,8 +408,8 @@ void timeStep(UpdateContext* uc) {
             gs->score++;
 
             const auto& toneParams = NoteMap[gs->note];
-            int handle = gSoloud.play(a->passNotes[toneParams.first], 1.25f);
-            gSoloud.setRelativePlaySpeed(handle, powf(2.f, toneParams.second / 12.f));
+            int handle = gSoLoud.play(a->passNotes[toneParams.first], 1.5f);
+            gSoLoud.setRelativePlaySpeed(handle, powf(2.f, toneParams.second / 12.f));
             gs->note = (gs->note + 1) % NoteMap.numItems();
             gs->scoreTime[0] = 1.f;
             gs->scoreTime[1] = 1.f;
@@ -608,7 +617,7 @@ void GameState::startPlaying() {
         auto trans = this->camera.transition().switchTo();
         trans->startAngle = wrap(startAngle + 3 * Pi / 2, 2 * Pi) - Pi;
         trans->startYRise = startYRise;
-        gSoloud.play(Assets::instance->transitionSound, 1.f);
+        gSoLoud.play(Assets::instance->transitionSound, 1.f);
     } else {
         this->camera.follow().switchTo();
     }
@@ -617,7 +626,7 @@ void GameState::startPlaying() {
 }
 
 void onEndSequence(GameState* gs, float xEndSeqRelWorld, bool wasSlanted) {
-    if (1) {//wasSlanted) {
+    if (1) { // wasSlanted) {
         gs->playfield.sequences.append(new PipeSequence{xEndSeqRelWorld + GameState::PipeSpacing});
     } else {
         gs->playfield.sequences.append(

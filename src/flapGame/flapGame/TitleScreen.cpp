@@ -1,7 +1,6 @@
 #include <flapGame/Core.h>
 #include <flapGame/TitleScreen.h>
 #include <flapGame/GameState.h>
-#include <soloud.h>
 
 namespace flap {
 

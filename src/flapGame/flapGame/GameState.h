@@ -147,6 +147,7 @@ struct GameState {
     float scoreTime[2] = {0, 0};
     u32 damage = 0;
     u32 note = 0;
+    SoLoud::handle flapVoice = -1;
 
     // Bird
     struct Bird {

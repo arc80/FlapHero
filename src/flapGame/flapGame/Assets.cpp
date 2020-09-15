@@ -575,6 +575,11 @@ void Assets::load(StringView assetsPath) {
         NativePath::join(assetsPath, "FinalScore.ogg").withNullTerminator().bytes);
     assets->playerHitSound.load(
         NativePath::join(assetsPath, "playerHit.wav").withNullTerminator().bytes);
+    for (u32 i = 0; i < assets->flapSounds.numItems(); i++) {
+        assets->flapSounds[i].load(NativePath::join(assetsPath, String::format("Flap{}.wav", i))
+                                       .withNullTerminator()
+                                       .bytes);
+    }
 }
 
 } // namespace flap

@@ -1,15 +1,14 @@
 #include <flapGame/Core.h>
 #include <flapGame/GameFlow.h>
 #include <flapGame/Assets.h>
-#include <soloud.h>
 
 namespace flap {
 
-SoLoud::Soloud gSoloud; // SoLoud engine
+SoLoud::Soloud gSoLoud; // SoLoud engine
 
 void GameFlow::onGameStart() {
     if (this->titleMusicVoice) {
-        gSoloud.fadeVolume(this->titleMusicVoice, 0, 0.15);
+        gSoLoud.fadeVolume(this->titleMusicVoice, 0, 0.15);
         this->titleMusicVoice = 0;
     }
 }
@@ -32,7 +31,7 @@ void GameFlow::resetGame(bool isPlaying) {
 
 GameFlow::GameFlow() {
     this->resetGame(false);
-    this->titleMusicVoice = gSoloud.play(Assets::instance->titleMusic);
+    this->titleMusicVoice = gSoLoud.play(Assets::instance->titleMusic);
 }
 
 void doInput(GameFlow* gf) {
@@ -52,7 +51,7 @@ void update(GameFlow* gf, float dt) {
             trans->oldGameState = std::move(gf->gameState);
             gf->resetGame(true);
             gs = gf->gameState;
-            gSoloud.play(a->swipeSound, 1.f);
+            gSoLoud.play(a->swipeSound, 1.f);
         } else {
             gs->buttonPressed = true;
         }
@@ -88,7 +87,7 @@ void update(GameFlow* gf, float dt) {
 }
 
 void init(StringView assetsPath) {
-    gSoloud.init();
+    gSoLoud.init();
     Assets::load(assetsPath);
 }
 
@@ -99,7 +98,7 @@ void reloadAssets() {
 
 void shutdown() {
     Assets::instance.clear();
-    gSoloud.deinit();
+    gSoLoud.deinit();
 }
 
 GameFlow* createGameFlow() {

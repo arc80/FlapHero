@@ -3,7 +3,6 @@
 #include <flapGame/GLHelpers.h>
 #include <flapGame/GameState.h>
 #include <flapGame/Public.h>
-#include <soloud.h>
 
 namespace flap {
 
