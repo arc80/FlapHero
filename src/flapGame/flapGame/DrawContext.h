@@ -31,6 +31,7 @@ struct DrawContext {
     const GameState* gs = nullptr;
     ViewportFrustum vf;
     ViewportFrustum fullVF;
+    float renderDT = 0;
     float fracTime = 0;
     float intervalFrac = 0;
     Rect visibleExtents = {{0, 0}, {0, 0}};

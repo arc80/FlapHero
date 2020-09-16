@@ -87,6 +87,7 @@ struct GameState {
             float timeScale = 1.f;              // temporary slowdown after recovery
         };
         struct Impact {
+            float flashFrame = 0.f;
             Obstacle::Hit hit;
             float time = 0;
             bool recoverClockwise = true;

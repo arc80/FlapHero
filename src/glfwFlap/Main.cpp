@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
         // Update the gf
         update(gf, (float) (now - lastTime));
         if (renderWidth > 0 && renderHeight > 0) {
-            render(gf, {renderWidth, renderHeight});
+            render(gf, {renderWidth, renderHeight}, (float) (now - lastTime));
         }
 
         // Present framebuffer

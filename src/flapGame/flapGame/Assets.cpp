@@ -617,7 +617,7 @@ void Assets::load(StringView assetsPath) {
     assets->finalScoreSound.load(
         NativePath::join(assetsPath, "FinalScore.ogg").withNullTerminator().bytes);
     assets->playerHitSound.load(
-        NativePath::join(assetsPath, "playerHit.wav").withNullTerminator().bytes);
+        NativePath::join(assetsPath, "playerHit.ogg").withNullTerminator().bytes);
     for (u32 i = 0; i < assets->flapSounds.numItems(); i++) {
         assets->flapSounds[i].load(NativePath::join(assetsPath, String::format("Flap{}.wav", i))
                                        .withNullTerminator()

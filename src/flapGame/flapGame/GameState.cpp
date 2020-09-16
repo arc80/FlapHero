@@ -173,7 +173,7 @@ void updateMovement(UpdateContext* uc) {
             impact->hit = hit;
             impact->time = 0;
             gs->damage++;
-            gSoLoud.play(a->playerHitSound, 0.8f);
+            gSoLoud.play(a->playerHitSound, 0.7f);
             return true;
         };
 

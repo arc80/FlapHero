@@ -455,11 +455,19 @@ void renderGamePanel(const DrawContext* dc) {
         }
 
         // Draw flash
-        if (auto impact = gs->mode.impact()) {
+        if (auto impact = gs->mode.impact()) { 
+            u32 fm = (u32) quantizeDown(impact->flashFrame, 1.f);
             a->flashShader->drawQuad(
                 cameraToViewport * worldToCamera * Float4x4::makeTranslation(impact->hit.pos) *
-                    Float4x4::makeRotation({1, 0, 0}, Pi * 0.5f) * Float4x4::makeScale(2.f),
-                {0.25f, 0.25f, 0.75f, 0.75f}, a->flashTexture.id, {1.2f, 1.2f, 0, 0.6f});
+                    Float4x4::makeRotation({1, 0, 0}, Pi * 0.5f) * Float4x4::makeScale(1.7f),
+                {0.25f, 0.25f, 0.25f + 0.5f * (fm & 1), 0.75f - 0.25f * (fm & 2)},
+                a->flashTexture.id, {1.2f, 1.2f, 0, 0.8f});
+            // Advance frame
+            float nextFrame = impact->flashFrame + dc->renderDT * 60.f;
+            if ((u32) quantizeDown(nextFrame, 1.f) >= fm + 2) {
+                nextFrame = (float) fm + 1.f;
+            }
+            impact->flashFrame = wrap(nextFrame, 4.f);
         }
 
         if (auto dead = gs->mode.dead()) {
@@ -613,7 +621,7 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     GL_CHECK(BindFramebuffer(GL_FRAMEBUFFER, prevFBO));
 }
 
-void render(GameFlow* gf, const IntVec2& fbSize) {
+void render(GameFlow* gf, const IntVec2& fbSize, float renderDT) {
     PLY_ASSERT(fbSize.x > 0 && fbSize.y > 0);
     const Assets* a = Assets::instance;
     PLY_SET_IN_SCOPE(DynamicArrayBuffers::instance, &gf->dynBuffers);
@@ -664,6 +672,7 @@ void render(GameFlow* gf, const IntVec2& fbSize) {
         dc.gs = gs;
         dc.vf = vf;
         dc.fullVF = fullVF;
+        dc.renderDT = renderDT;
         dc.fracTime = gf->fracTime;
         dc.intervalFrac = intervalFrac;
         dc.visibleExtents = visibleExtents;
