@@ -244,9 +244,11 @@ void renderGamePanel(const DrawContext* dc) {
     Float3 skyColor = fromSRGB(Float3{113.f / 255, 200.f / 255, 206.f / 255});
     float frustumScale = 1.f;
     if (auto dead = gs->mode.dead()) {
-        frustumScale = min(frustumScale, powf(1.2f, getSignParams(dead->animateSignTime).first));
+        frustumScale = min(frustumScale,
+                           powf(1.2f, getSignParams(dead->animateSignTime + dc->fracTime).first));
         frustumScale =
-            min(frustumScale, powf(1.2f, getSignParams(dead->animateSignTime - 0.25f).first));
+            min(frustumScale,
+                powf(1.2f, getSignParams(dead->animateSignTime + dc->fracTime - 0.25f).first));
     }
     Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum * frustumScale, 10.f, 500.f);
     GL_CHECK(Viewport((GLint) vf.viewport.mins.x, (GLint) vf.viewport.mins.y,
@@ -473,8 +475,9 @@ void renderGamePanel(const DrawContext* dc) {
                          Float4x4::makeTranslation({-gameOver.xMid(), 0, 0}),
                      {0.75f, 32.f}, {1.f, 0.85f, 0.0f, 1.f});
 
-            Tuple<float, float> sp = getSignParams(dead->animateSignTime);
-            Tuple<float, float> sp2 = getSignParams(max(0.f, dead->animateSignTime - 0.25f));
+            Tuple<float, float> sp = getSignParams(dead->animateSignTime + dc->fracTime);
+            Tuple<float, float> sp2 =
+                getSignParams(max(0.f, dead->animateSignTime + dc->fracTime - 0.25f));
             drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 380},
                           powf(2.f, sp.first), "SCORE", String::from(gs->score),
                           {1, 1, 1, sp.second});
