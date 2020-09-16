@@ -5,7 +5,7 @@
 namespace flap {
 
 struct Puffs {
-    static constexpr float Rate = 1.6f;
+    static constexpr float Rate = 1.3f;
     Float3 pos = {0, 0, 0};
     float time = 0.f;
     u32 seed = 0;
