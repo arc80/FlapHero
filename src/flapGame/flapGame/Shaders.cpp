@@ -1499,6 +1499,9 @@ void main() {
 
 PLY_NO_INLINE void PuffShader::draw(const Float4x4& worldToViewport, GLuint textureID,
                                     ArrayView<const InstanceData> instanceData) {
+    if (instanceData.isEmpty())
+        return;
+
     GL_CHECK(UseProgram(this->shader.id));
     GL_CHECK(Enable(GL_DEPTH_TEST));
     GL_CHECK(DepthMask(GL_FALSE));
