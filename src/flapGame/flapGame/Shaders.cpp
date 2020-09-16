@@ -1430,7 +1430,7 @@ out vec2 fragModelXToWorld;
 void main() {
     fragColorAlpha = instColorAlpha;
     fragTexCoord = vertPosition * 0.5 + 0.5;
-    fragModelXToWorld = normalize(instModelToWorld[0].xy);
+    fragModelXToWorld = normalize(instModelToWorld[0].xz);
     gl_Position = worldToViewport * instModelToWorld * vec4(vertPosition, 0.0, 1.0);
 }
 )");
@@ -1452,14 +1452,14 @@ void main() {
     fn.xy = rot * fn.xy;
 
     // Diffuse
-    float d = max(dot(fn, lightDir) * 0.9 + 0.8, 0.1) * 1.8;
+    float d = max(-dot(fn, lightDir) * 0.7 + 0.6, 0.1);
     vec3 baseColor = vec3(1.0, 1.0, 1.0);
     vec3 color = baseColor * d;
 
     // Tone map
-    vec3 toneMapped = color / (vec3(0.25) + color);
+    vec3 toneMapped = color / (vec3(0.15) + color);
     outColor.rgb = toneMapped;
-    outColor.a = clamp((sam.a - fragColorAlpha.x) * 6.0, 0.0, 1.0) * fragColorAlpha.y;
+    outColor.a = sam.a * fragColorAlpha.y;
 }
 )");
 

@@ -14,6 +14,27 @@ StringView toStringView(const aiString& aiStr) {
     return {aiStr.data, aiStr.length};
 }
 
+void applyAlphaChannel(image::Image& dst, image::Image& src) {
+    PLY_ASSERT(dst.dims() == src.dims());
+    PLY_ASSERT(dst.format == image::Format::RGBA);
+    PLY_ASSERT(src.format == image::Format::Byte);
+    u8* dstRow = dst.data;
+    u8* dstRowEnd = dstRow + dst.stride * dst.height;
+    u8* srcRow = src.data;
+    while (dstRow < dstRowEnd) {
+        u8* d = (u8*) dstRow;
+        u8* s = (u8*) srcRow;
+        u8* dEnd = d + dst.width * 4;
+        while (d < dEnd) {
+            d[3] = *s;
+            d += 4;
+            s++;
+        }
+        dstRow += dst.stride;
+        srcRow += src.stride;
+    }
+}
+
 void extractBones(Array<Bone>* resultBones, const aiNode* srcNode, s32 parentIdx = -1) {
     for (u32 i = 0; i < srcNode->mNumChildren; i++) {
         const aiNode* child = srcNode->mChildren[i];
@@ -534,10 +555,20 @@ void Assets::load(StringView assetsPath) {
         assets->starTexture.init(im, 3, params);
     }
     {
-        Buffer pngData =
-            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "PuffNormal.png"));
-        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
-        image::OwnImage im = loadPNG(pngData, false);
+        image::OwnImage im;
+        {
+            Buffer pngData =
+                FileSystem::native()->loadBinary(NativePath::join(assetsPath, "PuffNormal.png"));
+            PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+            im = loadPNG(pngData, false);
+        }
+        {
+            Buffer pngData =
+                FileSystem::native()->loadBinary(NativePath::join(assetsPath, "PuffAlpha.png"));
+            PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+            image::OwnImage alphaIm = loadPNG(pngData);
+            applyAlphaChannel(im, alphaIm);
+        }
         SamplerParams params;
         params.sRGB = false;
         params.repeatX = false;
