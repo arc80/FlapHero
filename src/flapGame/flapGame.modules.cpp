@@ -75,8 +75,8 @@ ExternResult extern_soloud_source(ExternCommand cmd, ExternProviderArgs* args) {
         args->dep->buildTarget->addSourceFiles(NativePath::join(installFolder, "src/filter"));
         if (args->toolchain->get("targetPlatform")->text() == "windows") {
             args->dep->buildTarget->addSourceFiles(
-                NativePath::join(installFolder, "src/backend/winmm"));
-            args->dep->buildTarget->setPreprocessorDefinition(Visibility::Private, "WITH_WINMM",
+                NativePath::join(installFolder, "src/backend/miniaudio"));
+            args->dep->buildTarget->setPreprocessorDefinition(Visibility::Private, "WITH_MINIAUDIO",
                                                               "1");
         } else {
             args->dep->buildTarget->addSourceFiles(
