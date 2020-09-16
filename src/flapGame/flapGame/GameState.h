@@ -112,6 +112,8 @@ struct GameState {
             Mode mode;
         };
         struct Dead {
+            float animateSignTime = 0;
+            bool playedSound = false;
             bool showPrompt = false;
             float promptTime = 0;
         };

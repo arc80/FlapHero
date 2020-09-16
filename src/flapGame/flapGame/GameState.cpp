@@ -539,8 +539,16 @@ void timeStep(UpdateContext* uc) {
         adjustX(gs, -GameState::WrapAmount);
     }
 
-    // Update blinking prompt
     if (auto dead = gs->mode.dead()) {
+        // Animate high score signs 
+        dead->animateSignTime = min(dead->animateSignTime + dt, 5.f);
+        if (!dead->playedSound && dead->animateSignTime > 0.25f) {
+            SoLoud::handle h = gSoLoud.play(a->finalScoreSound, 0.6f);
+            gSoLoud.setRelativePlaySpeed(h, 0.9f);
+            dead->playedSound = true;
+        }
+
+        // Update blinking prompt
         dead->promptTime += dt;
         if (dead->promptTime >= (dead->showPrompt ? 0.4f : 0.16f)) {
             dead->showPrompt = !dead->showPrompt;

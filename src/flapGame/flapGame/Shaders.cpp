@@ -1077,7 +1077,8 @@ PLY_NO_INLINE Owned<TexturedShader> TexturedShader::create() {
                                 "\n"
                                 "void main() {\n"
                                 "    vec4 texColor = texture(texImage, fragTexCoord);\n"
-                                "    fragColor = texColor * color;\n"
+                                "    fragColor.rgb = texColor.rgb * color.rgb * color.a;\n"
+                                "    fragColor.a = mix(1.0 - color.a, 1.0, texColor.a);\n"
                                 "}\n");
 
         // Link shader program

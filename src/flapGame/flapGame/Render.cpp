@@ -219,6 +219,23 @@ void applyTitleScreen(const DrawContext* dc, float opacity, float premul) {
     GL_CHECK(Disable(GL_STENCIL_TEST));
 }
 
+Tuple<float, float> getSignParams(float t) {
+    float t1 = 0.18f;
+    float t2 = 0.23f;
+
+    float s = 0;
+    if (t < t1) {
+        s = mix(0.8f, -0.13f, t / t1);
+    } else if (t < t2) {
+        s = mix(-0.13f, 0.f, unmix(t1, t2, t));
+    }
+    float a = 1.f;
+    if (t < t1) {
+        a = powf(t / 0.3f, 2.f);
+    }
+    return {s, a};
+}
+
 void renderGamePanel(const DrawContext* dc) {
     const ViewportFrustum& vf = dc->vf;
     const Assets* a = Assets::instance;
@@ -448,10 +465,16 @@ void renderGamePanel(const DrawContext* dc) {
                          Float4x4::makeTranslation({240, 524, 0}) * Float4x4::makeScale(1.8f) *
                          Float4x4::makeTranslation({-gameOver.xMid(), 0, 0}),
                      {0.75f, 32.f}, {1.f, 0.85f, 0.0f, 1.f});
-            drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 380}, 1.f, "SCORE",
-                          String::from(gs->score), {1, 1, 1, 1});
-            drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 250}, 0.5f, "BEST",
-                          String::from(gs->outerCtx->bestScore), {1.f, 0.45f, 0.05f, 1.f});
+
+            Tuple<float, float> sp = getSignParams(dead->animateSignTime);
+            drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 380},
+                          powf(2.f, sp.first), "SCORE", String::from(gs->score),
+                          {1, 1, 1, sp.second});
+            sp = getSignParams(max(0.f, dead->animateSignTime - 0.25f));
+
+            drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 250},
+                          0.5f * powf(2.5f, sp.first), "BEST", String::from(gs->outerCtx->bestScore),
+                          {1.f, 0.45f, 0.05f, sp.second});
 
             if (dead->showPrompt) {
                 TextBuffers playAgain = generateTextBuffers(a->sdfFont, "TAP TO PLAY AGAIN");
