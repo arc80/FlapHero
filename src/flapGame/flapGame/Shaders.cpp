@@ -266,6 +266,7 @@ PLY_NO_INLINE Owned<PipeShader> PipeShader::create() {
                                                 "    vec3 sk = normalize(fragSkewedNorm);\n"
                                                 "    vec2 uv = sk.xy * 0.5 + 0.5;\n"
                                                 "    fragColor = texture(texImage, uv);\n"
+                                                "    fragColor.a = 1.0;\n"
                                                 "}\n");
 
         // Link shader program
@@ -1101,7 +1102,7 @@ PLY_NO_INLINE Owned<TexturedShader> TexturedShader::create() {
 
 void drawTexturedShader(const TexturedShader* shader, const Float4x4& modelToViewport,
                         GLuint textureID, const Float4& color, GLuint vboID, GLuint indicesID,
-                        u32 numIndices, bool depthTest) {
+                        u32 numIndices, bool depthTest, bool useDstAlpha) {
     GL_CHECK(UseProgram(shader->shader.id));
     if (depthTest) {
         GL_CHECK(Enable(GL_DEPTH_TEST));
@@ -1112,7 +1113,7 @@ void drawTexturedShader(const TexturedShader* shader, const Float4x4& modelToVie
     GL_CHECK(Enable(GL_BLEND));
     // Premultiplied alpha
     GL_CHECK(BlendEquation(GL_FUNC_ADD));
-    GL_CHECK(BlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA));
+    GL_CHECK(BlendFuncSeparate(useDstAlpha ? GL_DST_ALPHA : GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE));
 
     GL_CHECK(
         UniformMatrix4fv(shader->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));
@@ -1143,15 +1144,16 @@ void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, con
                           const DrawMesh* drawMesh, bool depthTest) {
     PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::TexturedFlat);
     drawTexturedShader(this, modelToViewport, textureID, color, drawMesh->vbo.id,
-                       drawMesh->indexBuffer.id, drawMesh->numIndices, depthTest);
+                       drawMesh->indexBuffer.id, drawMesh->numIndices, depthTest, false);
 }
 
 void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, const Float4& color,
-                          ArrayView<VertexPT> vertices, ArrayView<u16> indices) const {
+                          ArrayView<VertexPT> vertices, ArrayView<u16> indices,
+                          bool useDstAlpha) const {
     GLuint vboID = DynamicArrayBuffers::instance->upload(vertices.bufferView());
     GLuint indicesID = DynamicArrayBuffers::instance->upload(indices.bufferView());
     drawTexturedShader(this, modelToViewport, textureID, color, vboID, indicesID, indices.numItems,
-                       false);
+                       false, useDstAlpha);
 }
 
 //---------------------------------------------------------

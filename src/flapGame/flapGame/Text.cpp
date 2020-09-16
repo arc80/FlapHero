@@ -272,14 +272,18 @@ PLY_NO_INLINE TextBuffers generateTextBuffers(const SDFFont* sdfFont, StringView
 
 PLY_NO_INLINE void drawText(const SDFCommon* common, const SDFFont* sdfFont, const TextBuffers& tb,
                             const Float4x4& modelToViewport, const Float2& sdfParams,
-                            const Float4& color) {
+                            const Float4& color, bool alphaOnly) {
     GL_CHECK(UseProgram(common->shader.id));
     GL_CHECK(Disable(GL_DEPTH_TEST));
     GL_CHECK(DepthMask(GL_FALSE));
     GL_CHECK(Enable(GL_BLEND));
     // Premultiplied alpha
     GL_CHECK(BlendEquation(GL_FUNC_ADD));
-    GL_CHECK(BlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA));
+    if (alphaOnly) {
+        GL_CHECK(BlendFuncSeparate(GL_ZERO, GL_ONE, GL_ZERO, GL_SRC_ALPHA));
+    } else {
+        GL_CHECK(BlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE));
+    }
 
     GL_CHECK(
         UniformMatrix4fv(common->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));

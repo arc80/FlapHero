@@ -36,30 +36,33 @@ void drawRoundedRect(const TexturedShader* shader, const Float4x4& modelToViewpo
     addQuad({bounds.topLeft() + Float2{r, -r}, bounds.maxs + Float2{-r, 0}}, {{1, 1}, {1, 0}});
     addQuad({bounds.maxs + Float2{-r, -r}, bounds.maxs}, {{1, 1}, {0, 0}});
 
-    shader->draw(modelToViewport, textureID, color, verts.view(), indices.view());
+    shader->draw(modelToViewport, textureID, color, verts.view(), indices.view(), true);
 }
 
 void drawScoreSign(const Float4x4& cameraToViewport, const Float2& pos, float scale,
                    StringView firstRow, StringView secondRow, const Float4& color) {
     const Assets* assets = Assets::instance;
     TextBuffers scoreTB = generateTextBuffers(assets->sdfFont, secondRow);
-    float rectHWid = max(85.f, (scoreTB.width() + 8) * 1.35f);
-    drawRoundedRect(assets->texturedShader, cameraToViewport, assets->speedLimitTexture.id, color,
-                    expand(Rect::fromSize(pos, {0, 0}), Float2{rectHWid, 80} * scale), 32 * scale);
     {
         TextBuffers tb = generateTextBuffers(assets->sdfFont, firstRow);
         drawText(assets->sdfCommon, assets->sdfFont, tb,
                  cameraToViewport * Float4x4::makeTranslation({pos.x, pos.y + 32 * scale, 0}) *
                      Float4x4::makeScale(scale * 0.9f) *
                      Float4x4::makeTranslation({-tb.xMid(), 0, 0}),
-                 {0.75f, 16.f * scale}, {0.f, 0.f, 0.f, 1.f});
+                 {0.75f, 16.f * scale}, {0.f, 0.f, 0.f, 0.98f}, true);
     }
     {
         drawText(assets->sdfCommon, assets->sdfFont, scoreTB,
                  cameraToViewport * Float4x4::makeTranslation({pos.x, pos.y - 55 * scale, 0}) *
                      Float4x4::makeScale(scale * 2.7f) *
                      Float4x4::makeTranslation({-scoreTB.xMid(), 0, 0}),
-                 {0.75f, 64.f * scale}, {0.f, 0.f, 0.f, 1.f});
+                 {0.75f, 64.f * scale}, {0.f, 0.f, 0.f, 0.98f}, true);
+    }
+    {
+        float rectHWid = max(85.f, (scoreTB.width() + 8) * 1.35f);
+        drawRoundedRect(assets->texturedShader, cameraToViewport, assets->speedLimitTexture.id,
+                        color, expand(Rect::fromSize(pos, {0, 0}), Float2{rectHWid, 80} * scale),
+                        32 * scale);
     }
 }
 

@@ -59,7 +59,8 @@ struct TextBuffers {
 
 TextBuffers generateTextBuffers(const SDFFont* sdfFont, StringView text);
 void drawText(const SDFCommon* common, const SDFFont* sdfFont, const TextBuffers& tb,
-              const Float4x4& modelToViewport, const Float2& sdfParams, const Float4& color);
+              const Float4x4& modelToViewport, const Float2& sdfParams, const Float4& color,
+              bool alphaOnly = false);
 void drawOutlinedText(const SDFOutline* outline, const SDFFont* sdfFont, const TextBuffers& tb,
                       const Float4x4& modelToViewport, const Float4& fillColor,
                       const Float4& outlineColor, ArrayView<const Float2> centerSlope);
