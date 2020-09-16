@@ -221,7 +221,7 @@ void applyTitleScreen(const DrawContext* dc, float opacity, float premul) {
 
 Tuple<float, float> getSignParams(float t) {
     float t1 = 0.18f;
-    float t2 = 0.23f;
+    float t2 = 0.28f;
 
     float s = 0;
     if (t < t1) {
@@ -242,7 +242,13 @@ void renderGamePanel(const DrawContext* dc) {
     const GameState* gs = dc->gs;
 
     Float3 skyColor = fromSRGB(Float3{113.f / 255, 200.f / 255, 206.f / 255});
-    Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum, 10.f, 500.f);
+    float frustumScale = 1.f;
+    if (auto dead = gs->mode.dead()) {
+        frustumScale = min(frustumScale, powf(1.2f, getSignParams(dead->animateSignTime).first));
+        frustumScale =
+            min(frustumScale, powf(1.2f, getSignParams(dead->animateSignTime - 0.25f).first));
+    }
+    Float4x4 cameraToViewport = Float4x4::makeProjection(vf.frustum * frustumScale, 10.f, 500.f);
     GL_CHECK(Viewport((GLint) vf.viewport.mins.x, (GLint) vf.viewport.mins.y,
                       (GLsizei) vf.viewport.width(), (GLsizei) vf.viewport.height()));
 
@@ -430,9 +436,10 @@ void renderGamePanel(const DrawContext* dc) {
         float cloudAngle =
             gs->cloudAngleOffset + camToWorld.pos.x * GameState::CloudRadiansPerCameraX;
         for (const DrawMesh* dm : a->cloud) {
-            a->texturedShader->draw(Float4x4::makeProjection(vf.frustum * 2.0f, 10.f, 500.f) *
-                                        skyBoxW2C * Float4x4::makeRotation({0, 0, 1}, cloudAngle),
-                                    a->cloudTexture.id, {1, 1, 1, 1}, dm, true);
+            a->texturedShader->draw(
+                Float4x4::makeProjection(vf.frustum * frustumScale * 2.0f, 10.f, 500.f) *
+                    skyBoxW2C * Float4x4::makeRotation({0, 0, 1}, cloudAngle),
+                a->cloudTexture.id, {1, 1, 1, 1}, dm, true);
         }
 
         // Draw puffs
@@ -467,14 +474,13 @@ void renderGamePanel(const DrawContext* dc) {
                      {0.75f, 32.f}, {1.f, 0.85f, 0.0f, 1.f});
 
             Tuple<float, float> sp = getSignParams(dead->animateSignTime);
+            Tuple<float, float> sp2 = getSignParams(max(0.f, dead->animateSignTime - 0.25f));
             drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 380},
                           powf(2.f, sp.first), "SCORE", String::from(gs->score),
                           {1, 1, 1, sp.second});
-            sp = getSignParams(max(0.f, dead->animateSignTime - 0.25f));
-
             drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 250},
-                          0.5f * powf(2.5f, sp.first), "BEST", String::from(gs->outerCtx->bestScore),
-                          {1.f, 0.45f, 0.05f, sp.second});
+                          0.5f * powf(2.5f, sp2.first), "BEST",
+                          String::from(gs->outerCtx->bestScore), {1.f, 0.45f, 0.05f, sp2.second});
 
             if (dead->showPrompt) {
                 TextBuffers playAgain = generateTextBuffers(a->sdfFont, "TAP TO PLAY AGAIN");
