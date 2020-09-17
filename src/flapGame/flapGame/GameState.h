@@ -106,6 +106,10 @@ struct GameState {
             float totalTime = 1.f;
             FixedArray<Float2, 4> cps;
         };
+        struct Blending {
+            Float2 fromVel = {0, 0};
+            float time = 0;
+        };
         struct Falling {
             struct Mode {
                 // ply make switch
@@ -154,6 +158,7 @@ struct GameState {
     static constexpr float ShrubRepeat = 26.625f;
     static constexpr float BuildingRepeat = 44.f;
     static constexpr float CloudRadiansPerCameraX = 0.002f;
+    static constexpr float SlowMotionFactor = 0.15f;
 
     OuterContext* outerCtx = nullptr;
     Random random{6};

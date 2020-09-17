@@ -5,6 +5,7 @@
 
 namespace flap {
 
+constexpr bool GODMODE = false;
 extern SoLoud::Soloud gSoLoud; // SoLoud engine
 
 UpdateContext* UpdateContext::instance_ = nullptr;
@@ -156,7 +157,8 @@ void updateMovement(UpdateContext* uc) {
             if (resume->time > gracePeriod) {
                 playing->timeDilation.none().switchTo();
             } else {
-                timeScale = powf(resume->time / gracePeriod, 1.f);
+                timeScale =
+                    mix(GameState::SlowMotionFactor, 1.f, powf(resume->time / gracePeriod, 1.5f));
             }
         }
 
@@ -221,7 +223,7 @@ void updateMovement(UpdateContext* uc) {
     } else if (auto impact = gs->mode.impact()) {
         impact->time += dt;
         if (impact->time >= 0.2f) {
-            if (gs->damage < 2) {
+            if ((gs->damage < 2) || GODMODE) {
                 // Build recovery motion path
                 Float2 start2D = {gs->bird.pos[0].x, gs->bird.pos[0].z};
                 Float2 norm2D = {impact->hit.norm.x, impact->hit.norm.z};
@@ -229,8 +231,8 @@ void updateMovement(UpdateContext* uc) {
 
                 auto recovering = gs->mode.recovering().switchTo();
                 recovering->time = 0;
-                recovering->totalTime = 0.9f;
-                float R = 1.5;
+                recovering->totalTime = 0.6f;
+                float R = 1.3f;
                 recovering->cps[0] = start2D;
                 recovering->cps[1] = start2D + Complex::mul(norm2D, {0.6f * R, 0.f});
                 recovering->cps[2] = start2D + Complex::mul(norm2D, {R, m * R * -0.4f});
@@ -256,17 +258,29 @@ void updateMovement(UpdateContext* uc) {
         if (recovering->time < recovering->totalTime) {
             // sample the curve
             float t = recovering->time * ooDur;
-            t = 1.f - powf(1.f - t, 2.f);
+            float slo = GameState::SlowMotionFactor;
+            t = interpolateCubic(0.f, (1.f - slo) * 0.5f, 1.f - slo, 1.f, t);
             Float2 sampled = interpolateCubic(recovering->cps[0], recovering->cps[1],
                                               recovering->cps[2], recovering->cps[3], t);
             gs->bird.pos[1] = {sampled.x, 0, sampled.y};
         } else {
-            const Float2& endPos = recovering->cps[3];
+            const Float2& endPos = interpolateCubic(recovering->cps[0], recovering->cps[1],
+                                                    recovering->cps[2], recovering->cps[3], 1.f);
             gs->bird.pos[1] = {endPos.x, 0, endPos.y};
             // recover
-            Float2 endVal = derivativeCubic(recovering->cps[0], recovering->cps[1],
-                                            recovering->cps[2], recovering->cps[3], 1) /
-                            recovering->totalTime;
+            Float2 endVel = derivativeCubic(recovering->cps[0], recovering->cps[1],
+                                            recovering->cps[2], recovering->cps[3], 1.f) *
+                            ooDur * 2.f;
+            auto blending = gs->mode.blending().switchTo();
+            blending->fromVel = endVel;
+        }
+    } else if (auto blending = gs->mode.blending()) {
+        Float2 curVel =
+            mix(blending->fromVel, Float2{GameState::ScrollRate * GameState::SlowMotionFactor, 0},
+                blending->time);
+        gs->bird.pos[1] = gs->bird.pos[0] + Float3{curVel.x, 0, curVel.y} * dt;
+        blending->time += 3.f * dt;
+        if (blending->time >= 1) {
             auto playing = gs->mode.playing().switchTo();
             playing->timeDilation.resume().switchTo();
         }
@@ -386,7 +400,7 @@ void timeStep(UpdateContext* uc) {
                 break;
             }
             case ID::Recovering: {
-                if (gs->damage < 2) {
+                if ((gs->damage < 2) || GODMODE) {
                     gs->mode.playing().switchTo();
                     uc->doJump = true;
                 }
