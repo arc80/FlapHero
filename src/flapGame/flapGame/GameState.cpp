@@ -126,21 +126,10 @@ void updateMovement(UpdateContext* uc) {
     GameState* gs = uc->gs;
     float dt = gs->outerCtx->simulationTimeStep;
 
-    float timeScale = 1.f;
-    if (auto resume = gs->timeDilation.resume()) {
-        float gracePeriod = 1.5f;
-        resume->time += dt;
-        if (resume->time > gracePeriod) {
-            gs->timeDilation.none().switchTo();
-        } else {
-            timeScale = powf(resume->time / gracePeriod, 1.f);
-        }
-    }
-
     if (auto playing = gs->mode.playing()) {
         // Handle jump
         if (uc->doJump) {
-            gs->timeDilation.none().switchTo();
+            playing->timeDilation.none().switchTo();
             playing->zVel[0] = GameState::LaunchVel;
             playing->zVel[1] = GameState::LaunchVel;
             playing->curGravity = GameState::NormalGravity;
@@ -157,6 +146,18 @@ void updateMovement(UpdateContext* uc) {
             float rate = powf(2.f, mix(-0.08f, 0.08f, gs->random.nextFloat()) + flapNum * 0.02f);
             gs->flapVoice = gSoLoud.play(a->flapSounds[flapNum], 2.f);
             gSoLoud.setRelativePlaySpeed(gs->flapVoice, rate);
+        }
+
+        // Get time dilation
+        float timeScale = 1.f;
+        if (auto resume = playing->timeDilation.resume()) {
+            float gracePeriod = 1.5f;
+            resume->time += dt;
+            if (resume->time > gracePeriod) {
+                playing->timeDilation.none().switchTo();
+            } else {
+                timeScale = powf(resume->time / gracePeriod, 1.f);
+            }
         }
 
         // Advance
@@ -179,7 +180,7 @@ void updateMovement(UpdateContext* uc) {
             if (dot(birdVel0, hit.norm) >= 0)
                 return false;
 
-            gs->timeDilation.none().switchTo();
+            playing->timeDilation.none().switchTo();
             auto impact = gs->mode.impact().switchTo();
             impact->hit = hit;
             impact->time = 0;
@@ -249,7 +250,7 @@ void updateMovement(UpdateContext* uc) {
             }
         }
     } else if (auto recovering = gs->mode.recovering()) {
-        recovering->time += dt * timeScale;
+        recovering->time += dt;
         float dur = recovering->totalTime;
         float ooDur = 1.f / dur;
         if (recovering->time < recovering->totalTime) {
@@ -267,7 +268,7 @@ void updateMovement(UpdateContext* uc) {
                                             recovering->cps[2], recovering->cps[3], 1) /
                             recovering->totalTime;
             auto playing = gs->mode.playing().switchTo();
-            gs->timeDilation.resume().switchTo();
+            playing->timeDilation.resume().switchTo();
         }
     } else if (auto falling = gs->mode.falling()) {
         if (gs->bird.pos[0].z <= GameState::LowestHeight) {

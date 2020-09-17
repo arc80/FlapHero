@@ -84,6 +84,16 @@ struct GameState {
             float curGravity = NormalGravity;
             float gravApproach = NormalGravity; // blended at start
             FixedArray<float, 2> zVel = {0, 0};
+
+            struct TimeDilation {
+                // ply make switch
+                struct None {};
+                struct Resume {
+                    float time = 0;
+                };
+#include "codegen/switch-flap-GameState-Mode-Playing-TimeDilation.inl" //@@ply
+            };
+            TimeDilation timeDilation;
         };
         struct Impact {
             float flashFrame = 0.f;
@@ -173,17 +183,6 @@ struct GameState {
         float eyeTime[2] = {0, 0};
     };
     BirdAnim birdAnim;
-
-    // Time dilation
-    struct TimeDilation {
-        // ply make switch
-        struct None {};
-        struct Resume {
-            float time = 0;
-        };
-#include "codegen/switch-flap-GameState-TimeDilation.inl" //@@ply
-    };
-    TimeDilation timeDilation;
 
     // Flip
     struct Rotator {
