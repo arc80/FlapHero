@@ -83,6 +83,7 @@ struct GameState {
         struct Playing {
             float curGravity = NormalGravity;
             float gravApproach = NormalGravity; // blended at start
+            FixedArray<float, 2> zVel = {0, 0};
         };
         struct Impact {
             float flashFrame = 0.f;
@@ -104,7 +105,14 @@ struct GameState {
                     Quaternion startRot = {0, 0, 0, 1};
                     Float3 rotAxis = {0, 1, 0};
                 };
-                struct Free {};
+                struct Free {
+                    FixedArray<Float3, 2> vel = {{0, 0, 0}, {0, 0, 0}};
+
+                    PLY_INLINE void setVel(const Float3& vel) {
+                        this->vel[0] = vel;
+                        this->vel[1] = vel;
+                    }
+                };
 #include "codegen/switch-flap-GameState-Mode-Falling-Mode.inl" //@@ply
             };
             Mode mode;
@@ -153,13 +161,7 @@ struct GameState {
     // Bird
     struct Bird {
         Float3 pos[2] = {{0, 0, 0}, {0, 0, 0}};
-        Float3 vel[2] = {{ScrollRate, 0, 0}, {ScrollRate, 0, 0}};
         Quaternion rot[2] = {{0, 0, 0, 1}, {0, 0, 0, 1}};
-
-        PLY_INLINE void setVel(const Float3& vel) {
-            this->vel[0] = vel;
-            this->vel[1] = vel;
-        }
     };
     Bird bird;
 

@@ -141,7 +141,8 @@ void updateMovement(UpdateContext* uc) {
         // Handle jump
         if (uc->doJump) {
             gs->timeDilation.none().switchTo();
-            gs->bird.setVel({GameState::ScrollRate, 0, GameState::LaunchVel});
+            playing->zVel[0] = GameState::LaunchVel;
+            playing->zVel[1] = GameState::LaunchVel;
             playing->curGravity = GameState::NormalGravity;
             auto angle = gs->rotator.angle();
             angle->isFlipping = false;
@@ -160,7 +161,6 @@ void updateMovement(UpdateContext* uc) {
 
         // Advance
         float dtScaled = dt * timeScale;
-        PLY_ASSERT(gs->bird.vel[1].x == GameState::ScrollRate);
         bool applyGravity = true;
         if (auto trans = gs->camera.transition()) {
             applyGravity = trans->param > 0.5f || playing->curGravity == GameState::NormalGravity;
@@ -168,14 +168,15 @@ void updateMovement(UpdateContext* uc) {
         if (applyGravity) {
             playing->curGravity = approach(playing->curGravity, GameState::NormalGravity,
                                            dtScaled * playing->gravApproach);
-            gs->bird.vel[1].z = max(gs->bird.vel[0].z - playing->curGravity * dtScaled,
-                                    GameState::TerminalVelocity);
+            playing->zVel[1] =
+                max(playing->zVel[0] - playing->curGravity * dtScaled, GameState::TerminalVelocity);
         }
 
         // Check for impacts
+        Float3 birdVel0 = {GameState::ScrollRate, 0, playing->zVel[0]};
         auto doImpact = [&](const Obstacle::Hit& hit) -> bool {
             // Don't collide if moving away from surface
-            if (dot(gs->bird.vel[0], hit.norm) >= 0)
+            if (dot(birdVel0, hit.norm) >= 0)
                 return false;
 
             gs->timeDilation.none().switchTo();
@@ -202,21 +203,24 @@ void updateMovement(UpdateContext* uc) {
         }
 
         // Advance bird
-        Float3 midVel = (gs->bird.vel[0] + gs->bird.vel[1]) * 0.5f;
-        gs->bird.pos[1] = gs->bird.pos[0] + midVel * dtScaled;
+        if (playing) {
+            Float3 midVel = {GameState::ScrollRate, 0,
+                             (playing->zVel[0] + playing->zVel[1]) * 0.5f};
+            gs->bird.pos[1] = gs->bird.pos[0] + midVel * dtScaled;
 
-        // Rotation
-        float targetAngle = -0.1 * Pi;
-        float excess = max(0.f, -15.f - gs->bird.vel[1].z);
-        if (excess > 0) {
-            targetAngle += min(excess * 0.05f, 0.55f * Pi);
+            // Rotation
+            float targetAngle = -0.1 * Pi;
+            float excess = max(0.f, -15.f - playing->zVel[1]);
+            if (excess > 0) {
+                targetAngle += min(excess * 0.05f, 0.55f * Pi);
+            }
+            auto angle = gs->rotator.angle();
+            angle->angle = approach(angle->angle, targetAngle, dt * 12.f);
         }
-        auto angle = gs->rotator.angle();
-        angle->angle = approach(angle->angle, targetAngle, dt * 12.f);
     } else if (auto impact = gs->mode.impact()) {
         impact->time += dt;
         if (impact->time >= 0.2f) {
-            if (1) { // gs->damage < 2) {
+            if (gs->damage < 2) {
                 // Build recovery motion path
                 Float2 start2D = {gs->bird.pos[0].x, gs->bird.pos[0].z};
                 Float2 norm2D = {impact->hit.norm.x, impact->hit.norm.z};
@@ -230,10 +234,6 @@ void updateMovement(UpdateContext* uc) {
                 recovering->cps[1] = start2D + Complex::mul(norm2D, {0.6f * R, 0.f});
                 recovering->cps[2] = start2D + Complex::mul(norm2D, {R, m * R * -0.4f});
                 recovering->cps[3] = start2D + Complex::mul(norm2D, {R, m * R * -1.2f});
-                Float2 starVel = derivativeCubic(recovering->cps[0], recovering->cps[1],
-                                                 recovering->cps[2], recovering->cps[3], 0) /
-                                 recovering->totalTime;
-                gs->bird.setVel({starVel.x, 0, starVel.y});
                 auto angle = gs->rotator.angle();
                 angle->isFlipping = true;
                 angle->startAngle = GameState::DefaultAngle - 2.f * Pi * m;
@@ -259,10 +259,6 @@ void updateMovement(UpdateContext* uc) {
             Float2 sampled = interpolateCubic(recovering->cps[0], recovering->cps[1],
                                               recovering->cps[2], recovering->cps[3], t);
             gs->bird.pos[1] = {sampled.x, 0, sampled.y};
-            Float2 vel = derivativeCubic(recovering->cps[0], recovering->cps[1], recovering->cps[2],
-                                         recovering->cps[3], t) *
-                         ooDur;
-            gs->bird.vel[1] = {vel.x, 0, vel.y};
         } else {
             const Float2& endPos = recovering->cps[3];
             gs->bird.pos[1] = {endPos.x, 0, endPos.y};
@@ -270,7 +266,6 @@ void updateMovement(UpdateContext* uc) {
             Float2 endVal = derivativeCubic(recovering->cps[0], recovering->cps[1],
                                             recovering->cps[2], recovering->cps[3], 1) /
                             recovering->totalTime;
-            gs->bird.setVel({GameState::ScrollRate, 0, 0});
             auto playing = gs->mode.playing().switchTo();
             gs->timeDilation.resume().switchTo();
         }
@@ -297,20 +292,20 @@ void updateMovement(UpdateContext* uc) {
             }
 
             // Animation is complete
-            falling->mode.free().switchTo();
+            auto free = falling->mode.free().switchTo();
             // Assumes dt is constant:
-            gs->bird.setVel(uc->prevDelta / dt);
+            free->setVel(uc->prevDelta / dt);
         }
 
-        PLY_ASSERT(falling->mode.free());
+        auto free = falling->mode.free();
         Quaternion dampedDelta = mix(Quaternion::identity(), uc->deltaRot, 0.99f);
         gs->bird.rot[1] = (dampedDelta * gs->bird.rot[0]).renormalized();
 
         // Check for obstacle collisions
         auto bounce = [&](const Obstacle::Hit& hit) { //
-            Float3 newVel = gs->bird.vel[0];
+            Float3 newVel = free->vel[0];
             newVel.z = 5.f;
-            gs->bird.setVel(newVel);
+            free->setVel(newVel);
             return true;
         };
 
@@ -319,11 +314,11 @@ void updateMovement(UpdateContext* uc) {
                 break;
         }
 
-        gs->bird.vel[1].z =
-            max(gs->bird.vel[0].z - GameState::NormalGravity * dt, GameState::TerminalVelocity);
+        free->vel[1].z =
+            max(free->vel[0].z - GameState::NormalGravity * dt, GameState::TerminalVelocity);
 
         // Advance bird
-        Float3 midVel = (gs->bird.vel[0] + gs->bird.vel[1]) * 0.5f;
+        Float3 midVel = (free->vel[0] + free->vel[1]) * 0.5f;
         gs->bird.pos[1] = gs->bird.pos[0] + midVel * dt;
     }
 }
@@ -390,7 +385,7 @@ void timeStep(UpdateContext* uc) {
                 break;
             }
             case ID::Recovering: {
-                if (1) { // gs->damage < 2) {
+                if (gs->damage < 2) {
                     gs->mode.playing().switchTo();
                     uc->doJump = true;
                 }
@@ -405,7 +400,13 @@ void timeStep(UpdateContext* uc) {
     uc->prevDelta = gs->bird.pos[1] - gs->bird.pos[0];
     uc->deltaRot = gs->bird.rot[1] * gs->bird.rot[0].inverted();
     gs->bird.pos[0] = gs->bird.pos[1];
-    gs->bird.vel[0] = gs->bird.vel[1];
+    if (auto playing = gs->mode.playing()) {
+        playing->zVel[0] = playing->zVel[1];
+    } else if (auto falling = gs->mode.falling()) {
+        if (auto free = falling->mode.free()) {
+            free->vel[0] = free->vel[1];
+        }
+    }
     gs->bird.rot[0] = gs->bird.rot[1];
     gs->birdAnim.wingTime[0] = gs->birdAnim.wingTime[1];
     gs->birdAnim.eyeTime[0] = gs->birdAnim.eyeTime[1];
