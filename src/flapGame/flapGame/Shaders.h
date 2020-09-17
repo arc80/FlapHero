@@ -81,9 +81,14 @@ struct UberShader {
         float specPower = 5.f;
         Float4 rim = {1, 1, 1, 1};
         Float2 rimFactor = {1.f, 2.5f};
-        Float3 lightDir = Float3{1.f, -1.f, -0.5f}.normalized();
-        Float3 specLightDir = Float3{0.8f, -1.f, -0.2f}.normalized();
+        Float3 lightDir = {0, 0, 0};
+        Float3 specLightDir = {0, 0, 0};
         ArrayView<const Float4x4> boneToModel;
+
+        PLY_INLINE Props() {
+            this->lightDir = Float3{1.f, -1.f, -0.5f}.normalized();
+            this->specLightDir = Float3{0.8f, -1.f, -0.2f}.normalized();
+        }
     };
 
     static Props defaultProps;
