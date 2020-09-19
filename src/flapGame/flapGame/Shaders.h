@@ -83,7 +83,6 @@ struct UberShader {
         Float2 rimFactor = {1.f, 2.5f};
         Float3 lightDir = {0, 0, 0};
         Float3 specLightDir = {0, 0, 0};
-        ArrayView<const Float4x4> boneToModel;
 
         PLY_INLINE Props() {
             this->lightDir = Float3{1.f, -1.f, -0.5f}.normalized();
@@ -122,7 +121,7 @@ struct UberShader {
     static Owned<UberShader> create(u32 flags);
 
     void draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
-              const DrawMesh* drawMesh, const Props* props = nullptr);
+              const DrawMesh* drawMesh, ArrayView<const Float4x4> boneToModel, const Props* props = nullptr);
 };
 
 struct GradientShader {

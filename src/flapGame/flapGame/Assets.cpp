@@ -369,21 +369,78 @@ void Assets::load(StringView assetsPath) {
             importer.ReadFile(NativePath::join(assetsPath, "Bird.fbx").withNullTerminator().bytes,
                               aiProcess_Triangulate);
         extractBirdAnimData(&assets->bad, scene);
-        const aiNode* srcBird = scene->mRootNode->FindNode("Bird");
-        auto getMaterial = [&](Array<Owned<DrawMesh>>& dst, StringView materialName, VT vt) {
+        auto getMaterial = [&](const aiNode* src, Array<Owned<MeshWithMaterial>>& dst,
+                               StringView materialName, VT vt) -> UberShader::Props* {
             ArrayView<Bone> bones;
             if (vt == VT::Skinned) {
                 bones = assets->bad.birdSkel.view();
             }
-            dst = getMeshes(nullptr, scene, srcBird, vt, bones,
-                            [&](StringView m) { return materialName == m; });
+            Array<Owned<DrawMesh>> meshes = getMeshes(
+                nullptr, scene, src, vt, bones, [&](StringView m) { return materialName == m; });
+            PLY_ASSERT(meshes.numItems() == 1);
+            Owned<MeshWithMaterial> mm = new MeshWithMaterial;
+            UberShader::Props* props = &mm->matProps;
+            mm->mesh = std::move(*meshes[0]);
+            dst.append(std::move(mm));
+            return props;
         };
-        getMaterial(assets->bird.beak, "Beak", VT::Skinned);
-        getMaterial(assets->bird.skin, "Skin", VT::Skinned);
-        getMaterial(assets->bird.wings, "Wing", VT::Skinned);
-        getMaterial(assets->bird.belly, "Belly", VT::Skinned);
-        getMaterial(assets->bird.eyeWhite, "Eye", VT::NotSkinned);
-        getMaterial(assets->bird.pupil, "Pupils", VT::Skinned);
+        const aiNode* srcBird = scene->mRootNode->FindNode("Body");
+        Float3 skyColor = fromSRGB(Float3{113.f / 255, 200.f / 255, 206.f / 255});
+        {
+            UberShader::Props* props =
+                getMaterial(srcBird, assets->birdMeshes, "Beak", VT::Skinned);
+            props->diffuse = Float3{0.45f, 0.065f, 0.02f};
+            props->diffuseClamp = {-0.f, 1.5f, 0.1f};
+            props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.1f, 1.f};
+            props->rimFactor = {4.5f, 9.f};
+            props->specular = Float3{0.9f, 0.6f, 0.2f} * 0.12f;
+            props->specPower = 2.f;
+        }
+        {
+            UberShader::Props* props =
+                getMaterial(srcBird, assets->birdMeshes, "Skin", VT::Skinned);
+            props->diffuse = Float3{1, 0.7f, 0.025f} * 0.75f;
+            props->diffuseClamp = {-0.1f, 1.3f, 0.2f};
+            props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.15f, 1.f};
+            props->rimFactor = {4.5f, 9.f};
+            props->specLightDir = Float3{1.f, -1.f, 0.f}.normalized();
+            props->specular = Float3{1, 1, 0.25f} * 0.3f;
+            props->specPower = 3.5f;
+        }
+        {
+            UberShader::Props* props =
+                getMaterial(srcBird, assets->birdMeshes, "Wing", VT::Skinned);
+            props->diffuse = Float3{1, 0.8f, 0.13f} * 1.f;
+            props->diffuseClamp = {0.1f, 1.1f, 0.15f};
+            props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.15f, 1.f};
+            props->rimFactor = {5.f, 9.f};
+            props->specLightDir = Float3{0.65f, -1.f, 0.5f}.normalized();
+            props->specular = Float3{1, 0.6f, 0.6f} * 0.3f;
+            props->specPower = 4.f;
+        }
+        {
+            UberShader::Props* props =
+                getMaterial(srcBird, assets->birdMeshes, "Belly", VT::Skinned);
+            props->diffuse = Float3{0.95f, 0.3f, 0.08f};
+            props->diffuseClamp = {-0.1f, 1.5f, 0.2f};
+            props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.15f, 1.f};
+            props->rimFactor = {4.5f, 9.f};
+            props->specLightDir = Float3{0.65f, -1.f, 0.5f}.normalized();
+            props->specular = Float3{1, 0.6f, 0.6f} * 0.15f;
+            props->specPower = 4.f;
+        }
+        {
+            UberShader::Props* props = getMaterial(scene->mRootNode->FindNode("Pupils"),
+                                                   assets->birdMeshes, "Pupils", VT::Skinned);
+            props->diffuse = Float3{0.5f, 0.5f, 0.5f} * 0.08f;
+            props->rim = {0, 0, 0, 1};
+            props->rimFactor = 1.5f;
+            props->specLightDir = Float3{0.65f, -1.f, 0.1f}.normalized();
+            props->specular = Float3{1, 1, 1} * 0.015f;
+            props->specPower = 1.f;
+        }
+        assets->eyeWhite = getMeshes(nullptr, scene, srcBird, VT::NotSkinned, {},
+                                     [](StringView matName) { return matName == "Eye"; });
     }
     {
         Assimp::Importer importer;

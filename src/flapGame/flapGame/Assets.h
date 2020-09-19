@@ -46,15 +46,13 @@ struct DrawGroup {
 struct Assets {
     String rootPath;
 
-    struct BirdParts {
-        Array<Owned<DrawMesh>> beak;
-        Array<Owned<DrawMesh>> skin;
-        Array<Owned<DrawMesh>> wings;
-        Array<Owned<DrawMesh>> belly;
-        Array<Owned<DrawMesh>> eyeWhite;
-        Array<Owned<DrawMesh>> pupil;
+    struct MeshWithMaterial {
+        DrawMesh mesh;
+        UberShader::Props matProps;
     };
-    BirdParts bird;
+
+    Array<Owned<MeshWithMaterial>> birdMeshes;
+    Array<Owned<DrawMesh>> eyeWhite;
     Array<Owned<DrawMesh>> floor;
     Array<Owned<DrawMesh>> floorStripe;
     Array<Owned<DrawMesh>> dirt;

@@ -492,7 +492,8 @@ void main() {
 UberShader::Props UberShader::defaultProps;
 
 PLY_NO_INLINE void UberShader::draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
-                                    const DrawMesh* drawMesh, const Props* props) {
+                                    const DrawMesh* drawMesh, ArrayView<const Float4x4> boneToModel,
+                                    const Props* props) {
     using F = UberShader::Flags;
     const bool skinned = (this->flags & F::Skinned) != 0;
     const bool duotone = (this->flags & F::Duotone) != 0;
@@ -526,7 +527,7 @@ PLY_NO_INLINE void UberShader::draw(const Float4x4& cameraToViewport, const Floa
         boneXforms.resize(drawMesh->bones.numItems());
         for (u32 i = 0; i < drawMesh->bones.numItems(); i++) {
             u32 indexInSkel = drawMesh->bones[i].indexInSkel;
-            boneXforms[i] = props->boneToModel[indexInSkel] * drawMesh->bones[i].baseModelToBone;
+            boneXforms[i] = boneToModel[indexInSkel] * drawMesh->bones[i].baseModelToBone;
         }
         GL_CHECK(UniformMatrix4fv(this->boneXformsUniform, boneXforms.numItems(), GL_FALSE,
                                   (const GLfloat*) boneXforms.get()));
