@@ -441,6 +441,61 @@ void Assets::load(StringView assetsPath) {
         }
         assets->eyeWhite = getMeshes(nullptr, scene, srcBird, VT::NotSkinned, {},
                                      [](StringView matName) { return matName == "Eye"; });
+
+        const aiNode* srcSickBird = scene->mRootNode->FindNode("SickBody");
+        {
+            UberShader::Props* props =
+                getMaterial(srcSickBird, assets->sickBirdMeshes, "Beak", VT::Skinned);
+            props->diffuse = Float3{0.45f, 0.065f, 0.02f};
+            props->diffuseClamp = {-0.f, 1.5f, 0.1f};
+            props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.1f, 1.f};
+            props->rimFactor = {4.5f, 9.f};
+            props->specular = Float3{0.9f, 0.6f, 0.2f} * 0.12f;
+            props->specPower = 2.f;
+        }
+        {
+            UberShader::Props* props =
+                getMaterial(srcSickBird, assets->sickBirdMeshes, "SickSkin", VT::Skinned);
+            props->diffuse = Float3{0.22f, 0.42f, 0.2f};
+            props->diffuseClamp = {-0.1f, 1.3f, 0.2f};
+            props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.15f, 1.f};
+            props->rimFactor = {5.f, 8.f};
+            props->specLightDir = Float3{1.f, -1.f, 0.f}.normalized();
+            props->specular = Float3{0.2f, 0.2f, 0.02f};
+            props->specPower = 3.5f;
+        }
+        {
+            UberShader::Props* props =
+                getMaterial(srcSickBird, assets->sickBirdMeshes, "SickWing", VT::Skinned);
+            props->diffuse = Float3{1, 0.8f, 0.13f} * 1.f;
+            props->diffuseClamp = {0.1f, 1.1f, 0.15f};
+            props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.15f, 1.f};
+            props->rimFactor = {5.f, 9.f};
+            props->specLightDir = Float3{0.65f, -1.f, 0.5f}.normalized();
+            props->specular = Float3{1, 0.6f, 0.6f} * 0.3f;
+            props->specPower = 4.f;
+        }
+        {
+            UberShader::Props* props =
+                getMaterial(srcSickBird, assets->sickBirdMeshes, "SickBelly", VT::Skinned);
+            props->diffuse = Float3{0.35f, 0.37f, 0.12f};
+            props->diffuseClamp = {-0.1f, 1.5f, 0.2f};
+            props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.15f, 1.f};
+            props->rimFactor = {4.5f, 9.f};
+            props->specLightDir = Float3{0.65f, -1.f, 0.5f}.normalized();
+            props->specular = Float3{1, 0.6f, 0.6f} * 0.15f;
+            props->specPower = 4.f;
+        }
+        {
+            UberShader::Props* props = getMaterial(scene->mRootNode->FindNode("SickEyes"),
+                                                   assets->sickBirdMeshes, "Pupils", VT::Skinned);
+            props->diffuse = Float3{0.5f, 0.5f, 0.5f} * 0.08f;
+            props->rim = {0, 0, 0, 1};
+            props->rimFactor = 1.5f;
+            props->specLightDir = Float3{0.65f, -1.f, 0.1f}.normalized();
+            props->specular = Float3{1, 1, 1} * 0.015f;
+            props->specPower = 1.f;
+        }
     }
     {
         Assimp::Importer importer;

@@ -38,7 +38,14 @@ void doInput(GameFlow* gf) {
     gf->buttonPressed = true;
 }
 
+void togglePause(GameFlow* gf) {
+    gf->isPaused = !gf->isPaused;
+}
+
 void update(GameFlow* gf, float dt) {
+    if (gf->isPaused)
+        return;
+
     Assets* a = Assets::instance;
     dt = min(dt, GameFlow::MaxTimeStep);
 

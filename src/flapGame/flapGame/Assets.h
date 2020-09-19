@@ -52,6 +52,7 @@ struct Assets {
     };
 
     Array<Owned<MeshWithMaterial>> birdMeshes;
+    Array<Owned<MeshWithMaterial>> sickBirdMeshes;
     Array<Owned<DrawMesh>> eyeWhite;
     Array<Owned<DrawMesh>> floor;
     Array<Owned<DrawMesh>> floorStripe;

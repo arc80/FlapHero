@@ -260,7 +260,15 @@ void renderGamePanel(const DrawContext* dc) {
                           mix(gs->camToWorld[0].pos, gs->camToWorld[1].pos, dc->intervalFrac)};
     Float4x4 worldToCamera = camToWorld.inverted().toFloat4x4();
     {
-        Quaternion birdRot = mix(gs->bird.rot[0], gs->bird.rot[1], dc->intervalFrac);
+        Quaternion wobbleRot;
+        {
+            float wobble = mix(gs->bird.wobble[0], gs->bird.wobble[1], dc->intervalFrac);
+            float wf = clamp(unmix(0.f, 0.4f, gs->bird.wobbleFactor + dc->fracTime), 0.f, 1.f);
+            wobbleRot = Quaternion::fromAxisAngle({1, 0, 0}, sinf(wobble * 2 * Pi) * 0.5f * wf);
+            wobbleRot =
+                Quaternion::fromAxisAngle({0, 1, 0}, sinf(wobble * 4 * Pi) * 0.5f * wf) * wobbleRot;
+        }
+        Quaternion birdRot = mix(gs->bird.rot[0], gs->bird.rot[1], dc->intervalFrac) * wobbleRot;
         if (auto trans = gs->camera.transition()) {
             float t = trans->param + dc->fracTime;
             t = applySimpleCubic(clamp(t * 2.f, 0.f, 1.f));
@@ -274,12 +282,20 @@ void renderGamePanel(const DrawContext* dc) {
         Float4x4 modelToCamera =
             worldToCamera * Float4x4::makeTranslation(birdRelWorld) * birdRot.toFloat4x4() *
             Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) * Float4x4::makeScale(1.0833f);
-        for (const Assets::MeshWithMaterial* mm : a->birdMeshes) {
-            a->skinnedShader->draw(cameraToViewport, modelToCamera, &mm->mesh, boneToModel.view(),
-                                   &mm->matProps);
-        }
-        for (const DrawMesh* dm : a->eyeWhite) {
-            a->pipeShader->draw(cameraToViewport, modelToCamera, {0, 0}, dm, a->eyeWhiteTexture.id);
+        if (gs->isWeak()) {
+            for (const Assets::MeshWithMaterial* mm : a->sickBirdMeshes) {
+                a->skinnedShader->draw(cameraToViewport, modelToCamera, &mm->mesh,
+                                       boneToModel.view(), &mm->matProps);
+            }
+        } else {
+            for (const Assets::MeshWithMaterial* mm : a->birdMeshes) {
+                a->skinnedShader->draw(cameraToViewport, modelToCamera, &mm->mesh,
+                                       boneToModel.view(), &mm->matProps);
+            }
+            for (const DrawMesh* dm : a->eyeWhite) {
+                a->pipeShader->draw(cameraToViewport, modelToCamera, {0, 0}, dm,
+                                    a->eyeWhiteTexture.id);
+            }
         }
         GL_CHECK(Disable(GL_STENCIL_TEST));
     }
@@ -346,7 +362,7 @@ void renderGamePanel(const DrawContext* dc) {
                                            worldToCamera * Float4x4::makeTranslation(groupPos) *
                                                Float4x4::makeScale(a->shrubGroup.groupScale) *
                                                inst.itemToGroup,
-                        inst.drawMesh, {}, &props);
+                                           inst.drawMesh, {}, &props);
                 }
             }
         }
@@ -372,7 +388,7 @@ void renderGamePanel(const DrawContext* dc) {
                                            worldToCamera * Float4x4::makeTranslation(groupPos) *
                                                Float4x4::makeScale(a->cityGroup.groupScale) *
                                                inst.itemToGroup,
-                        inst.drawMesh, {}, &props);
+                                           inst.drawMesh, {}, &props);
                 }
             }
         }

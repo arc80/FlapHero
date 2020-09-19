@@ -21,6 +21,7 @@ struct GameFlow final : GameState::OuterContext {
     };
 
     static constexpr float MaxTimeStep = 0.05f;
+    bool isPaused = false;
     Owned<GameState> gameState;
     Transition trans;
     SoLoud::handle titleMusicVoice = 0;

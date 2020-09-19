@@ -18,6 +18,7 @@ GameFlow* createGameFlow();
 void destroy(GameFlow* gf);
 void update(GameFlow* gf, float dt);
 void doInput(GameFlow* gf);
+void togglePause(GameFlow* gf);
 void render(GameFlow* gf, const IntVec2& fbSize, float renderDT);
 
 } // namespace flap

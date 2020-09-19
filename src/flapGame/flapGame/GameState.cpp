@@ -186,7 +186,6 @@ void updateMovement(UpdateContext* uc) {
             auto impact = gs->mode.impact().switchTo();
             impact->hit = hit;
             impact->time = 0;
-            gs->damage++;
             gSoLoud.play(a->playerHitSound, 0.7f);
             return true;
         };
@@ -223,6 +222,7 @@ void updateMovement(UpdateContext* uc) {
     } else if (auto impact = gs->mode.impact()) {
         impact->time += dt;
         if (impact->time >= 0.2f) {
+            gs->damage++;
             if ((gs->damage < 2) || GODMODE) {
                 // Build recovery motion path
                 Float2 start2D = {gs->bird.pos[0].x, gs->bird.pos[0].z};
@@ -372,6 +372,12 @@ void adjustX(GameState* gs, float amount) {
 
 //---------------------------------------
 
+void wrapPair(float& v0, float& v1, float range) {
+    float v1w = wrap(v1, range);
+    v0 += v1w - v1;
+    v1 = v1w;
+}
+
 const FixedArray<Tuple<s32, s32>, 8> NoteMap = {{0, 0}, {0, 2}, {1, 0}, {1, 1},
                                                 {2, 0}, {2, 2}, {3, 0}, {3, 1}};
 
@@ -423,6 +429,7 @@ void timeStep(UpdateContext* uc) {
         }
     }
     gs->bird.rot[0] = gs->bird.rot[1];
+    gs->bird.wobble[0] = gs->bird.wobble[1];
     gs->birdAnim.wingTime[0] = gs->birdAnim.wingTime[1];
     gs->birdAnim.eyeTime[0] = gs->birdAnim.eyeTime[1];
     gs->camToWorld[0] = gs->camToWorld[1];
@@ -460,6 +467,13 @@ void timeStep(UpdateContext* uc) {
         }
         gs->birdAnim.wingTime[1] =
             min(gs->birdAnim.wingTime[0] + dt * GameState::FlapRate * 2.f, 2.f);
+
+        // Wobble
+        if (gs->isWeak() && !gs->mode.falling()) {
+            gs->bird.wobble[1] = gs->bird.wobble[0] + dt;
+            wrapPair(gs->bird.wobble[0], gs->bird.wobble[1], 1.f);
+            gs->bird.wobbleFactor = approach(gs->bird.wobbleFactor, 4.f, dt);
+        }
 
         // Move eyes
         if (gs->birdAnim.eyeMoving) {
@@ -608,12 +622,6 @@ struct MixCameraParams {
         return {camToWorldRot, camToWorldPos};
     }
 };
-
-void wrapPair(float& v0, float& v1, float range) {
-    float v1w = wrap(v1, range);
-    v0 += v1w - v1;
-    v1 = v1w;
-}
 
 void GameState::updateCamera(bool cut) {
     const Assets* a = Assets::instance;
