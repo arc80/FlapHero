@@ -405,6 +405,7 @@ void timeStep(UpdateContext* uc) {
                 gs->buttonPressed = true;
                 break;
             }
+            case ID::Blending:
             case ID::Recovering: {
                 if ((gs->damage < 2) || GODMODE) {
                     gs->mode.playing().switchTo();
