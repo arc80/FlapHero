@@ -152,7 +152,7 @@ void drawTitle(const TitleScreen* titleScreen, const Float4x4& extraZoom) {
     Float4x4 mat = cameraToViewport * w2c * Float4x4::makeTranslation({0, worldDistance, 4.f}) *
                    Float4x4::makeRotation({1, 0, 0}, Pi / 2.f) * skewRot *
                    Float4x4::makeTranslation({0, 0, 2.2f}) * Float4x4::makeScale(7.5f);
-    GL_CHECK(DepthRange(0.0, 0.5));
+    GL_CHECK(DepthRangef(0.0, 0.5));
     for (const DrawMesh* dm : a->title) {
         a->flatShader->draw(mat, dm, true);
     }
@@ -166,7 +166,7 @@ void drawTitle(const TitleScreen* titleScreen, const Float4x4& extraZoom) {
         a->gradientShader->draw(mat, dm, {mix(linear, {1.f, 0.8f, 0.1f}, 0.08f), 1.f},
                                 {linear * 0.8f, 1.f});
     }
-    GL_CHECK(DepthRange(0.5, 0.5));
+    GL_CHECK(DepthRangef(0.5, 0.5));
     for (const DrawMesh* dm : a->outline) {
         a->flatShader->draw(mat, dm, true);
     }
@@ -203,7 +203,7 @@ void drawStars(const TitleScreen* titleScreen, const Float4x4& extraZoom) {
         ins.color = mix(Float4{1.5f, 1.5f, 1.5f, 1.f}, star.color, min(1.f, life * 1.5f));
         ins.color.a() *= alpha;
     }
-    GL_CHECK(DepthRange(0.5, 1.0));
+    GL_CHECK(DepthRangef(0.5, 1.0));
     a->starShader->draw(a->star[0], a->starTexture.id, insData.view());
 }
 
@@ -540,7 +540,7 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     GL_CHECK(Viewport(0, 0, (u32) vpSize.x, (u32) vpSize.y));
     GL_CHECK(DepthMask(GL_TRUE));
     GL_CHECK(ClearColor(0.75f, 0.75f, 0.75f, 1.f));
-    GL_CHECK(ClearDepth(1.0));
+    GL_CHECK(ClearDepthf(1.0));
     GL_CHECK(ClearStencil(0));
     GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
     drawTitle(ts, extraZoom);
@@ -555,7 +555,7 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     }
     for (const DrawMesh* dm : a->rays) {
         // Draw rays
-        GL_CHECK(DepthRange(0.5, 0.5));
+        GL_CHECK(DepthRangef(0.5, 0.5));
         float angle = mix(ts->raysAngle[0], ts->raysAngle[1], dc->intervalFrac);
         a->rayShader->draw(extraZoom *
                                Float4x4::makeProjection(Pi / 2, vpSize.x / vpSize.y, 0.001f, 2.f) *
@@ -584,6 +584,7 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
 }
 
 void render(GameFlow* gf, const IntVec2& fbSize, float renderDT) {
+    GLenum ok = glGetError();
     PLY_ASSERT(fbSize.x > 0 && fbSize.y > 0);
     const Assets* a = Assets::instance;
     PLY_SET_IN_SCOPE(DynamicArrayBuffers::instance, &gf->dynBuffers);
@@ -594,7 +595,9 @@ void render(GameFlow* gf, const IntVec2& fbSize, float renderDT) {
     GL_CHECK(Enable(GL_FRAMEBUFFER_SRGB));
 #endif
 
+
     // Enable face culling
+     ok = glGetError();
     GL_CHECK(Enable(GL_CULL_FACE));
     GL_CHECK(CullFace(GL_BACK));
     GL_CHECK(FrontFace(GL_CCW));
@@ -621,10 +624,10 @@ void render(GameFlow* gf, const IntVec2& fbSize, float renderDT) {
 
     // Clear viewport
     GL_CHECK(Viewport(0, 0, fbSize.x, fbSize.y));
-    GL_CHECK(DepthRange(0.0, 1.0));
+    GL_CHECK(DepthRangef(0.0, 1.0));
     GL_CHECK(DepthMask(GL_TRUE));
     GL_CHECK(ClearColor(0, 0, 0, 1));
-    GL_CHECK(ClearDepth(1.0));
+    GL_CHECK(ClearDepthf(1.0));
     GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
 
     // Screen wipe transition

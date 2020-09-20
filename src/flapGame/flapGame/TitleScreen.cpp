@@ -76,10 +76,6 @@ void timeStep(StarSystem* starSys) {
                            1.f - 0.8f * powf(random.nextFloat(), 1.5f) - 0.2f * random.nextFloat()};
         Array<Float3> sphPoints = getMitchellSpherePoints(random, 22);
         for (const Float3& sr : sphPoints) {
-            auto randRange = [&](float v, float bias, float spread) {
-                float lo = mix(0.f, 1.f - spread, bias);
-                return lo + v * spread;
-            };
             StarSystem::Star& star = starSys->stars.append();
             star.pos[0] = {Rect{{-0.8f, -0.5f}, {0.8f, 1.1f}}.mix(burstPos), 0.f};
             star.pos[1] = star.pos[0];

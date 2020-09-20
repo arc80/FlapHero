@@ -43,6 +43,7 @@ struct Obstacle : RefCounted<Obstacle> {
         Float4x4 worldToCamera = Float4x4::identity();
     };
 
+    virtual ~Obstacle() {}
     virtual bool collisionCheck(GameState* gs, const LambdaView<bool(const Hit&)>& cb) = 0;
     virtual void adjustX(float amount) = 0;
     virtual bool canRemove(float leftEdge) = 0;

@@ -352,13 +352,13 @@ PLY_NO_INLINE Owned<UberShader> UberShader::create(u32 flags) {
         Shader vertexShader = Shader::compile(GL_VERTEX_SHADER, defines + R"(
 in vec3 vertPosition;
 in vec3 vertNormal;
-#if DUOTONE
+#ifdef DUOTONE
 in vec2 vertTexCoord;
 out vec2 fragTexCoord;
 #endif
 uniform mat4 modelToCamera;
 uniform mat4 cameraToViewport;
-#if SKINNED
+#ifdef SKINNED
 in vec2 vertBlendIndices;
 in vec2 vertBlendWeights;
 uniform mat4 boneXforms[16];
@@ -366,7 +366,7 @@ uniform mat4 boneXforms[16];
 out vec3 fragNormal;
             
 void main() {
-#if SKINNED
+#ifdef SKINNED
     // Skinned
     vec4 pos = boneXforms[int(vertBlendIndices.x)] * vec4(vertPosition, 1.0)
                 * vertBlendWeights.x;
@@ -383,7 +383,7 @@ void main() {
 #endif
     fragNormal = vec3(modelToCamera * normalize(norm));
     gl_Position = cameraToViewport * (modelToCamera * pos);
-#if DUOTONE
+#ifdef DUOTONE
     fragTexCoord = vertTexCoord;
 #endif
 }
@@ -392,7 +392,7 @@ void main() {
         Shader fragmentShader = Shader::compile(GL_FRAGMENT_SHADER, defines + R"(
 in vec3 fragNormal;
 uniform vec3 diffuse;
-#if DUOTONE
+#ifdef DUOTONE
 in vec2 fragTexCoord;
 uniform vec3 diffuse2;
 uniform sampler2D texImage;
@@ -411,7 +411,7 @@ void main() {
     // Diffuse
     float diffAmt = 0.5 - dot(fn, lightDir) * 0.5;
     vec3 dc = diffuse;
-#if DUOTONE
+#ifdef DUOTONE
     dc = mix(diffuse2, diffuse, texture(texImage, fragTexCoord).r);
 #endif
     vec3 color = dc * clamp(mix(diffuseClamp.x, diffuseClamp.y, diffAmt), diffuseClamp.z, 1.0);
@@ -813,7 +813,7 @@ uniform sampler2D texImage;
 out vec4 outColor;
 
 void main() {
-    vec4 sam = texture2D(texImage, fragTexCoord);
+    vec4 sam = texture(texImage, fragTexCoord);
     outColor = fragColor;
     outColor.a *= sam.a;
 }
@@ -1448,7 +1448,7 @@ out vec4 outColor;
 vec3 lightDir = normalize(vec3(1.0, -1.0, -0.2));
 
 void main() {
-    vec4 sam = texture2D(texImage, fragTexCoord);
+    vec4 sam = texture(texImage, fragTexCoord);
 
     // Get corrected normal
     vec3 fn = sam.xyz * 2.0 - 1.0;

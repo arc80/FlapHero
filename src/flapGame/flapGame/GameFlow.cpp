@@ -22,7 +22,7 @@ void GameFlow::resetGame(bool isPlaying) {
     if (isPlaying) {
         this->gameState->startPlaying();
     } else {
-        auto title = this->gameState->mode.title().switchTo();
+        this->gameState->mode.title().switchTo();
         this->gameState->titleScreen = new TitleScreen;
         this->gameState->camera.orbit().switchTo();
         this->gameState->updateCamera(true);

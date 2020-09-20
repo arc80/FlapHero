@@ -9,6 +9,8 @@ constexpr bool GODMODE = false;
 extern SoLoud::Soloud gSoLoud; // SoLoud engine
 
 UpdateContext* UpdateContext::instance_ = nullptr;
+constexpr float GameState::DefaultAngle;
+constexpr float GameState::SlowMotionFactor;
 
 bool Pipe::collisionCheck(GameState* gs, const LambdaView<bool(const Hit&)>& cb) {
     SphCylCollResult result;
@@ -339,8 +341,6 @@ void updateMovement(UpdateContext* uc) {
 }
 
 void adjustX(GameState* gs, float amount) {
-    const Assets* a = Assets::instance;
-
     for (u32 i = 0; i < 2; i++) {
         gs->bird.pos[i].x += amount;
         gs->camToWorld[i].pos.x += amount;
