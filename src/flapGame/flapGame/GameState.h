@@ -2,6 +2,7 @@
 #include <flapGame/Core.h>
 #include <flapGame/TitleScreen.h>
 #include <flapGame/Puffs.h>
+#include <flapGame/Tongue.h>
 
 namespace flap {
 
@@ -174,7 +175,7 @@ struct GameState {
     u32 note = 0;
     SoLoud::handle flapVoice = -1;
     PLY_INLINE bool isWeak() const {
-        return this->damage > 0;
+        return true; //this->damage > 0;
     }
 
     // Bird
@@ -183,6 +184,7 @@ struct GameState {
         Quaternion rot[2] = {{0, 0, 0, 1}, {0, 0, 0, 1}};
         float wobble[2] = {0, 0};
         float wobbleFactor = 0;
+        Tongue tongue;
     };
     Bird bird;
 
