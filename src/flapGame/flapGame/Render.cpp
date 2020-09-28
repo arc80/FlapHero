@@ -75,6 +75,20 @@ Float3 getNorm(const TitleRotator* rot, float relTime) {
     return mix(rot->startNorm, rot->endNorm, t);
 }
 
+Array<QuatPos> tonguePtsToXforms(ArrayView<const Float3> pts, const Quaternion& rot0) {
+    Array<QuatPos> result;
+    result.resize(pts.numItems);
+    result[0] = {rot0, pts[0]};
+    Quaternion prevRot = rot0;
+    Float3 prevDir = (rot0 * Float3{0, -1, 0}).safeNormalized({0, -1, 0});
+    for (u32 i = 1; i < pts.numItems; i++) {
+        Float3 dir = (pts[min(i + 1, pts.numItems - 1)] - pts[i - 1]).safeNormalized(prevDir);
+        Quaternion rot = (Quaternion::fromUnitVectors(prevDir, dir) * prevRot).renormalized();
+        result[i] = {rot, pts[i]};
+    }
+    return result;
+}
+
 Array<Float4x4> composeBirdBones(const GameState* gs, float intervalFrac) {
     const Assets* a = Assets::instance;
 
@@ -116,6 +130,7 @@ Array<Float4x4> composeBirdBones(const GameState* gs, float intervalFrac) {
         }
     }
 
+    // Compute boneToModel xforms
     Array<Float4x4> curBoneToModel;
     curBoneToModel.resize(a->bad.birdSkel.numItems());
     for (u32 i = 0; i < a->bad.birdSkel.numItems(); i++) {
@@ -127,6 +142,25 @@ Array<Float4x4> composeBirdBones(const GameState* gs, float intervalFrac) {
             curBoneToModel[i] = bone.boneToParent * deltas[i];
         }
     }
+
+    // Apply tongue
+    {
+        Array<Float3> tonguePts;
+        tonguePts.resize(a->bad.tongueBones.numItems());
+        const Tongue::State& prevState = gs->bird.tongue.states[1 - gs->bird.tongue.curIndex];
+        const Tongue::State& curState = gs->bird.tongue.states[1 - gs->bird.tongue.curIndex];
+        for (u32 i = 0; i < tonguePts.numItems(); i++) {
+            tonguePts[i] = mix(prevState.pts[i], curState.pts[i], intervalFrac);
+        }
+        Quaternion rootRot = mix(prevState.rootRot, curState.rootRot, intervalFrac);
+        Array<QuatPos> tongueXforms = tonguePtsToXforms(tonguePts.view(), Quaternion::identity());
+        for (u32 i = 0; i < tonguePts.numItems(); i++) {
+            u32 bi = a->bad.tongueBones[i];
+            curBoneToModel[bi] =
+                tongueXforms[i].toFloat4x4() * Float4x4::makeScale({1.f, 0.5f, 1.f});
+        }
+    }
+
     return curBoneToModel;
 }
 
@@ -260,20 +294,7 @@ void renderGamePanel(const DrawContext* dc) {
                           mix(gs->camToWorld[0].pos, gs->camToWorld[1].pos, dc->intervalFrac)};
     Float4x4 worldToCamera = camToWorld.inverted().toFloat4x4();
     {
-        Quaternion wobbleRot;
-        {
-            float wobble = mix(gs->bird.wobble[0], gs->bird.wobble[1], dc->intervalFrac);
-            float wf = clamp(unmix(0.f, 0.4f, gs->bird.wobbleFactor + dc->fracTime), 0.f, 1.f);
-            wobbleRot = Quaternion::fromAxisAngle({1, 0, 0}, sinf(wobble * 2 * Pi) * 0.5f * wf);
-            wobbleRot =
-                Quaternion::fromAxisAngle({0, 1, 0}, sinf(wobble * 4 * Pi) * 0.5f * wf) * wobbleRot;
-        }
-        Quaternion birdRot = mix(gs->bird.rot[0], gs->bird.rot[1], dc->intervalFrac) * wobbleRot;
-        if (auto trans = gs->camera.transition()) {
-            float t = trans->param + dc->fracTime;
-            t = applySimpleCubic(clamp(t * 2.f, 0.f, 1.f));
-            birdRot = mix(Quaternion::identity(), birdRot, t);
-        };
+        Quaternion birdRot = mix(gs->bird.finalRot[0], gs->bird.finalRot[1], dc->intervalFrac);
         Array<Float4x4> boneToModel = composeBirdBones(gs, dc->intervalFrac);
         GL_CHECK(Enable(GL_STENCIL_TEST));
         GL_CHECK(StencilFunc(GL_ALWAYS, 1, 0xFF));
@@ -593,7 +614,6 @@ void render(GameFlow* gf, const IntVec2& fbSize, float renderDT) {
 #if !PLY_TARGET_IOS && !PLY_TARGET_ANDROID // doesn't exist in OpenGLES 3
     GL_CHECK(Enable(GL_FRAMEBUFFER_SRGB));
 #endif
-
 
     // Enable face culling
     GL_CHECK(Enable(GL_CULL_FACE));

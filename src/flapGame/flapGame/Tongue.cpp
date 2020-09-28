@@ -1,38 +1,41 @@
 #include <flapGame/Core.h>
 #include <flapGame/Tongue.h>
+#include <flapGame/Assets.h>
 
 namespace flap {
 
 Tongue::Tongue() {
-    for (u32 i = 0; i < 4; i++) {
-        this->particles[0].append(Float3{0.4f * i, 0, 0});
+    const Assets* a = Assets::instance;
+    for (u32 i = 0; i < a->bad.tongueBones.numItems(); i++) {
+        this->states[0].pts.append(Float3{0.4f * i, 0, 0});
     }
-    this->particles[1] = this->particles[0];
+    this->states[1] = this->states[0];
 }
 
-void Tongue::update(float dt) {
+void Tongue::update(const QuatPos& root, float dt) {
     s32 iters = 1;
-    float gravity = 0.01f;
+    float gravity = 0.0002f;
     for (; iters > 0; iters--) {
         this->curIndex = 1 - this->curIndex;
-        auto& curParts = this->particles[this->curIndex];
-        auto& prevParts = this->particles[1 - this->curIndex];
-        PLY_ASSERT(curParts.numItems() == prevParts.numItems());
+        auto& curState = this->states[this->curIndex];
+        auto& prevState = this->states[1 - this->curIndex];
+        PLY_ASSERT(curState.pts.numItems() == prevState.pts.numItems());
 
-        // Set first particle
-        curParts[0] = {0, 0, 0};
+        // Set first particles
+        curState.rootRot = root.quat;
+        curState.pts[0] = root.pos;
 
-        for (u32 i = 1; i < curParts.numItems(); i++) {
-            Float3 step = prevParts[i] - curParts[i];
-            step *= 0.98f;
-            curParts[i] = prevParts[i] + step;
-            curParts[i].z -= gravity;
+        for (u32 i = 1; i < curState.pts.numItems(); i++) {
+            Float3 step = prevState.pts[i] - curState.pts[i];
+            step *= 0.998f;
+            curState.pts[i] = prevState.pts[i] + step;
+            curState.pts[i].z -= gravity;
         }
 
         // Constraints
         float segLen = 0.4f;
-        for (u32 i = 1; i < curParts.numItems(); i++) {
-            Float3* part = &curParts[i];
+        for (u32 i = 1; i < curState.pts.numItems(); i++) {
+            Float3* part = &curState.pts[i];
 
             // segment length
             float sl = segLen;

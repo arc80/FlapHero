@@ -4,11 +4,15 @@
 namespace flap {
 
 struct Tongue {
-    FixedArray<Array<Float3>, 2> particles;
+    struct State {
+        Quaternion rootRot;
+        Array<Float3> pts;
+    };
+    FixedArray<State, 2> states;
     u32 curIndex = 0;
 
     Tongue();
-    void update(float dt);
+    void update(const QuatPos& root, float dt);
 };
 
 } // namespace flap

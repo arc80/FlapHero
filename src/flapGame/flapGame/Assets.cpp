@@ -298,6 +298,12 @@ void extractBirdAnimData(BirdAnimData* bad, const aiScene* scene) {
         extractPose(bad->birdSkel.view(), scene->mAnimations[0], 16, {"Pupil_L", "Pupil_R"});
     bad->eyePoses[3] =
         extractPose(bad->birdSkel.view(), scene->mAnimations[0], 24, {"Pupil_L", "Pupil_R"});
+    bad->tongueBones.reserve(6);
+    for (u32 i = 0; i < 6; i++) {
+        String boneName = String::format("T{}", i);
+        bad->tongueBones.append(safeDemote<u32>(find(bad->birdSkel.view(), [&](const Bone& bone) {
+            return bone.name == boneName; })));
+    }
 }
 
 Array<FallAnimFrame> extractFallAnimation(const aiScene* scene, u32 numFrames) {

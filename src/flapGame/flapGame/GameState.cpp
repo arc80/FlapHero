@@ -430,6 +430,7 @@ void timeStep(UpdateContext* uc) {
         }
     }
     gs->bird.rot[0] = gs->bird.rot[1];
+    gs->bird.finalRot[0] = gs->bird.finalRot[1];
     gs->bird.wobble[0] = gs->bird.wobble[1];
     gs->birdAnim.wingTime[0] = gs->birdAnim.wingTime[1];
     gs->birdAnim.eyeTime[0] = gs->birdAnim.eyeTime[1];
@@ -538,6 +539,29 @@ void timeStep(UpdateContext* uc) {
             }
         }
     }
+
+    // Modify rotation
+    gs->bird.finalRot[1] = gs->bird.rot[1];
+    if (auto trans = gs->camera.transition()) {
+        float t = trans->param;
+        t = applySimpleCubic(clamp(t * 2.f, 0.f, 1.f));
+        gs->bird.finalRot[1] = mix(Quaternion::identity(), gs->bird.finalRot[1], t);
+    };
+    {
+        Quaternion wobbleRot;
+        float wobble = gs->bird.wobble[1];
+        float wf = clamp(unmix(0.f, 0.4f, gs->bird.wobbleFactor), 0.f, 1.f);
+        wobbleRot = Quaternion::fromAxisAngle({1, 0, 0}, sinf(wobble * 2 * Pi) * 0.5f * wf);
+        wobbleRot =
+            Quaternion::fromAxisAngle({0, 1, 0}, sinf(wobble * 4 * Pi) * 0.5f * wf) * wobbleRot;
+        gs->bird.finalRot[1] = gs->bird.finalRot[1] * wobbleRot;
+    }
+
+    // Update tongue
+    QuatPos tongueToSWorld =
+        gs->bird.finalRot[1] *
+        QuatPos::fromOrtho(a->bad.birdSkel[a->bad.tongueBones[0]].boneToParent);
+    gs->bird.tongue.update(tongueToSWorld, dt);
 
     // Update camera
     if (auto orbit = gs->camera.orbit()) {

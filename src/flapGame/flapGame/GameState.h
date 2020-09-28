@@ -175,13 +175,14 @@ struct GameState {
     u32 note = 0;
     SoLoud::handle flapVoice = -1;
     PLY_INLINE bool isWeak() const {
-        return true; //this->damage > 0;
+        return true;//this->damage > 0;
     }
 
     // Bird
     struct Bird {
         Float3 pos[2] = {{0, 0, 0}, {0, 0, 0}};
         Quaternion rot[2] = {{0, 0, 0, 1}, {0, 0, 0, 1}};
+        Quaternion finalRot[2] = {{0, 0, 0, 1}, {0, 0, 0, 1}};
         float wobble[2] = {0, 0};
         float wobbleFactor = 0;
         Tongue tongue;

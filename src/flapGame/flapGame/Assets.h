@@ -24,6 +24,7 @@ struct BirdAnimData {
     Array<PoseBone> loWingPose;
     Array<PoseBone> hiWingPose;
     Array<PoseBone> eyePoses[4];
+    Array<u32> tongueBones;
 };
 
 struct FallAnimFrame {
