@@ -461,6 +461,16 @@ void Assets::load(StringView assetsPath) {
         }
         {
             UberShader::Props* props =
+                getMaterial(srcSickBird, assets->sickBirdMeshes, "Mouth", VT::Skinned);
+            props->diffuse = Float3{0.01f, 0.01f, 0.01f};
+            props->rim = {0, 0, 0, 1};
+            props->rimFactor = 1.5f;
+            props->specLightDir = Float3{0.65f, -1.f, 0.1f}.normalized();
+            props->specular = Float3{1, 1, 1} * 0.01f;
+            props->specPower = 1.f;
+        }
+        {
+            UberShader::Props* props =
                 getMaterial(srcSickBird, assets->sickBirdMeshes, "SickSkin", VT::Skinned);
             props->diffuse = Float3{0.22f, 0.42f, 0.2f};
             props->diffuseClamp = {-0.1f, 1.3f, 0.2f};
