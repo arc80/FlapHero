@@ -12,7 +12,7 @@ struct Tongue {
     u32 curIndex = 0;
 
     Tongue();
-    void update(const QuatPos& root, float dt);
+    void update(const Quaternion& birdToWorldRot, float dt);
 };
 
 } // namespace flap

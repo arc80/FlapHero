@@ -43,6 +43,11 @@ void extractBones(Array<Bone>* resultBones, const aiNode* srcNode, s32 parentIdx
         bone.name = toStringView(child->mName);
         bone.parentIdx = parentIdx;
         bone.boneToParent = ((const Float4x4*) &child->mTransformation)->transposed();
+        if (parentIdx >= 0) {
+            bone.boneToModel = (*resultBones)[parentIdx].boneToModel * bone.boneToParent;
+        } else {
+            bone.boneToModel = bone.boneToParent;
+        }
         extractBones(resultBones, child, boneIdx);
     }
 }
@@ -298,12 +303,22 @@ void extractBirdAnimData(BirdAnimData* bad, const aiScene* scene) {
         extractPose(bad->birdSkel.view(), scene->mAnimations[0], 16, {"Pupil_L", "Pupil_R"});
     bad->eyePoses[3] =
         extractPose(bad->birdSkel.view(), scene->mAnimations[0], 24, {"Pupil_L", "Pupil_R"});
-    bad->tongueBones.reserve(6);
-    for (u32 i = 0; i < 6; i++) {
+    for (u32 i = 0; i < 5; i++) {
+        TongueBone& tongueBone = bad->tongueBones.append();
         String boneName = String::format("T{}", i);
-        bad->tongueBones.append(safeDemote<u32>(find(bad->birdSkel.view(), [&](const Bone& bone) {
-            return bone.name == boneName; })));
+        tongueBone.boneIndex = safeDemote<u32>(
+            find(bad->birdSkel.view(), [&](const Bone& bone) { return bone.name == boneName; }));
+        if (i > 0) {
+            const Bone& parentBone = bad->birdSkel[bad->tongueBones[i - 1].boneIndex];
+            const Bone& curBone = bad->birdSkel[tongueBone.boneIndex];
+            bad->tongueBones[i - 1].length = curBone.boneToParent[3].asFloat3().length();
+            bad->tongueBones[i - 1].midPoint =
+                (parentBone.boneToModel * Float4{curBone.boneToParent[3].asFloat3() * 0.5f, 1.f})
+                    .asFloat3();
+        }
     }
+    bad->tongueBones.pop();
+    bad->tongueRootRot = Quaternion::fromOrtho(bad->birdSkel[bad->tongueBones[0].boneIndex].boneToModel);
 }
 
 Array<FallAnimFrame> extractFallAnimation(const aiScene* scene, u32 numFrames) {

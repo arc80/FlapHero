@@ -75,16 +75,19 @@ Float3 getNorm(const TitleRotator* rot, float relTime) {
     return mix(rot->startNorm, rot->endNorm, t);
 }
 
-Array<QuatPos> tonguePtsToXforms(ArrayView<const Float3> pts, const Quaternion& rot0) {
+Array<QuatPos> tonguePtsToXforms(ArrayView<const Float3> pts) {
+    const Assets* a = Assets::instance;
+
     Array<QuatPos> result;
     result.resize(pts.numItems);
-    result[0] = {rot0, pts[0]};
-    Quaternion prevRot = rot0;
-    Float3 prevDir = (rot0 * Float3{0, -1, 0}).safeNormalized({0, -1, 0});
+    result[0] = QuatPos::fromOrtho(a->bad.birdSkel[a->bad.tongueBones[0].boneIndex].boneToParent);
     for (u32 i = 1; i < pts.numItems; i++) {
-        Float3 dir = (pts[min(i + 1, pts.numItems - 1)] - pts[i - 1]).safeNormalized(prevDir);
+        const Quaternion& prevRot = result[i - 1].quat;
+        Float3 prevDir = prevRot.rotateUnitY();
+        Float3 dir = (pts[i] - pts[i - 1]).safeNormalized(prevDir);
         Quaternion rot = (Quaternion::fromUnitVectors(prevDir, dir) * prevRot).renormalized();
-        result[i] = {rot, pts[i]};
+        result[i] = QuatPos{rot, pts[i]};
+        result[i].pos = result[i] * Float3{0, -a->bad.tongueBones[i].length * 0.5f, 0};
     }
     return result;
 }
@@ -145,19 +148,21 @@ Array<Float4x4> composeBirdBones(const GameState* gs, float intervalFrac) {
 
     // Apply tongue
     {
+        Quaternion worldToBirdRot =
+            Quaternion::fromAxisAngle({0, 0, 1}, -Pi / 2.f) *
+            mix(gs->bird.finalRot[0], gs->bird.finalRot[1], 1.f).inverted();
         Array<Float3> tonguePts;
         tonguePts.resize(a->bad.tongueBones.numItems());
         const Tongue::State& prevState = gs->bird.tongue.states[1 - gs->bird.tongue.curIndex];
-        const Tongue::State& curState = gs->bird.tongue.states[1 - gs->bird.tongue.curIndex];
+        const Tongue::State& curState = gs->bird.tongue.states[gs->bird.tongue.curIndex];
         for (u32 i = 0; i < tonguePts.numItems(); i++) {
-            tonguePts[i] = mix(prevState.pts[i], curState.pts[i], intervalFrac);
+            tonguePts[i] = worldToBirdRot * mix(prevState.pts[i], curState.pts[i], intervalFrac);
+            tonguePts[i] = worldToBirdRot * curState.pts[i];
         }
-        Quaternion rootRot = mix(prevState.rootRot, curState.rootRot, intervalFrac);
-        Array<QuatPos> tongueXforms = tonguePtsToXforms(tonguePts.view(), Quaternion::identity());
+        Array<QuatPos> tongueXforms = tonguePtsToXforms(tonguePts.view());
         for (u32 i = 0; i < tonguePts.numItems(); i++) {
-            u32 bi = a->bad.tongueBones[i];
-            curBoneToModel[bi] =
-                tongueXforms[i].toFloat4x4() * Float4x4::makeScale({1.f, 0.5f, 1.f});
+            u32 bi = a->bad.tongueBones[i].boneIndex;
+            curBoneToModel[bi] = tongueXforms[i].toFloat4x4() * Float4x4::makeScale({1.f, 0.5f, 1.f});
         }
     }
 

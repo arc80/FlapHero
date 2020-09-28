@@ -12,6 +12,7 @@ struct Bone {
     String name;
     s32 parentIdx = -1;
     Float4x4 boneToParent = Float4x4::identity();
+    Float4x4 boneToModel = Float4x4::identity();
 };
 
 struct PoseBone {
@@ -19,12 +20,19 @@ struct PoseBone {
     float zAngle = 0;
 };
 
+struct TongueBone {
+    u32 boneIndex = 0;
+    Float3 midPoint = {0, 0, 0};
+    float length = 0;
+};
+
 struct BirdAnimData {
     Array<Bone> birdSkel;
     Array<PoseBone> loWingPose;
     Array<PoseBone> hiWingPose;
     Array<PoseBone> eyePoses[4];
-    Array<u32> tongueBones;
+    Quaternion tongueRootRot = {0, 0, 0, 1};
+    Array<TongueBone> tongueBones;
 };
 
 struct FallAnimFrame {

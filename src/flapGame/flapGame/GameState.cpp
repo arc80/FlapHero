@@ -558,10 +558,9 @@ void timeStep(UpdateContext* uc) {
     }
 
     // Update tongue
-    QuatPos tongueToSWorld =
-        gs->bird.finalRot[1] *
-        QuatPos::fromOrtho(a->bad.birdSkel[a->bad.tongueBones[0]].boneToParent);
-    gs->bird.tongue.update(tongueToSWorld, dt);
+    Quaternion birdToWorldRot =
+        gs->bird.finalRot[1] * Quaternion::fromAxisAngle({0, 0, 1}, Pi / 2.f);
+    gs->bird.tongue.update(birdToWorldRot, dt);
 
     // Update camera
     if (auto orbit = gs->camera.orbit()) {
