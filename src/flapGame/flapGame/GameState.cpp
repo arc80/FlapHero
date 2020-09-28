@@ -560,7 +560,10 @@ void timeStep(UpdateContext* uc) {
     // Update tongue
     Quaternion birdToWorldRot =
         gs->bird.finalRot[1] * Quaternion::fromAxisAngle({0, 0, 1}, Pi / 2.f);
-    gs->bird.tongue.update(birdToWorldRot, dt);
+    gs->bird.tongue.isPaused = (bool) gs->mode.impact();
+    if (!gs->bird.tongue.isPaused) {
+        gs->bird.tongue.update(birdToWorldRot, dt);
+    }
 
     // Update camera
     if (auto orbit = gs->camera.orbit()) {

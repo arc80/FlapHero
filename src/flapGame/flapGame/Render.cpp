@@ -155,9 +155,9 @@ Array<Float4x4> composeBirdBones(const GameState* gs, float intervalFrac) {
         tonguePts.resize(a->bad.tongueBones.numItems());
         const Tongue::State& prevState = gs->bird.tongue.states[1 - gs->bird.tongue.curIndex];
         const Tongue::State& curState = gs->bird.tongue.states[gs->bird.tongue.curIndex];
+        float f = gs->bird.tongue.isPaused ? 1.f : intervalFrac;
         for (u32 i = 0; i < tonguePts.numItems(); i++) {
-            tonguePts[i] = worldToBirdRot * mix(prevState.pts[i], curState.pts[i], intervalFrac);
-            tonguePts[i] = worldToBirdRot * curState.pts[i];
+            tonguePts[i] = worldToBirdRot * mix(prevState.pts[i], curState.pts[i], f);
         }
         Array<QuatPos> tongueXforms = tonguePtsToXforms(tonguePts.view());
         for (u32 i = 0; i < tonguePts.numItems(); i++) {
