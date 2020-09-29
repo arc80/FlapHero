@@ -421,6 +421,7 @@ void timeStep(UpdateContext* uc) {
     // Initialize start of interval
     uc->prevDelta = gs->bird.pos[1] - gs->bird.pos[0];
     uc->deltaRot = gs->bird.rot[1] * gs->bird.rot[0].inverted();
+    Float3 predictedNextPos = gs->bird.pos[1] * 2.f - gs->bird.pos[0];
     gs->bird.pos[0] = gs->bird.pos[1];
     if (auto playing = gs->mode.playing()) {
         playing->zVel[0] = playing->zVel[1];
@@ -562,7 +563,9 @@ void timeStep(UpdateContext* uc) {
         gs->bird.finalRot[1] * Quaternion::fromAxisAngle({0, 0, 1}, Pi / 2.f);
     gs->bird.tongue.isPaused = (bool) gs->mode.impact();
     if (!gs->bird.tongue.isPaused) {
-        gs->bird.tongue.update(birdToWorldRot, dt);
+        bool applySidewaysForce = !gs->mode.dead();
+        gs->bird.tongue.update(predictedNextPos - gs->bird.pos[1], birdToWorldRot, dt,
+                               applySidewaysForce);
     }
 
     // Update camera

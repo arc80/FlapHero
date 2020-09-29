@@ -13,7 +13,8 @@ struct Tongue {
     bool isPaused = false;
 
     Tongue();
-    void update(const Quaternion& birdToWorldRot, float dt);
+    void update(const Float3& correction, const Quaternion& birdToWorldRot, float dt,
+                bool applySidewaysForce);
 };
 
 } // namespace flap
