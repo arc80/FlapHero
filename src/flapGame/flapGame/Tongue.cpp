@@ -12,10 +12,33 @@ Tongue::Tongue() {
     this->states[1] = this->states[0];
 }
 
+Float3 constrainToCone(const Float3& ray, const Float3& fwd, const Float2& coneCS) {
+    float d = dot(ray, fwd);
+    Float3 perp = ray - fwd * d;
+    float pL = perp.length();
+    if (d < 0.1f) {
+        if (pL < 1e-4f) {
+            Float3 notCollinear = (fabsf(fwd.x) < 0.9f) ? Float3{1, 0, 0} : Float3{0, 1, 0};
+            perp = cross(fwd, notCollinear);
+            pL = 1.f;
+        }
+        return fwd * coneCS.x + perp * (coneCS.y / pL);
+    } else {
+        if (pL > 1e-4f) {
+            Float3 norm = -fwd * coneCS.y + perp * (coneCS.x / pL);
+            PLY_ASSERT(norm.isUnit());
+            float nd = dot(norm, ray);
+            if (nd > 0) {
+                return ray - norm * nd;
+            }
+        }
+    }
+    return ray;
+}
+
 void Tongue::update(const Quaternion& birdToWorldRot, float dt) {
     const Assets* a = Assets::instance;
     s32 iters = 1;
-    float gravity = 0.001f;
     for (; iters > 0; iters--) {
         this->curIndex = 1 - this->curIndex;
         auto& curState = this->states[this->curIndex];
@@ -29,9 +52,9 @@ void Tongue::update(const Quaternion& birdToWorldRot, float dt) {
 
         for (u32 i = 1; i < curState.pts.numItems(); i++) {
             Float3 step = prevState.pts[i] - curState.pts[i];
-            step *= 0.98f;
+            step *= 0.96f;
             curState.pts[i] = prevState.pts[i] + step;
-            curState.pts[i].z -= gravity;
+            curState.pts[i] += Float3{-1, -1, -2} * 0.001f;
         }
 
         // Constrain second point to cone around the mouth
@@ -39,26 +62,12 @@ void Tongue::update(const Quaternion& birdToWorldRot, float dt) {
             float angle = 45.f * Pi / 180.f;
             Float2 coneCS = {cosf(angle), sinf(angle)};
             Float3 ray = curState.pts[1] - curState.pts[0];
-            float d = dot(ray, fwd);
-            Float3 perp = ray - fwd * d;
-            float pL = perp.length();
-            if (d < 0.1f) {
-                if (pL < 1e-4f) {
-                    Float3 notCollinear = (fabsf(fwd.x) < 0.9f) ? Float3{1, 0, 0} : Float3{0, 1, 0};
-                    perp = cross(fwd, notCollinear);
-                    pL = 1.f;
-                }
-                curState.pts[1] = curState.pts[0] + fwd * coneCS.x + perp * (coneCS.y / pL);
-            } else {
-                if (pL > 1e-4f) {
-                    Float3 norm = -fwd * coneCS.y + perp * (coneCS.x / pL);
-                    PLY_ASSERT(norm.isUnit());
-                    float nd = dot(norm, ray);
-                    if (nd > 0) {
-                        curState.pts[1] -= norm * nd;
-                    }
-                }
-            }
+            Float3 wide = curState.rootRot.rotateUnitX();
+            constexpr float wideScale = 3.f;
+            ray += wide * (dot(wide, ray) * (1.f / wideScale - 1.f));
+            ray = constrainToCone(ray, fwd, coneCS);
+            ray += wide * (dot(wide, ray) * (wideScale - 1.f));
+            curState.pts[1] = curState.pts[0] + ray;
         }
 
         // Constraints
