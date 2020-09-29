@@ -175,7 +175,7 @@ struct GameState {
     u32 note = 0;
     SoLoud::handle flapVoice = -1;
     PLY_INLINE bool isWeak() const {
-        return true;//this->damage > 0;
+        return this->damage > 0;
     }
 
     // Bird

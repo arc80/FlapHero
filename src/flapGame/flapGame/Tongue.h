@@ -14,7 +14,7 @@ struct Tongue {
 
     Tongue();
     void update(const Float3& correction, const Quaternion& birdToWorldRot, float dt,
-                bool applySidewaysForce);
+                bool applySidewaysForce, float limitZ);
 };
 
 } // namespace flap

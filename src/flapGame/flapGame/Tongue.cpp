@@ -37,7 +37,7 @@ Float3 constrainToCone(const Float3& ray, const Float3& fwd, const Float2& coneC
 }
 
 void Tongue::update(const Float3& correction, const Quaternion& birdToWorldRot, float dt,
-                    bool applySidewaysForce) {
+                    bool applySidewaysForce, float limitZ) {
     const Assets* a = Assets::instance;
     s32 iters = 1;
     for (; iters > 0; iters--) {
@@ -89,11 +89,14 @@ void Tongue::update(const Float3& correction, const Quaternion& birdToWorldRot, 
 
             // segment length
             float segLen = (a->bad.tongueBones[i - 1].length + a->bad.tongueBones[i].length) * 0.5f;
-
-            // FIXME: div by zero
             Float3 dir = (part[0] - part[-1]).safeNormalized(prevSeg.normalized());
             prevSeg = dir * segLen;
             part[0] = part[-1] + prevSeg;
+
+            // limit Z
+            if (part[0].z < limitZ) {
+                part[0].z = limitZ;
+            }
         }
     }
 }

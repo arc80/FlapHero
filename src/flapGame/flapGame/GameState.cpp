@@ -564,8 +564,9 @@ void timeStep(UpdateContext* uc) {
     gs->bird.tongue.isPaused = (bool) gs->mode.impact();
     if (!gs->bird.tongue.isPaused) {
         bool applySidewaysForce = !gs->mode.dead();
+        float limitZ = GameState::LowestHeight - 0.8f - gs->bird.pos[1].z;
         gs->bird.tongue.update(predictedNextPos - gs->bird.pos[1], birdToWorldRot, dt,
-                               applySidewaysForce);
+                               applySidewaysForce, limitZ);
     }
 
     // Update camera
