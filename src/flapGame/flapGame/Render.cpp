@@ -148,9 +148,8 @@ Array<Float4x4> composeBirdBones(const GameState* gs, float intervalFrac) {
 
     // Apply tongue
     {
-        Quaternion worldToBirdRot =
-            Quaternion::fromAxisAngle({0, 0, 1}, -Pi / 2.f) *
-            mix(gs->bird.finalRot[0], gs->bird.finalRot[1], 1.f).inverted();
+        Quaternion worldToBirdRot = Quaternion::fromAxisAngle({0, 0, 1}, -Pi / 2.f) *
+                                    mix(gs->bird.finalRot[0], gs->bird.finalRot[1], 1.f).inverted();
         Array<Float3> tonguePts;
         tonguePts.resize(a->bad.tongueBones.numItems());
         const Tongue::State& prevState = gs->bird.tongue.states[1 - gs->bird.tongue.curIndex];
@@ -162,7 +161,8 @@ Array<Float4x4> composeBirdBones(const GameState* gs, float intervalFrac) {
         Array<QuatPos> tongueXforms = tonguePtsToXforms(tonguePts.view());
         for (u32 i = 0; i < tonguePts.numItems(); i++) {
             u32 bi = a->bad.tongueBones[i].boneIndex;
-            curBoneToModel[bi] = tongueXforms[i].toFloat4x4() * Float4x4::makeScale({1.f, 0.5f, 1.f});
+            curBoneToModel[bi] =
+                tongueXforms[i].toFloat4x4() * Float4x4::makeScale({1.f, 0.5f, 1.f});
         }
     }
 

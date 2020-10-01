@@ -54,9 +54,9 @@ void Tongue::update(const Float3& correction, const Quaternion& birdToWorldRot, 
         for (u32 i = 1; i < curState.pts.numItems(); i++) {
             Float3 step = prevState.pts[i] - curState.pts[i] + correction * 0.5f;
             // Wind resistance
-            step *= 0.965f;
+            step *= 0.98f;
             float L = step.length();
-            constexpr float R = 0.002f;
+            constexpr float R = 0.0015f;
             if (L > R) {
                 step -= step * (R / L);
             } else {
