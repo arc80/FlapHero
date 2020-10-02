@@ -472,7 +472,7 @@ void Assets::load(StringView assetsPath) {
         {
             UberShader::Props* props =
                 getMaterial(srcSickBird, assets->sickBirdMeshes, "Beak", VT::Skinned);
-            props->diffuse = desaturate({0.231f, 0.126f, 0.0813f}, 0.4f) * 1.1f;
+            props->diffuse = desaturate({0.231f, 0.126f, 0.0813f}, -0.2f) * 1.1f;
             props->diffuseClamp = {-0.f, 1.5f, 0.1f};
             props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.1f, 1.f};
             props->rimFactor = {4.5f, 9.f};
@@ -492,7 +492,7 @@ void Assets::load(StringView assetsPath) {
         {
             UberShader::Props* props =
                 getMaterial(srcSickBird, assets->sickBirdMeshes, "SickSkin", VT::Skinned);
-            props->diffuse = desaturate({0.18f, 0.14f, 0.105f}, 0.25f) * 1.5f;
+            props->diffuse = desaturate({0.18f, 0.14f, 0.105f}, -0.9f) * 1.3f;
             props->diffuseClamp = {-0.1f, 1.3f, 0.2f};
             props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.15f, 1.f};
             props->rimFactor = {5.f, 8.f};
@@ -503,7 +503,7 @@ void Assets::load(StringView assetsPath) {
         {
             UberShader::Props* props =
                 getMaterial(srcSickBird, assets->sickBirdMeshes, "SickWing", VT::Skinned);
-            props->diffuse = desaturate({0.55f, 0.34f, 0.13f}, 0.5f);
+            props->diffuse = desaturate({0.55f, 0.34f, 0.13f}, 0.2f) * 1.5f;
             props->diffuseClamp = {-0.1f, 1.5f, 0.2f};
             props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.15f, 1.f};
             props->rimFactor = {4.5f, 9.f};
@@ -514,7 +514,7 @@ void Assets::load(StringView assetsPath) {
         {
             UberShader::Props* props =
                 getMaterial(srcSickBird, assets->sickBirdMeshes, "SickBelly", VT::Skinned);
-            props->diffuse = desaturate({0.55f, 0.34f, 0.13f}, 0.5f);
+            props->diffuse = desaturate({0.55f, 0.34f, 0.13f}, 0.2f) * 1.2f;
             props->diffuseClamp = {-0.1f, 1.5f, 0.2f};
             props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.15f, 1.f};
             props->rimFactor = {4.5f, 9.f};
@@ -525,7 +525,7 @@ void Assets::load(StringView assetsPath) {
         {
             UberShader::Props* props =
                 getMaterial(srcSickBird, assets->sickBirdMeshes, "Tongue", VT::Skinned);
-            props->diffuse = desaturate({0.475f, 0.135f, 0.06f}, 0.4f) * 0.8f;
+            props->diffuse = desaturate({0.475f, 0.135f, 0.06f}, 0.1f) * 0.8f;
             props->diffuseClamp = {-0.2f, 1.1f, 0.05f};
             props->rim = {0.015f, 0.025f, 0.04f, 1.f};
             props->rimFactor = {3.f, 5.f};
