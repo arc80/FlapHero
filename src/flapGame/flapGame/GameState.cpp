@@ -213,13 +213,18 @@ void updateMovement(UpdateContext* uc) {
             gs->bird.pos[1] = gs->bird.pos[0] + midVel * dtScaled;
 
             // Rotation
+            float useZ = playing->zVel[1];
+            useZ *= 1.f + (GameState::NormalGravity - playing->curGravity) * 0.012f;
             float targetAngle = -0.1 * Pi;
-            float excess = max(0.f, -15.f - playing->zVel[1]);
+            targetAngle += -clamp(useZ, -15.f, 15.f) * 0.01f;
+            float excess = max(0.f, -15.f - useZ);
             if (excess > 0) {
-                targetAngle += min(excess * 0.05f, 0.55f * Pi);
+                targetAngle += min(excess * 0.04f, 0.55f * Pi);
             }
             auto angle = gs->rotator.angle();
-            angle->angle = approach(angle->angle, targetAngle, dt * 12.f);
+            float delta = targetAngle - angle->angle;
+            float sgn = delta > 0 ? 1.f : -1.f;
+            angle->angle += sgn * min(dt * 12.f, delta * sgn * 0.15f);
         }
     } else if (auto impact = gs->mode.impact()) {
         impact->time += dt;
@@ -730,6 +735,8 @@ void GameState::startPlaying() {
         gSoLoud.play(Assets::instance->transitionSound, 1.f);
     } else {
         this->camera.follow().switchTo();
+        this->birdAnim.eyePos[0] = 3;
+        this->birdAnim.eyePos[1] = 3;
     }
     this->rotator.angle().switchTo();
     this->updateCamera(true);

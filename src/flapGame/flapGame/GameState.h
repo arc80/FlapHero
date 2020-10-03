@@ -258,7 +258,7 @@ struct GameState {
     // FX
     Array<Owned<Puffs>> puffs;
     Sweat sweat;
-    float sweatDelay = 1.5f;
+    float sweatDelay = 3.f;
 
     void updateCamera(bool cut = false);
     void startPlaying();
