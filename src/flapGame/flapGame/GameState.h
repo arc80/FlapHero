@@ -3,6 +3,7 @@
 #include <flapGame/TitleScreen.h>
 #include <flapGame/Puffs.h>
 #include <flapGame/Tongue.h>
+#include <flapGame/Sweat.h>
 
 namespace flap {
 
@@ -254,8 +255,10 @@ struct GameState {
     float buildingX[2] = {0, 0};
     float cloudAngleOffset = 0.05f;
 
-    // Puffs
+    // FX
     Array<Owned<Puffs>> puffs;
+    Sweat sweat;
+    float sweatDelay = 1.5f;
 
     void updateCamera(bool cut = false);
     void startPlaying();

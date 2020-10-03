@@ -530,13 +530,28 @@ void timeStep(UpdateContext* uc) {
         } else {
             PLY_ASSERT(gs->rotator.fromMode());
         }
+    }
 
+    if (!gs->mode.impact()) {
         // Puffs
         for (u32 p = 0; p < gs->puffs.numItems();) {
             if (gs->puffs[p]->update(dt)) {
                 p++;
             } else {
                 gs->puffs.eraseQuick(p);
+            }
+        }
+
+        if (!gs->mode.title()) {
+            if (!gs->sweat.update(dt)) {
+                if (!gs->mode.dead()) {
+                    if (gs->sweatDelay > 0 && !gs->isWeak()) {
+                        gs->sweatDelay -= dt;
+                    } else {
+                        gs->sweat = {gs->random.next32()};
+                        gs->sweatDelay = 1.f;
+                    }
+                }
             }
         }
     }

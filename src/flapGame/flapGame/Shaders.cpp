@@ -815,7 +815,7 @@ out vec4 outColor;
 void main() {
     vec4 sam = texture(texImage, fragTexCoord);
     outColor = fragColor;
-    outColor.a *= sam.a;
+    outColor *= sam;
 }
 )");
 
@@ -1552,5 +1552,116 @@ PLY_NO_INLINE void PuffShader::draw(const Float4x4& worldToViewport, GLuint text
     GL_CHECK(DisableVertexAttribArray(this->instColorAlphaAttrib));
     GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
 }
+
+//---------------------------------------------------------
+
+#if 0 
+
+PLY_NO_INLINE Owned<SweatShader> SweatShader::create() {
+    Owned<SweatShader> starShader = new SweatShader;
+    {
+        Shader vertexShader = Shader::compile(GL_VERTEX_SHADER, R"(
+in vec3 vertPosition;
+in vec2 vertTexCoord;
+in mat4 instModelToViewport;
+in vec4 instColor;
+out vec4 fragColor;
+out vec2 fragTexCoord;
+
+void main() {
+    fragColor = instColor;
+    fragTexCoord = vertTexCoord;
+    gl_Position = instModelToViewport * vec4(vertPosition, 1.0);
+}
+)");
+
+        Shader fragmentShader = Shader::compile(GL_FRAGMENT_SHADER, R"(
+in vec4 fragColor;
+in vec2 fragTexCoord;
+uniform sampler2D texImage;
+out vec4 outColor;
+
+void main() {
+    vec4 sam = texture(texImage, fragTexCoord);
+    outColor = fragColor;
+    outColor.a *= sam.a;
+}
+)");
+
+        // Link shader program
+        starShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
+    }
+
+    // Get shader program's vertex attribute and uniform locations
+    starShader->vertPositionAttrib =
+        GL_NO_CHECK(GetAttribLocation(starShader->shader.id, "vertPosition"));
+    PLY_ASSERT(starShader->vertPositionAttrib >= 0);
+    starShader->vertTexCoordAttrib =
+        GL_NO_CHECK(GetAttribLocation(starShader->shader.id, "vertTexCoord"));
+    PLY_ASSERT(starShader->vertTexCoordAttrib >= 0);
+    starShader->instModelToViewportAttrib =
+        GL_NO_CHECK(GetAttribLocation(starShader->shader.id, "instModelToViewport"));
+    PLY_ASSERT(starShader->instModelToViewportAttrib >= 0);
+    starShader->instColorAttrib =
+        GL_NO_CHECK(GetAttribLocation(starShader->shader.id, "instColor"));
+    PLY_ASSERT(starShader->instColorAttrib >= 0);
+    starShader->textureUniform = GL_NO_CHECK(GetUniformLocation(starShader->shader.id, "texImage"));
+    PLY_ASSERT(starShader->textureUniform >= 0);
+
+    return starShader;
+}
+
+PLY_NO_INLINE void SweatShader::draw(const DrawMesh* drawMesh, GLuint textureID,
+                                    ArrayView<const InstanceData> instanceData) {
+    GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Enable(GL_DEPTH_TEST));
+    GL_CHECK(DepthMask(GL_FALSE));
+    GL_CHECK(Enable(GL_BLEND));
+    GL_CHECK(BlendEquation(GL_FUNC_ADD));
+    GL_CHECK(BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+
+    GL_CHECK(ActiveTexture(GL_TEXTURE0));
+    GL_CHECK(BindTexture(GL_TEXTURE_2D, textureID));
+    GL_CHECK(Uniform1i(this->textureUniform, 0));
+
+    // Instance attributes
+    GLuint ibo = DynamicArrayBuffers::instance->upload(instanceData.bufferView());
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, ibo));
+    for (u32 c = 0; c < 4; c++) {
+        GL_CHECK(EnableVertexAttribArray(this->instModelToViewportAttrib + c));
+        GL_CHECK(VertexAttribPointer(this->instModelToViewportAttrib + c, 4, GL_FLOAT, GL_FALSE,
+                                     (GLsizei) sizeof(InstanceData),
+                                     (GLvoid*) offsetof(InstanceData, modelToViewport.col[c])));
+        GL_CHECK(VertexAttribDivisor(this->instModelToViewportAttrib + c, 1));
+    }
+    GL_CHECK(EnableVertexAttribArray(this->instColorAttrib));
+    GL_CHECK(VertexAttribPointer(this->instColorAttrib, 4, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(InstanceData),
+                                 (GLvoid*) offsetof(InstanceData, color)));
+    GL_CHECK(VertexAttribDivisor(this->instColorAttrib, 1));
+
+    // Draw
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
+    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::TexturedFlat);
+    GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPT), (GLvoid*) offsetof(VertexPT, pos)));
+    GL_CHECK(EnableVertexAttribArray(this->vertTexCoordAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertTexCoordAttrib, 2, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPT), (GLvoid*) offsetof(VertexPT, uv)));
+    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh->indexBuffer.id));
+    GL_CHECK(DrawElementsInstanced(GL_TRIANGLES, (GLsizei) drawMesh->numIndices, GL_UNSIGNED_SHORT,
+                                   (void*) 0, instanceData.numItems));
+
+    for (u32 c = 0; c < 4; c++) {
+        GL_CHECK(VertexAttribDivisor(this->instModelToViewportAttrib + c, 0));
+        GL_CHECK(DisableVertexAttribArray(this->instModelToViewportAttrib + c));
+    }
+    GL_CHECK(VertexAttribDivisor(this->instColorAttrib, 0));
+    GL_CHECK(DisableVertexAttribArray(this->instColorAttrib));
+    GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
+}
+
+#endif
 
 } // namespace flap

@@ -81,6 +81,22 @@ struct MeshMap {
     }
 };
 
+Owned<DrawMesh> makeQuadDrawMesh() {
+    Owned<DrawMesh> quad = new DrawMesh;
+    Array<VertexPT> vertices = {
+        {{-1.f, -1.f, 0.f}, {0.f, 0.f}},
+        {{1.f, -1.f, 0.f}, {1.f, 0.f}},
+        {{1.f, 1.f, 0.f}, {1.f, 1.f}},
+        {{-1.f, 1.f, 0.f}, {0.f, 1.f}},
+    };
+    quad->vertexType = DrawMesh::VertexType::TexturedFlat;
+    quad->vbo = GLBuffer::create(vertices.view().bufferView());
+    Array<u16> indices = {(u16) 0, 1, 2, 2, 3, 0};
+    quad->indexBuffer = GLBuffer::create(indices.view().bufferView());
+    quad->numIndices = indices.numItems();
+    return quad;
+}
+
 Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* srcMesh,
                            DrawMesh::VertexType vertexType, ArrayView<Bone> forSkel = {}) {
     PLY_ASSERT(srcMesh->mMaterialIndex >= 0);
@@ -492,7 +508,7 @@ void Assets::load(StringView assetsPath) {
         {
             UberShader::Props* props =
                 getMaterial(srcSickBird, assets->sickBirdMeshes, "SickSkin", VT::Skinned);
-            props->diffuse = desaturate({0.18f, 0.14f, 0.105f}, -0.9f) * 1.3f;
+            props->diffuse = desaturate({0.18f, 0.14f, 0.105f}, -0.9f) * 1.5f;
             props->diffuseClamp = {-0.1f, 1.3f, 0.2f};
             props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.15f, 1.f};
             props->rimFactor = {5.f, 8.f};
@@ -596,6 +612,7 @@ void Assets::load(StringView assetsPath) {
         assets->rays =
             getMeshes(nullptr, scene, scene->mRootNode->FindNode("Rays"), VT::NotSkinned);
     }
+    assets->quad = makeQuadDrawMesh();
     {
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(
@@ -733,6 +750,15 @@ void Assets::load(StringView assetsPath) {
         params.repeatX = false;
         params.repeatY = false;
         assets->puffNormalTexture.init(im, 3, params);
+    }
+    {
+        Buffer pngData = FileSystem::native()->loadBinary(NativePath::join(assetsPath, "sweat.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData, false);
+        SamplerParams params;
+        params.repeatX = false;
+        params.repeatY = false;
+        assets->sweatTexture.init(im, 3, params);
     }
 
     // Load font resources

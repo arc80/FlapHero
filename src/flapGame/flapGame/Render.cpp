@@ -309,6 +309,13 @@ void renderGamePanel(const DrawContext* dc) {
             worldToCamera * Float4x4::makeTranslation(birdRelWorld) * birdRot.toFloat4x4() *
             Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) * Float4x4::makeScale(1.0833f);
         if (gs->isWeak()) {
+            auto desaturate = [](const Float3 color, float amt) -> Float3 {
+                Float3 gray = Float3{dot(color, Float3{0.333f})};
+                return mix(color, gray, amt);
+            };
+            a->sickBirdMeshes[2]->matProps.diffuse =
+                desaturate({0.18f, 0.14f, 0.105f}, -0.9f) * 1.5f;
+
             for (const Assets::MeshWithMaterial* mm : a->sickBirdMeshes) {
                 a->skinnedShader->draw(cameraToViewport, modelToCamera, &mm->mesh,
                                        boneToModel.view(), &mm->matProps);
@@ -456,6 +463,15 @@ void renderGamePanel(const DrawContext* dc) {
                 nextFrame = (float) fm + 1.f;
             }
             impact->flashFrame = wrap(nextFrame, 4.f);
+        }
+
+        // Draw bird sweat
+        {
+            Array<StarShader::InstanceData> insData;
+            Float4x4 birdToViewport =
+            cameraToViewport * worldToCamera * Float4x4::makeTranslation(birdRelWorld);
+            gs->sweat.addInstances(birdToViewport, insData);
+            a->starShader->draw(a->quad, a->sweatTexture.id, insData.view());
         }
 
         if (auto dead = gs->mode.dead()) {

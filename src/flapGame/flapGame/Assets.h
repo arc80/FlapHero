@@ -78,6 +78,7 @@ struct Assets {
     Array<Owned<DrawMesh>> blackOutline;
     Array<Owned<DrawMesh>> star;
     Array<Owned<DrawMesh>> rays;
+    Owned<DrawMesh> quad;
     DrawGroup shrubGroup;
     DrawGroup cloudGroup;
     DrawGroup cityGroup;
@@ -99,6 +100,7 @@ struct Assets {
     Texture gradientTexture;
     Texture starTexture;
     Texture puffNormalTexture;
+    Texture sweatTexture;
 
     Owned<SDFCommon> sdfCommon;
     Owned<SDFOutline> sdfOutline;

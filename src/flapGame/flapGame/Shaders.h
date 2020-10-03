@@ -268,4 +268,24 @@ struct PuffShader {
               ArrayView<const InstanceData> instanceData);
 };
 
+/*
+struct SweatShader {
+    struct InstanceData {
+        Float4x4 modelToViewport;
+        Float4 color;
+    };
+
+    ShaderProgram shader;
+    GLint vertPositionAttrib = 0;
+    GLint vertTexCoordAttrib = 0;
+    GLint instModelToViewportAttrib = 0;
+    GLint instColorAttrib = 0;
+    GLint textureUniform = 0;
+
+    static Owned<StarShader> create();
+    void draw(const DrawMesh* drawMesh, GLuint textureID,
+              ArrayView<const InstanceData> instanceData);
+};
+*/
+
 } // namespace flap

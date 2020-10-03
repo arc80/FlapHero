@@ -26,6 +26,7 @@ void GameFlow::resetGame(bool isPlaying) {
         this->gameState->titleScreen = new TitleScreen;
         this->gameState->camera.orbit().switchTo();
         this->gameState->updateCamera(true);
+        this->gameState->sweat.time = 2;
     }
 }
 
