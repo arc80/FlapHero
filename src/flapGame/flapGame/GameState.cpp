@@ -227,8 +227,8 @@ void updateMovement(UpdateContext* uc) {
             angle->angle += sgn * min(dt * 12.f, delta * sgn * 0.15f);
         }
     } else if (auto impact = gs->mode.impact()) {
-        impact->time += dt;
-        if (impact->time >= 0.2f) {
+        impact->time += dt * 5.f;
+        if (impact->time >= 1.f) {
             gs->damage++;
             if ((gs->damage < 2) || GODMODE) {
                 // Build recovery motion path

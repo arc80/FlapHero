@@ -121,7 +121,8 @@ struct UberShader {
     static Owned<UberShader> create(u32 flags);
 
     void draw(const Float4x4& cameraToViewport, const Float4x4& modelToCamera,
-              const DrawMesh* drawMesh, ArrayView<const Float4x4> boneToModel, const Props* props = nullptr);
+              const DrawMesh* drawMesh, ArrayView<const Float4x4> boneToModel,
+              const Props* props = nullptr);
 };
 
 struct GradientShader {
@@ -150,7 +151,8 @@ struct FlatShader {
     static Owned<FlatShader> create();
 
     void draw(const Float4x4& modelToViewport, const DrawMesh* drawMesh, bool writeDepth);
-    void drawQuad(const Float4x4& modelToViewport, const Float3& linearColor);
+    void drawQuad(const Float4x4& modelToViewport, const Float4& linearColor,
+                  bool useDepth = true);
 };
 
 struct StarShader {

@@ -699,13 +699,12 @@ PLY_NO_INLINE Owned<FlatShader> FlatShader::create() {
                               "    gl_Position = modelToViewport * vec4(vertPosition, 1.0);\n"
                               "}\n");
 
-        Shader fragmentShader =
-            Shader::compile(GL_FRAGMENT_SHADER, "uniform vec3 color;\n"
-                                                "out vec4 fragColor;\n"
-                                                "\n"
-                                                "void main() {\n"
-                                                "    fragColor = vec4(color, 1.0);\n"
-                                                "}\n");
+        Shader fragmentShader = Shader::compile(GL_FRAGMENT_SHADER, "uniform vec4 color;\n"
+                                                                    "out vec4 fragColor;\n"
+                                                                    "\n"
+                                                                    "void main() {\n"
+                                                                    "    fragColor = color;\n"
+                                                                    "}\n");
 
         // Link shader program
         flatShader->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
@@ -747,8 +746,8 @@ PLY_NO_INLINE void FlatShader::draw(const Float4x4& modelToViewport, const DrawM
         UniformMatrix4fv(this->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));
 
     // Set remaining uniforms and vertex attributes
-    Float3 linear = toSRGB(drawMesh->diffuse); // FIXME: Don't convert on load
-    GL_CHECK(Uniform3fv(this->colorUniform, 1, (const GLfloat*) &linear));
+    Float4 linear = toSRGB(Float4{drawMesh->diffuse, 1.f}); // FIXME: Don't convert on load
+    GL_CHECK(Uniform4fv(this->colorUniform, 1, (const GLfloat*) &linear));
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
     PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::NotSkinned);
     GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
@@ -763,16 +762,27 @@ PLY_NO_INLINE void FlatShader::draw(const Float4x4& modelToViewport, const DrawM
     GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
 }
 
-PLY_NO_INLINE void FlatShader::drawQuad(const Float4x4& modelToViewport,
-                                        const Float3& linearColor) {
+PLY_NO_INLINE void FlatShader::drawQuad(const Float4x4& modelToViewport, const Float4& linearColor,
+                                        bool useDepth) {
     GL_CHECK(UseProgram(this->shader.id));
-    GL_CHECK(Enable(GL_DEPTH_TEST));
-    GL_CHECK(DepthMask(GL_TRUE));
-    GL_CHECK(Disable(GL_BLEND));
+    if (useDepth) {
+        GL_CHECK(Enable(GL_DEPTH_TEST));
+        GL_CHECK(DepthMask(GL_TRUE));
+    } else {
+        GL_CHECK(Disable(GL_DEPTH_TEST));
+        GL_CHECK(DepthMask(GL_FALSE));
+    }
+    if (linearColor.a() >= 1.f) {
+        GL_CHECK(Disable(GL_BLEND));
+    } else {
+        GL_CHECK(Enable(GL_BLEND));
+        GL_CHECK(BlendEquation(GL_FUNC_ADD));
+        GL_CHECK(BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+    }
 
     GL_CHECK(
         UniformMatrix4fv(this->modelToViewportUniform, 1, GL_FALSE, (GLfloat*) &modelToViewport));
-    GL_CHECK(Uniform3fv(this->colorUniform, 1, (const GLfloat*) &linearColor));
+    GL_CHECK(Uniform4fv(this->colorUniform, 1, (const GLfloat*) &linearColor));
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, this->quadVBO.id));
     GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
     GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,

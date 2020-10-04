@@ -427,7 +427,7 @@ void renderGamePanel(const DrawContext* dc) {
         }
 
         // Draw sky
-        a->flatShader->drawQuad(Float4x4::makeTranslation({0, 0, 0.999f}), skyColor);
+        a->flatShader->drawQuad(Float4x4::makeTranslation({0, 0, 0.999f}), {skyColor, 1.f});
 
         // Draw clouds
         float cloudAngle =
@@ -449,8 +449,22 @@ void renderGamePanel(const DrawContext* dc) {
                                 instances.view());
         }
 
-        // Draw flash
+        // Draw bird sweat
+        {
+            Array<StarShader::InstanceData> insData;
+            Float4x4 birdToViewport =
+                cameraToViewport * worldToCamera * Float4x4::makeTranslation(birdRelWorld);
+            gs->sweat.addInstances(birdToViewport, insData);
+            a->starShader->draw(a->quad, a->sweatTexture.id, insData.view());
+        }
+
+        // Draw impact flash
         if (auto impact = gs->mode.impact()) {
+            // Draw full-screen flash
+            float t = clamp(impact->time + dc->fracTime, 0.f, 1.f);
+            a->flatShader->drawQuad(Float4x4::identity(), Float4{1, 1, 1, (1.f - t) * (1.f - t) * 0.8f},
+                                    false);
+
             u32 fm = (u32) quantizeDown(impact->flashFrame, 1.f);
             a->flashShader->drawQuad(
                 cameraToViewport * worldToCamera * Float4x4::makeTranslation(impact->hit.pos) *
@@ -465,15 +479,7 @@ void renderGamePanel(const DrawContext* dc) {
             impact->flashFrame = wrap(nextFrame, 4.f);
         }
 
-        // Draw bird sweat
-        {
-            Array<StarShader::InstanceData> insData;
-            Float4x4 birdToViewport =
-            cameraToViewport * worldToCamera * Float4x4::makeTranslation(birdRelWorld);
-            gs->sweat.addInstances(birdToViewport, insData);
-            a->starShader->draw(a->quad, a->sweatTexture.id, insData.view());
-        }
-
+        // Draw text overlays
         if (auto dead = gs->mode.dead()) {
             TextBuffers gameOver = generateTextBuffers(a->sdfFont, "GAME OVER");
             drawText(a->sdfCommon, a->sdfFont, gameOver,
@@ -715,7 +721,7 @@ void render(GameFlow* gf, const IntVec2& fbSize, float renderDT) {
             if (!barRect.isEmpty()) {
                 GL_CHECK(Viewport((GLint) barRect.mins.x, (GLint) barRect.mins.y,
                                   (GLsizei) barRect.width(), (GLsizei) barRect.height()));
-                a->flatShader->drawQuad(Float4x4::identity(), {1, 1, 1});
+                a->flatShader->drawQuad(Float4x4::identity(), {1, 1, 1, 1}, false);
             }
         }
 
