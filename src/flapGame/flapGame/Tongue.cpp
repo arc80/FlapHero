@@ -18,8 +18,7 @@ Float3 constrainToCone(const Float3& ray, const Float3& fwd, const Float2& coneC
     float pL = perp.length();
     if (d < 0.1f) {
         if (pL < 1e-4f) {
-            Float3 notCollinear = (fabsf(fwd.x) < 0.9f) ? Float3{1, 0, 0} : Float3{0, 1, 0};
-            perp = cross(fwd, notCollinear);
+            perp = anyPerp(fwd);
             pL = 1.f;
         }
         return fwd * coneCS.x + perp * (coneCS.y / pL);

@@ -37,6 +37,7 @@ struct Obstacle : RefCounted<Obstacle> {
         Float3 pos = {0, 0, 0};
         Float3 norm = {0, 0, 0};
         Reference<Obstacle> obst;
+        float penetrationDepth = 0;
         bool recoverClockwise = true;
     };
 
@@ -100,6 +101,7 @@ struct GameState {
         };
         struct Impact {
             float flashFrame = 0.f;
+            Float3 prevVel = {0, 0, 0};
             Obstacle::Hit hit;
             float time = 0;
             bool recoverClockwise = true;
@@ -117,6 +119,7 @@ struct GameState {
             struct Mode {
                 // ply make switch
                 struct Animated {
+                    Float3 recoilDir = {1, 0, 0};
                     Float3 startPos = {0, 0, 0};
                     float frame = 0;
                     Quaternion startRot = {0, 0, 0, 1};
@@ -133,6 +136,8 @@ struct GameState {
 #include "codegen/switch-flap-GameState-Mode-Falling-Mode.inl" //@@ply
             };
             Mode mode;
+            u32 bounceCount = 0;
+            Float3 prevBouncePos = {0, 0, 0};
         };
 #include "codegen/switch-flap-GameState-Mode.inl" //@@ply
     };
@@ -172,7 +177,7 @@ struct GameState {
     static constexpr float SlowMotionFactor = 0.15f;
 
     OuterContext* outerCtx = nullptr;
-    Random random{6};
+    Random random;
     bool buttonPressed = false;
     Mode mode;
     LifeState lifeState;
@@ -181,7 +186,7 @@ struct GameState {
     // Score
     u32 score = 0;
     float scoreTime[2] = {0, 0};
-    u32 damage = 0;
+    u32 damage = 1;
     u32 note = 0;
     SoLoud::handle flapVoice = -1;
     PLY_INLINE bool isWeak() const {

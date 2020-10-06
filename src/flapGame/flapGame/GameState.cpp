@@ -17,10 +17,12 @@ bool Pipe::collisionCheck(GameState* gs, const LambdaView<bool(const Hit&)>& cb)
     SphCylCollResult::Type ct = sphereCylinderCollisionTest(
         gs->bird.pos[0], GameState::BirdRadius, this->pipeToWorld, GameState::PipeRadius, &result);
     if (ct != SphCylCollResult::None) {
+        PLY_ASSERT(result.penetrationDepth >= -1e-6f);
         Hit hit;
         hit.pos = result.pos;
         hit.norm = result.norm;
         hit.obst = this;
+        hit.penetrationDepth = result.penetrationDepth;
         if (result.norm.z > 0.1f) {
             // hit top
             hit.recoverClockwise = true;
@@ -124,6 +126,66 @@ FallAnimFrame sample(ArrayView<const FallAnimFrame> frames, float t) {
     }
 }
 
+void applyBounce(const Obstacle::Hit& hit, Float3 prevVel) {
+    UpdateContext* uc = UpdateContext::instance();
+    GameState* gs = uc->gs;
+    auto falling = gs->mode.falling();
+
+    // Compute bounce vector
+    Float3 bounceVel = {0, 0, 0};
+    float d = dot(prevVel, hit.norm);
+    if (d < -5.f) {
+        bounceVel = prevVel - hit.norm * (1.8f * d);
+        bounceVel.x = clamp(bounceVel.x, -15.f, 15.f);
+    } else if (d < 0.f) {
+        // Not bouncing; rolling
+        auto free = falling->mode.free().switchTo();
+        free->vel[0] = prevVel - hit.norm * d;
+        free->vel[1] = free->vel[0];
+        gs->bird.pos[0] += hit.norm * hit.penetrationDepth;
+        return;
+    }
+
+    bool animate =
+        (falling->bounceCount == 0) ||
+        ((falling->bounceCount < 2) && (falling->prevBouncePos - gs->bird.pos[0]).length2() >= 4.f);
+    if (animate) {
+        // Randomize bounce direction a little bit
+        float L = bounceVel.length();
+        if (L > 0.1f) {
+            Float3x3 basis = makeBasis(bounceVel / L, Axis3::ZPos);
+            float angle = gs->random.nextFloat() * (2 * Pi);
+            Float2 sc = fastCosSin(Pi * 10.f / 180.f);
+            bounceVel = basis * Float3{Complex::fromAngle(angle) * sc.y, sc.x} * L;
+        }
+
+        // Get rotation axis
+        Float3 rotAxis = {0, 1, 0};
+        {
+            Float3 cr = cross(prevVel, bounceVel);
+            float crL = cr.length();
+            if (crL > 0.001f) {
+                rotAxis = cr / crL;
+            }
+        }
+
+        auto animated = falling->mode.animated().switchTo();
+        animated->recoilDir = -hit.norm;
+        if (L > 0.1f) {
+            animated->recoilDir = -bounceVel / L;
+        }
+        animated->startPos = gs->bird.pos[0];
+        animated->startRot = gs->bird.rot[0];
+        animated->rotAxis = rotAxis;
+    } else {
+        auto free = falling->mode.free().switchTo();
+        free->setVel(bounceVel);
+    }
+
+    falling->bounceCount++;
+    falling->prevBouncePos = gs->bird.pos[0];
+}
+
 void updateMovement(UpdateContext* uc) {
     Assets* a = Assets::instance;
     GameState* gs = uc->gs;
@@ -185,7 +247,9 @@ void updateMovement(UpdateContext* uc) {
                 return false;
 
             playing->timeDilation.none().switchTo();
+            Float3 prevVel = {GameState::ScrollRate, 0, playing->zVel[0]};
             auto impact = gs->mode.impact().switchTo();
+            impact->prevVel = prevVel;
             impact->hit = hit;
             impact->time = 0;
             gSoLoud.play(a->playerHitSound, 0.7f);
@@ -251,12 +315,12 @@ void updateMovement(UpdateContext* uc) {
                 angle->time = 0.f;
             } else {
                 // Fall to death
-                auto falling = gs->mode.falling().switchTo();
-                auto animated = falling->mode.animated();
-                animated->startPos = gs->bird.pos[0];
-                animated->startRot = gs->bird.rot[0];
-                gs->rotator.fromMode().switchTo();
                 gs->lifeState.dead().switchTo();
+                Obstacle::Hit hit = impact->hit;
+                Float3 prevVel = impact->prevVel;
+                auto falling = gs->mode.falling().switchTo();
+                gs->rotator.fromMode().switchTo();
+                applyBounce(hit, prevVel);
             }
         }
     } else if (auto recovering = gs->mode.recovering()) {
@@ -305,8 +369,8 @@ void updateMovement(UpdateContext* uc) {
             animated->frame += dt * 60.f;
             if (animated->frame + 1 < a->fallAnim.numItems()) {
                 FallAnimFrame pose = sample(a->fallAnim.view(), animated->frame);
-                gs->bird.pos[1] =
-                    animated->startPos + Float3{pose.recoilDistance, 0, pose.verticalDrop};
+                gs->bird.pos[1] = animated->startPos + animated->recoilDir * pose.recoilDistance +
+                                  Float3{0, 0, pose.verticalDrop};
                 gs->bird.rot[1] =
                     Quaternion::fromAxisAngle(animated->rotAxis, -pose.rotationAngle) *
                     animated->startRot;
@@ -325,9 +389,7 @@ void updateMovement(UpdateContext* uc) {
 
         // Check for obstacle collisions
         auto bounce = [&](const Obstacle::Hit& hit) { //
-            Float3 newVel = free->vel[0];
-            newVel.z = 5.f;
-            free->setVel(newVel);
+            applyBounce(hit, free->vel[0]);
             return true;
         };
 
@@ -336,12 +398,17 @@ void updateMovement(UpdateContext* uc) {
                 break;
         }
 
-        free->vel[1].z =
-            max(free->vel[0].z - GameState::NormalGravity * dt, GameState::TerminalVelocity);
+        if (free) {
+            float L = free->vel[0].length();
+            float s = dt * 10.f;
+            // free->vel[1] = L < s ? Float3{0} : free->vel[0] * ((L - s) / L);
+            free->vel[1].z =
+                max(free->vel[0].z - GameState::NormalGravity * dt, GameState::TerminalVelocity);
 
-        // Advance bird
-        Float3 midVel = (free->vel[0] + free->vel[1]) * 0.5f;
-        gs->bird.pos[1] = gs->bird.pos[0] + midVel * dt;
+            // Advance bird
+            Float3 midVel = (free->vel[0] + free->vel[1]) * 0.5f;
+            gs->bird.pos[1] = gs->bird.pos[0] + midVel * dt;
+        }
     }
 }
 
@@ -367,6 +434,11 @@ void adjustX(GameState* gs, float amount) {
         for (Float2& cp : recovering->cps) {
             cp.x += amount;
         }
+    } else if (auto falling = gs->mode.falling()) {
+        if (auto animated = falling->mode.animated()) {
+            animated->startPos.x += amount;
+        }
+        falling->prevBouncePos.x += amount;
     }
     gs->cloudAngleOffset =
         wrap(gs->cloudAngleOffset - amount * GameState::CloudRadiansPerCameraX, 2 * Pi);

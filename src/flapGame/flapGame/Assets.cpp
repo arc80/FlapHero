@@ -617,7 +617,7 @@ void Assets::load(StringView assetsPath) {
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(
             NativePath::join(assetsPath, "SideFall.fbx").withNullTerminator().bytes, 0);
-        assets->fallAnim = extractFallAnimation(scene, 41);
+        assets->fallAnim = extractFallAnimation(scene, 35);
     }
     {
         Buffer pngData =

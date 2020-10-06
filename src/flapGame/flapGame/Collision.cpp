@@ -69,7 +69,7 @@ SphCylCollResult::Type sphereCylinderCollisionTest(const Float3& spherePos, floa
             posRelEdge /= L;
             result->pos = unitPerp * cylRadius;
             result->norm = unitPerp * posRelEdge.x + Float3{0, 0, posRelEdge.y};
-            result->penetrationDepth = L - sphereRadius;
+            result->penetrationDepth = sphereRadius - L;
             return SphCylCollResult::CapEdge;
         }
     }
