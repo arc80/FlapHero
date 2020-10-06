@@ -256,6 +256,7 @@ void updateMovement(UpdateContext* uc) {
                 animated->startPos = gs->bird.pos[0];
                 animated->startRot = gs->bird.rot[0];
                 gs->rotator.fromMode().switchTo();
+                gs->lifeState.dead().switchTo();
             }
         }
     } else if (auto recovering = gs->mode.recovering()) {
@@ -294,10 +295,9 @@ void updateMovement(UpdateContext* uc) {
     } else if (auto falling = gs->mode.falling()) {
         if (gs->bird.pos[0].z <= GameState::LowestHeight) {
             // Hit the floor
-            gs->mode.dead().switchTo();
             gs->bird.pos[0].z = GameState::LowestHeight;
             gs->bird.pos[1] = gs->bird.pos[0];
-            gSoLoud.play(a->finalScoreSound);
+            gs->lifeState.dead()->delay = 0;
             return;
         }
 
@@ -453,28 +453,30 @@ void timeStep(UpdateContext* uc) {
     // Advance bird
     updateMovement(uc);
 
-    bool isPaused = gs->mode.impact() || gs->mode.dead();
+    bool isPaused = (bool) gs->mode.impact();
     if (!isPaused) {
-        // Pass checkpoints
-        while (!gs->playfield.sortedCheckpoints.isEmpty() &&
-               gs->bird.pos[0].x >= gs->playfield.sortedCheckpoints[0]) {
-            gs->playfield.sortedCheckpoints.erase(0);
-            gs->score++;
+        if (!gs->lifeState.dead()) {
+            // Pass checkpoints
+            while (!gs->playfield.sortedCheckpoints.isEmpty() &&
+                   gs->bird.pos[0].x >= gs->playfield.sortedCheckpoints[0]) {
+                gs->playfield.sortedCheckpoints.erase(0);
+                gs->score++;
 
-            const auto& toneParams = NoteMap[gs->note];
-            int handle = gSoLoud.play(a->passNotes[toneParams.first], 1.5f);
-            gSoLoud.setRelativePlaySpeed(handle, powf(2.f, toneParams.second / 12.f));
-            gs->note = (gs->note + 1) % NoteMap.numItems();
-            gs->scoreTime[0] = 1.f;
-            gs->scoreTime[1] = 1.f;
-        }
+                const auto& toneParams = NoteMap[gs->note];
+                int handle = gSoLoud.play(a->passNotes[toneParams.first], 1.5f);
+                gSoLoud.setRelativePlaySpeed(handle, powf(2.f, toneParams.second / 12.f));
+                gs->note = (gs->note + 1) % NoteMap.numItems();
+                gs->scoreTime[0] = 1.f;
+                gs->scoreTime[1] = 1.f;
+            }
 
-        // Flap
-        if (gs->birdAnim.wingTime[0] >= 2.f) {
-            gs->birdAnim.wingTime[0] = 0.f;
+            // Flap
+            if (gs->birdAnim.wingTime[0] >= 2.f) {
+                gs->birdAnim.wingTime[0] = 0.f;
+            }
+            gs->birdAnim.wingTime[1] =
+                min(gs->birdAnim.wingTime[0] + dt * GameState::FlapRate * 2.f, 2.f);
         }
-        gs->birdAnim.wingTime[1] =
-            min(gs->birdAnim.wingTime[0] + dt * GameState::FlapRate * 2.f, 2.f);
 
         // Wobble
         if (gs->isWeak() && !gs->mode.falling()) {
@@ -549,7 +551,7 @@ void timeStep(UpdateContext* uc) {
 
         if (!gs->mode.title()) {
             if (!gs->sweat.update(dt)) {
-                if (!gs->mode.dead()) {
+                if (!gs->lifeState.dead()) {
                     if (gs->sweatDelay > 0 && !gs->isWeak()) {
                         gs->sweatDelay -= dt;
                     } else {
@@ -583,7 +585,7 @@ void timeStep(UpdateContext* uc) {
         gs->bird.finalRot[1] * Quaternion::fromAxisAngle({0, 0, 1}, Pi / 2.f);
     gs->bird.tongue.isPaused = (bool) gs->mode.impact();
     if (!gs->bird.tongue.isPaused) {
-        bool applySidewaysForce = !gs->mode.dead() && !gs->mode.falling();
+        bool applySidewaysForce = !gs->mode.falling();
         float limitZ = GameState::LowestHeight - 0.8f - gs->bird.pos[1].z;
         gs->bird.tongue.update(predictedNextPos - gs->bird.pos[1], birdToWorldRot, dt,
                                applySidewaysForce, limitZ);
@@ -639,20 +641,27 @@ void timeStep(UpdateContext* uc) {
         adjustX(gs, -GameState::WrapAmount);
     }
 
-    if (auto dead = gs->mode.dead()) {
-        // Animate high score signs
-        dead->animateSignTime = min(dead->animateSignTime + dt, 5.f);
-        if (!dead->playedSound && dead->animateSignTime > 0.25f) {
-            SoLoud::handle h = gSoLoud.play(a->finalScoreSound, 0.6f);
-            gSoLoud.setRelativePlaySpeed(h, 0.9f);
-            dead->playedSound = true;
-        }
+    if (auto dead = gs->lifeState.dead()) {
+        if (dead->delay > 0) {
+            dead->delay -= dt;
+            if (dead->delay <= 0) {
+                gSoLoud.play(a->finalScoreSound);
+            }
+        } else {
+            // Animate high score signs
+            dead->animateSignTime = min(dead->animateSignTime + dt, 5.f);
+            if (!dead->playedSound && dead->animateSignTime > 0.25f) {
+                SoLoud::handle h = gSoLoud.play(a->finalScoreSound, 0.6f);
+                gSoLoud.setRelativePlaySpeed(h, 0.9f);
+                dead->playedSound = true;
+            }
 
-        // Update blinking prompt
-        dead->promptTime += dt;
-        if (dead->promptTime >= (dead->showPrompt ? 0.4f : 0.16f)) {
-            dead->showPrompt = !dead->showPrompt;
-            dead->promptTime = 0.f;
+            // Update blinking prompt
+            dead->promptTime += dt;
+            if (dead->promptTime >= (dead->showPrompt ? 0.4f : 0.16f)) {
+                dead->showPrompt = !dead->showPrompt;
+                dead->promptTime = 0.f;
+            }
         }
     }
 
@@ -668,7 +677,7 @@ struct MixCameraParams {
         Float3x3 frame = Float3x3::makeRotation({0, 0, 1}, this->frameToFocusYaw);
         Float3 lookFromRelFocus = frame * this->lookFromRelFrame;
         Quaternion camToWorldRot = Quaternion::fromOrtho(
-            extra::makeBasis(-lookFromRelFocus.normalized(), {0, 0, 1}, Axis3::ZNeg, Axis3::YPos));
+            makeBasis(-lookFromRelFocus.normalized(), {0, 0, 1}, Axis3::ZNeg, Axis3::YPos));
         Float3 camToWorldPos = focusPos + lookFromRelFocus + frame * this->shiftRelFrame;
         return {camToWorldRot, camToWorldPos};
     }

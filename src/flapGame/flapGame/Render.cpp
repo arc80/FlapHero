@@ -282,7 +282,7 @@ void renderGamePanel(const DrawContext* dc) {
 
     Float3 skyColor = fromSRGB(Float3{113.f / 255, 200.f / 255, 206.f / 255});
     float frustumScale = 1.f;
-    if (auto dead = gs->mode.dead()) {
+    if (auto dead = gs->lifeState.dead()) {
         frustumScale = min(frustumScale,
                            powf(1.2f, getSignParams(dead->animateSignTime + dc->fracTime).first));
         frustumScale =
@@ -480,7 +480,9 @@ void renderGamePanel(const DrawContext* dc) {
         }
 
         // Draw text overlays
-        if (auto dead = gs->mode.dead()) {
+        auto dead = gs->lifeState.dead();
+        bool showGameOver = dead && dead->delay <= 0;
+        if (showGameOver) {
             TextBuffers gameOver = generateTextBuffers(a->sdfFont, "GAME OVER");
             drawText(a->sdfCommon, a->sdfFont, gameOver,
                      Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
@@ -518,7 +520,7 @@ void renderGamePanel(const DrawContext* dc) {
             }
         }
 
-        if (!gs->mode.dead() && !gs->mode.title()) {
+        if (!showGameOver && !gs->mode.title()) {
             // Draw score
             float scoreTime = mix(gs->scoreTime[0], gs->scoreTime[1], dc->fracTime);
             float zoom = powf(1.5f, scoreTime * scoreTime);

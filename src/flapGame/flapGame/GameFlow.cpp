@@ -53,7 +53,8 @@ void update(GameFlow* gf, float dt) {
     // Timestep
     GameState* gs = gf->gameState;
     if (gf->buttonPressed) {
-        if (gs->mode.dead()) {
+        auto dead = gs->lifeState.dead();
+        if (dead && dead->delay <= 0) {
             // start transition
             auto trans = gf->trans.on().switchTo();
             trans->oldGameState = std::move(gf->gameState);

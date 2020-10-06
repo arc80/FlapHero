@@ -134,13 +134,21 @@ struct GameState {
             };
             Mode mode;
         };
+#include "codegen/switch-flap-GameState-Mode.inl" //@@ply
+    };
+
+    struct LifeState {
+        // ply make switch
+        struct Alive {
+        };
         struct Dead {
+            float delay = 1.f;
             float animateSignTime = 0;
             bool playedSound = false;
             bool showPrompt = false;
             float promptTime = 0;
         };
-#include "codegen/switch-flap-GameState-Mode.inl" //@@ply
+#include "codegen/switch-flap-GameState-LifeState.inl" //@@ply
     };
 
     // Constants
@@ -167,6 +175,7 @@ struct GameState {
     Random random{6};
     bool buttonPressed = false;
     Mode mode;
+    LifeState lifeState;
     Owned<TitleScreen> titleScreen;
 
     // Score
