@@ -361,7 +361,11 @@ void updateMovement(UpdateContext* uc) {
             // Hit the floor
             gs->bird.pos[0].z = GameState::LowestHeight;
             gs->bird.pos[1] = gs->bird.pos[0];
-            gs->lifeState.dead()->delay = 0;
+            auto dead = gs->lifeState.dead();
+            if (dead->delay > 0) {
+                dead->delay = 0;
+                gSoLoud.play(a->finalScoreSound);
+            }
             return;
         }
 
