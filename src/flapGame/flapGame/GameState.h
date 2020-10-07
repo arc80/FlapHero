@@ -147,7 +147,7 @@ struct GameState {
         struct Alive {
         };
         struct Dead {
-            float delay = 1.f;
+            float delay = 0.5f;
             float animateSignTime = 0;
             bool playedSound = false;
             bool showPrompt = false;

@@ -1521,7 +1521,7 @@ PLY_NO_INLINE void PuffShader::draw(const Float4x4& worldToViewport, GLuint text
     GL_CHECK(DepthMask(GL_FALSE));
     GL_CHECK(Enable(GL_BLEND));
     GL_CHECK(BlendEquation(GL_FUNC_ADD));
-    GL_CHECK(BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+    GL_CHECK(BlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE));
 
     GL_CHECK(
         UniformMatrix4fv(this->worldToViewportUniform, 1, GL_FALSE, (GLfloat*) &worldToViewport));

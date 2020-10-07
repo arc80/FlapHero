@@ -177,6 +177,8 @@ void applyBounce(const Obstacle::Hit& hit, Float3 prevVel) {
         animated->startPos = gs->bird.pos[0];
         animated->startRot = gs->bird.rot[0];
         animated->rotAxis = rotAxis;
+
+        gs->puffs.append(new Puffs{hit.pos, gs->random.next32(), hit.norm, true});
     } else {
         auto free = falling->mode.free().switchTo();
         free->setVel(bounceVel);
@@ -295,6 +297,9 @@ void updateMovement(UpdateContext* uc) {
         if (impact->time >= 1.f) {
             gs->damage++;
             if ((gs->damage < 2) || GODMODE) {
+                gs->puffs.append(
+                    new Puffs{impact->hit.pos, gs->random.next32(), impact->hit.norm, true});
+
                 // Build recovery motion path
                 Float2 start2D = {gs->bird.pos[0].x, gs->bird.pos[0].z};
                 Float2 norm2D = {impact->hit.norm.x, impact->hit.norm.z};
