@@ -142,7 +142,7 @@ void applyBounce(const Obstacle::Hit& hit, Float3 prevVel) {
             SoLoud::handle h = gSoLoud.play(a->bounceSound, mix(0.8f, 0.01f, powf(1.05f, d + 5.f)));
             gSoLoud.setRelativePlaySpeed(h, rate);
         }
-        bounceVel = prevVel - hit.norm * min(0.f, 1.7f * d + 0.0f);
+        bounceVel = prevVel - hit.norm * min(0.f, 1.6f * d + 1.0f);
         bounceVel.x = clamp(bounceVel.x, -15.f, 15.f);
     } else if (d < 0.f) {
         // Not bouncing; rolling
@@ -150,6 +150,9 @@ void applyBounce(const Obstacle::Hit& hit, Float3 prevVel) {
         free->vel[0] = prevVel - hit.norm * d;
         free->vel[1] = free->vel[0];
         gs->bird.pos[0] += hit.norm * hit.penetrationDepth;
+        return;
+    } else {
+        // Leaving
         return;
     }
 
@@ -189,6 +192,9 @@ void applyBounce(const Obstacle::Hit& hit, Float3 prevVel) {
     } else {
         auto free = falling->mode.free().switchTo();
         free->setVel(bounceVel);
+        if (bounceVel.length2() > 250.f) {
+            gs->puffs.append(new Puffs{hit.pos, gs->random.next32(), hit.norm, true});
+        }
     }
 
     falling->bounceCount++;
