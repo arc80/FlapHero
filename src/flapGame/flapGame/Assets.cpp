@@ -808,6 +808,8 @@ void Assets::load(StringView assetsPath) {
                                        .withNullTerminator()
                                        .bytes);
     }
+    assets->bounceSound.load(
+        NativePath::join(assetsPath, "Bounce.wav").withNullTerminator().bytes);
 }
 
 } // namespace flap

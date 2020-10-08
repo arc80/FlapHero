@@ -127,6 +127,7 @@ FallAnimFrame sample(ArrayView<const FallAnimFrame> frames, float t) {
 }
 
 void applyBounce(const Obstacle::Hit& hit, Float3 prevVel) {
+    Assets* a = Assets::instance;
     UpdateContext* uc = UpdateContext::instance();
     GameState* gs = uc->gs;
     auto falling = gs->mode.falling();
@@ -135,7 +136,13 @@ void applyBounce(const Obstacle::Hit& hit, Float3 prevVel) {
     Float3 bounceVel = {0, 0, 0};
     float d = dot(prevVel, hit.norm);
     if (d < -5.f) {
-        bounceVel = prevVel - hit.norm * (1.8f * d);
+        // Bouncing
+        if (falling->bounceCount > 0) {
+            float rate = mix(0.94f, 1.07f, gs->random.nextFloat()) * 0.9f;
+            SoLoud::handle h = gSoLoud.play(a->bounceSound, mix(0.8f, 0.01f, powf(1.05f, d + 5.f)));
+            gSoLoud.setRelativePlaySpeed(h, rate);
+        }
+        bounceVel = prevVel - hit.norm * min(0.f, 1.7f * d + 0.0f);
         bounceVel.x = clamp(bounceVel.x, -15.f, 15.f);
     } else if (d < 0.f) {
         // Not bouncing; rolling
@@ -362,18 +369,6 @@ void updateMovement(UpdateContext* uc) {
             playing->timeDilation.resume().switchTo();
         }
     } else if (auto falling = gs->mode.falling()) {
-        if (gs->bird.pos[0].z <= GameState::LowestHeight) {
-            // Hit the floor
-            gs->bird.pos[0].z = GameState::LowestHeight;
-            gs->bird.pos[1] = gs->bird.pos[0];
-            auto dead = gs->lifeState.dead();
-            if (dead->delay > 0) {
-                dead->delay = 0;
-                gSoLoud.play(a->finalScoreSound);
-            }
-            return;
-        }
-
         if (auto animated = falling->mode.animated()) {
             animated->frame += dt * 60.f;
             if (animated->frame + 1 < a->fallAnim.numItems()) {
@@ -402,15 +397,22 @@ void updateMovement(UpdateContext* uc) {
             return true;
         };
 
+        if (gs->bird.pos[0].z <= GameState::LowestHeight) {
+            // Hit the floor
+            Obstacle::Hit hit;
+            hit.pos = {gs->bird.pos[0].x, gs->bird.pos[0].y, GameState::LowestHeight - 1.f};
+            hit.norm = {0, 0, 1};
+            hit.penetrationDepth = GameState::LowestHeight - gs->bird.pos[0].z;
+            applyBounce(hit, free->vel[0]);
+        }
+
         for (Obstacle* obst : gs->playfield.obstacles) {
             if (obst->collisionCheck(gs, bounce))
                 break;
         }
 
         if (free) {
-            float L = free->vel[0].length();
-            float s = dt * 10.f;
-            // free->vel[1] = L < s ? Float3{0} : free->vel[0] * ((L - s) / L);
+            free->vel[1] *= 0.99f;
             free->vel[1].z =
                 max(free->vel[0].z - GameState::NormalGravity * dt, GameState::TerminalVelocity);
 
