@@ -425,9 +425,11 @@ void updateMovement(UpdateContext* uc) {
             applyBounce(hit, free->vel[0]);
         }
 
-        for (Obstacle* obst : gs->playfield.obstacles) {
-            if (obst->collisionCheck(gs, bounce))
-                break;
+        if (free) {
+            for (Obstacle* obst : gs->playfield.obstacles) {
+                if (obst->collisionCheck(gs, bounce))
+                    break;
+            }
         }
 
         if (free) {
