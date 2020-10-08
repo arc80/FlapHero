@@ -126,6 +126,18 @@ FallAnimFrame sample(ArrayView<const FallAnimFrame> frames, float t) {
     }
 }
 
+Float3 toAxisAngle(const Quaternion& quat) {
+    float L = quat.asFloat3().length();
+    if (L > 1e-6f) {
+        float angle = atan2f(L, quat.w) * 2.f;
+        return quat.asFloat3() * (angle / L);
+    } else {
+        // For very small rotations, sin(a) ~= a
+        // Therefore, the length of the vector part is roughly half the angle:
+        return quat.asFloat3() * 2.f;
+    }
+}
+
 void applyBounce(const Obstacle::Hit& hit, Float3 prevVel) {
     Assets* a = Assets::instance;
     UpdateContext* uc = UpdateContext::instance();
@@ -147,7 +159,8 @@ void applyBounce(const Obstacle::Hit& hit, Float3 prevVel) {
     } else if (d < 0.f) {
         // Not bouncing; rolling
         auto free = falling->mode.free().switchTo();
-        free->vel[0] = prevVel - hit.norm * d;
+        Float3 aa = toAxisAngle(uc->deltaRot);
+        free->vel[0] = cross(hit.norm, aa) * -60.f;
         free->vel[1] = free->vel[0];
         gs->bird.pos[0] += hit.norm * hit.penetrationDepth;
         return;
@@ -425,6 +438,7 @@ void updateMovement(UpdateContext* uc) {
             // Advance bird
             Float3 midVel = (free->vel[0] + free->vel[1]) * 0.5f;
             gs->bird.pos[1] = gs->bird.pos[0] + midVel * dt;
+            gs->bird.pos[1].y = clamp(gs->bird.pos[1].y, -4.f, 4.f);
         }
     }
 }
