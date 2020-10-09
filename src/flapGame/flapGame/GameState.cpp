@@ -256,7 +256,7 @@ Float3 advanceToEjectPos(const Obstacle* startObst) {
         }
         Float3 ejectPos = {0, 0, 0};
         if (gs->playfield.obstacles[obstIndex]->canEjectFrom(&ejectPos)) {
-            if (candidateCount >= 4) {
+            if (candidateCount >= 3) {
                 return ejectPos;
             }
             candidateCount++;
@@ -420,8 +420,12 @@ void updateMovement(UpdateContext* uc) {
                 gs->bird.pos[0] = gs->bird.pos[1];
                 teleport->didTele = true;
                 auto angle = gs->rotator.angle().switchTo();
-                angle->angle = getTargetAngle(exitZVel);
             }
+            auto angle = gs->rotator.angle();
+            if (!angle) {
+                angle.switchTo();
+            }
+            angle->angle = getTargetAngle(exitZVel) + (duration - teleport->time) * 2.5f;
         }
         if (teleport->time >= duration - 0.2f && !teleport->didPlayPop) {
             gSoLoud.play(a->exitPipeSound);
