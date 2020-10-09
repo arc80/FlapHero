@@ -810,6 +810,10 @@ void Assets::load(StringView assetsPath) {
     }
     assets->bounceSound.load(
         NativePath::join(assetsPath, "Bounce.wav").withNullTerminator().bytes);
+    assets->enterPipeSound.load(
+        NativePath::join(assetsPath, "EnterPipe.wav").withNullTerminator().bytes);
+    assets->exitPipeSound.load(
+        NativePath::join(assetsPath, "PopOut.wav").withNullTerminator().bytes);
 }
 
 } // namespace flap

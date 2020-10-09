@@ -41,6 +41,11 @@ struct Obstacle : RefCounted<Obstacle> {
         bool recoverClockwise = true;
     };
 
+    struct TeleportResult {
+        bool entered = false;
+        QuatPos entrance = QuatPos::identity();
+    };
+
     struct DrawParams {
         Float4x4 cameraToViewport = Float4x4::identity();
         Float4x4 worldToCamera = Float4x4::identity();
@@ -48,6 +53,12 @@ struct Obstacle : RefCounted<Obstacle> {
 
     virtual ~Obstacle() {}
     virtual bool collisionCheck(GameState* gs, const LambdaView<bool(const Hit&)>& cb) = 0;
+    virtual TeleportResult teleportCheck(GameState* gs) {
+        return {};
+    }
+    virtual bool canEjectFrom(Float3* outPos) {
+        return false;
+    }
     virtual void adjustX(float amount) = 0;
     virtual bool canRemove(float leftEdge) = 0;
     virtual void draw(const DrawParams& params) const = 0;
@@ -60,6 +71,8 @@ struct Pipe : Obstacle {
     }
 
     virtual bool collisionCheck(GameState* gs, const LambdaView<bool(const Hit&)>& cb) override;
+    virtual TeleportResult teleportCheck(GameState* gs) override;
+    virtual bool canEjectFrom(Float3* outPos) override;
     virtual void adjustX(float amount) override;
     virtual bool canRemove(float leftEdge) override;
     virtual void draw(const DrawParams& params) const override;
@@ -98,6 +111,14 @@ struct GameState {
 #include "codegen/switch-flap-GameState-Mode-Playing-TimeDilation.inl" //@@ply
             };
             TimeDilation timeDilation;
+        };
+        struct Teleport {
+            float time = 0;
+            Float3 startPos = {0, 0, 0};
+            Float3 ejectPos = {0, 0, 0};
+            bool didTele = false;
+            bool didPlayPop = false;
+            bool didPuff = false;
         };
         struct Impact {
             float flashFrame = 0.f;
@@ -196,6 +217,7 @@ struct GameState {
     // Bird
     struct Bird {
         Float3 pos[2] = {{0, 0, 0}, {0, 0, 0}};
+        Float3 aimTarget[2] = {{0, 0, 0}, {0, 0, 0}};
         Quaternion rot[2] = {{0, 0, 0, 1}, {0, 0, 0, 1}};
         Quaternion finalRot[2] = {{0, 0, 0, 1}, {0, 0, 0, 1}};
         float wobble[2] = {0, 0};
@@ -263,6 +285,7 @@ struct GameState {
         Array<Owned<ObstacleSequence>> sequences;
         Array<Reference<Obstacle>> obstacles;
         Array<float> sortedCheckpoints;
+        float spawnedToX = 0;
     };
     Playfield playfield;
     float shrubX[2] = {-ShrubRepeat, -ShrubRepeat};

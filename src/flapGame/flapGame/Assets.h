@@ -130,6 +130,8 @@ struct Assets {
     SoLoud::Wav playerHitSound;
     FixedArray<SoLoud::Wav, 2> flapSounds;
     SoLoud::Wav bounceSound;
+    SoLoud::Wav enterPipeSound;
+    SoLoud::Wav exitPipeSound;
 
     static Owned<Assets> instance;
 

@@ -2,6 +2,7 @@
 #include <flapGame/GameState.h>
 #include <flapGame/Assets.h>
 #include <flapGame/Collision.h>
+#include <ply-runtime/algorithm/Find.h>
 
 namespace flap {
 
@@ -34,6 +35,26 @@ bool Pipe::collisionCheck(GameState* gs, const LambdaView<bool(const Hit&)>& cb)
             hit.recoverClockwise = (this->pipeToWorld.asFloat3x3() * Float3{0, 0, 1}).z > 0;
         }
         return cb(hit);
+    }
+    return false;
+}
+
+Obstacle::TeleportResult Pipe::teleportCheck(GameState* gs) {
+    // Only works on upright pipes
+    if (this->pipeToWorld[2].z >= 0.8f) {
+        Float3 posRelPipe = this->pipeToWorld.invertedOrtho() * gs->bird.pos[0];
+        if (posRelPipe.asFloat2().length2() < 0.4f) {
+            return {true, QuatPos::fromOrtho(this->pipeToWorld)};
+        }
+    }
+    return {};
+}
+
+bool Pipe::canEjectFrom(Float3* outPos) {
+    // Only works on upright pipes
+    if (this->pipeToWorld[2].z >= 0.8f) {
+        *outPos = this->pipeToWorld[3];
+        return true;
     }
     return false;
 }
@@ -147,7 +168,7 @@ void applyBounce(const Obstacle::Hit& hit, Float3 prevVel) {
     // Compute bounce vector
     Float3 bounceVel = {0, 0, 0};
     float d = dot(prevVel, hit.norm);
-    if (d < -5.f) {
+    if (d < -5.f || falling->bounceCount == 0) {
         // Bouncing
         if (falling->bounceCount > 0) {
             float rate = mix(0.94f, 1.07f, gs->random.nextFloat()) * 0.9f;
@@ -214,6 +235,46 @@ void applyBounce(const Obstacle::Hit& hit, Float3 prevVel) {
     falling->prevBouncePos = gs->bird.pos[0];
 }
 
+Float3 advanceToEjectPos(const Obstacle* startObst) {
+    UpdateContext* uc = UpdateContext::instance();
+    GameState* gs = uc->gs;
+
+    s32 obstIndex = findItem(gs->playfield.obstacles.view(), startObst);
+    PLY_ASSERT(obstIndex >= 0);
+    obstIndex++;
+    u32 candidateCount = 0;
+    for (;;) {
+        while ((u32) obstIndex >= gs->playfield.obstacles.numItems()) {
+            gs->playfield.spawnedToX += 2.f;
+            for (u32 i = 0; i < gs->playfield.sequences.numItems();) {
+                if (gs->playfield.sequences[i]->advanceTo(gs, gs->playfield.spawnedToX)) {
+                    i++;
+                } else {
+                    gs->playfield.sequences.eraseQuick(i);
+                }
+            }
+        }
+        Float3 ejectPos = {0, 0, 0};
+        if (gs->playfield.obstacles[obstIndex]->canEjectFrom(&ejectPos)) {
+            if (candidateCount >= 4) {
+                return ejectPos;
+            }
+            candidateCount++;
+        }
+        obstIndex++;
+    }
+}
+
+float getTargetAngle(float zVel) {
+    float targetAngle = -0.1 * Pi;
+    targetAngle += -clamp(zVel, -15.f, 15.f) * 0.01f;
+    float excess = max(0.f, -15.f - zVel);
+    if (excess > 0) {
+        targetAngle += min(excess * 0.04f, 0.55f * Pi);
+    }
+    return targetAngle;
+}
+
 void updateMovement(UpdateContext* uc) {
     Assets* a = Assets::instance;
     GameState* gs = uc->gs;
@@ -274,6 +335,18 @@ void updateMovement(UpdateContext* uc) {
             if (dot(birdVel0, hit.norm) >= 0)
                 return false;
 
+            // Check for entering pipe
+            if (hit.obst) {
+                Obstacle::TeleportResult tr = hit.obst->teleportCheck(gs);
+                if (tr.entered) {
+                    gSoLoud.play(a->enterPipeSound, 0.7f);
+                    auto teleport = gs->mode.teleport().switchTo();
+                    teleport->startPos = gs->bird.pos[0];
+                    teleport->ejectPos = advanceToEjectPos(hit.obst) + Float3{0, 0, 0.2f};
+                    return false;
+                }
+            }
+
             playing->timeDilation.none().switchTo();
             Float3 prevVel = {GameState::ScrollRate, 0, playing->zVel[0]};
             auto impact = gs->mode.impact().switchTo();
@@ -292,8 +365,9 @@ void updateMovement(UpdateContext* uc) {
             doImpact(hit);
         } else {
             // Check for obstacle collisions
-            for (Obstacle* obst : gs->playfield.obstacles) {
-                if (obst->collisionCheck(gs, doImpact))
+            u32 checkLimit = gs->playfield.obstacles.numItems();
+            for (u32 i = 0; i < checkLimit; i++) {
+                if (gs->playfield.obstacles[i]->collisionCheck(gs, doImpact))
                     break;
             }
         }
@@ -307,16 +381,63 @@ void updateMovement(UpdateContext* uc) {
             // Rotation
             float useZ = playing->zVel[1];
             useZ *= 1.f + (GameState::NormalGravity - playing->curGravity) * 0.012f;
-            float targetAngle = -0.1 * Pi;
-            targetAngle += -clamp(useZ, -15.f, 15.f) * 0.01f;
-            float excess = max(0.f, -15.f - useZ);
-            if (excess > 0) {
-                targetAngle += min(excess * 0.04f, 0.55f * Pi);
-            }
             auto angle = gs->rotator.angle();
-            float delta = targetAngle - angle->angle;
+            float delta = getTargetAngle(useZ) - angle->angle;
             float sgn = delta > 0 ? 1.f : -1.f;
             angle->angle += sgn * min(dt * 12.f, delta * sgn * 0.15f);
+        }
+    } else if (auto teleport = gs->mode.teleport()) {
+        float cameraDelay = 0.1f;
+        float duration = 1.5f;
+        float exitZVel = 30.f;
+        teleport->time += dt;
+        if (teleport->time < cameraDelay) {
+            gs->bird.aimTarget[1] =
+                teleport->startPos + Float3{teleport->time * GameState::ScrollRate, 0, 0};
+        } else if (teleport->time < duration - cameraDelay) {
+            float D = duration - cameraDelay * 2;
+            Float3 realStartPos =
+                teleport->startPos + Float3{cameraDelay * GameState::ScrollRate, 0, 0};
+            Float3 realEjectPos =
+                teleport->ejectPos - Float3{cameraDelay * GameState::ScrollRate, 0, 0};
+            float dist = realEjectPos.x - realStartPos.x;
+            PLY_ASSERT(dist > 0);
+            float t = min(1.f, (teleport->time - cameraDelay) / D);
+            float slope = GameState::ScrollRate * D / dist;
+            t = interpolateCubic(0.f, slope / 3.f, 1.f - slope / 3.f, 1.f, t);
+            gs->bird.aimTarget[1] = mix(realStartPos, realEjectPos, t);
+        } else {
+            float e = clamp(duration - teleport->time, 0.f, cameraDelay);
+            gs->bird.aimTarget[1] = teleport->ejectPos - Float3{e * GameState::ScrollRate, 0, 0};
+        }
+        if (teleport->time < 0.4f) {
+            gs->bird.pos[1] = teleport->startPos;
+            gs->bird.pos[1].z -= teleport->time * 6.f;
+        } else if (teleport->time >= duration - 0.4f) {
+            gs->bird.pos[1] = teleport->ejectPos;
+            gs->bird.pos[1].z -= (duration - teleport->time) * 6.f;
+            if (!teleport->didTele) {
+                gs->bird.pos[0] = gs->bird.pos[1];
+                teleport->didTele = true;
+                auto angle = gs->rotator.angle().switchTo();
+                angle->angle = getTargetAngle(exitZVel);
+            }
+        }
+        if (teleport->time >= duration - 0.2f && !teleport->didPlayPop) {
+            gSoLoud.play(a->exitPipeSound);
+            teleport->didPlayPop = true;
+        }
+        if (teleport->time >= duration - 0.1f && !teleport->didPuff) {
+            gs->puffs.append(new Puffs{
+                teleport->ejectPos - Float3{0, 0, 0.25f}, gs->random.next32(), {0, 0, 1}, true});
+            teleport->didPuff = true;
+        }
+        if (teleport->time >= duration) {
+            gs->bird.pos[0] = teleport->ejectPos;
+            gs->bird.pos[1] = gs->bird.pos[0];
+            auto playing = gs->mode.playing().switchTo();
+            playing->zVel[0] = exitZVel;
+            playing->zVel[1] = playing->zVel[0];
         }
     } else if (auto impact = gs->mode.impact()) {
         impact->time += dt * 5.f;
@@ -448,6 +569,7 @@ void updateMovement(UpdateContext* uc) {
 void adjustX(GameState* gs, float amount) {
     for (u32 i = 0; i < 2; i++) {
         gs->bird.pos[i].x += amount;
+        gs->bird.aimTarget[i].x += amount;
         gs->camToWorld[i].pos.x += amount;
         gs->shrubX[i] += amount;
         gs->buildingX[i] += amount;
@@ -461,7 +583,10 @@ void adjustX(GameState* gs, float amount) {
     for (float& sc : gs->playfield.sortedCheckpoints) {
         sc += amount;
     }
-    if (auto impact = gs->mode.impact()) {
+    if (auto teleport = gs->mode.teleport()) {
+        teleport->startPos.x += amount;
+        teleport->ejectPos.x += amount;
+    } else if (auto impact = gs->mode.impact()) {
         impact->hit.pos.x += amount;
     } else if (auto recovering = gs->mode.recovering()) {
         for (Float2& cp : recovering->cps) {
@@ -533,6 +658,7 @@ void timeStep(UpdateContext* uc) {
     uc->deltaRot = gs->bird.rot[1] * gs->bird.rot[0].inverted();
     Float3 predictedNextPos = gs->bird.pos[1] * 2.f - gs->bird.pos[0];
     gs->bird.pos[0] = gs->bird.pos[1];
+    gs->bird.aimTarget[0] = gs->bird.aimTarget[1];
     if (auto playing = gs->mode.playing()) {
         playing->zVel[0] = playing->zVel[1];
     } else if (auto falling = gs->mode.falling()) {
@@ -562,13 +688,17 @@ void timeStep(UpdateContext* uc) {
     if (!isPaused) {
         if (!gs->lifeState.dead()) {
             // Pass checkpoints
+            float checkX = gs->bird.pos[0].x;
+            if (gs->mode.teleport()) {
+                checkX = gs->bird.aimTarget[0].x;
+            }
             while (!gs->playfield.sortedCheckpoints.isEmpty() &&
-                   gs->bird.pos[0].x >= gs->playfield.sortedCheckpoints[0]) {
+                   checkX >= gs->playfield.sortedCheckpoints[0]) {
                 gs->playfield.sortedCheckpoints.erase(0);
                 gs->score++;
 
                 const auto& toneParams = NoteMap[gs->note];
-                int handle = gSoLoud.play(a->passNotes[toneParams.first], 1.5f);
+                int handle = gSoLoud.play(a->passNotes[toneParams.first], 1.f);
                 gSoLoud.setRelativePlaySpeed(handle, powf(2.f, toneParams.second / 12.f));
                 gs->note = (gs->note + 1) % NoteMap.numItems();
                 gs->scoreTime[0] = 1.f;
@@ -697,6 +827,9 @@ void timeStep(UpdateContext* uc) {
     }
 
     // Update camera
+    if (!gs->mode.teleport()) {
+        gs->bird.aimTarget[1] = gs->bird.pos[1];
+    }
     if (auto orbit = gs->camera.orbit()) {
         orbit->angle = wrap(orbit->angle - dt * 2.f, 2 * Pi);
         orbit->risingTime += (orbit->rising ? 2.5f : 5.f) * dt;
@@ -725,8 +858,9 @@ void timeStep(UpdateContext* uc) {
         }
 
         // Add new obstacles
+        gs->playfield.spawnedToX = max(gs->playfield.spawnedToX, visibleEdge);
         for (u32 i = 0; i < gs->playfield.sequences.numItems();) {
-            if (gs->playfield.sequences[i]->advanceTo(gs, visibleEdge)) {
+            if (gs->playfield.sequences[i]->advanceTo(gs, gs->playfield.spawnedToX)) {
                 i++;
             } else {
                 gs->playfield.sequences.eraseQuick(i);
@@ -742,7 +876,7 @@ void timeStep(UpdateContext* uc) {
     }
 
     // Shift world periodically
-    if (gs->bird.pos[1].x >= GameState::WrapAmount) {
+    if (gs->bird.aimTarget[1].x >= GameState::WrapAmount) {
         adjustX(gs, -GameState::WrapAmount);
     }
 
@@ -817,7 +951,7 @@ void GameState::updateCamera(bool cut) {
     } else {
         PLY_ASSERT(0);
     }
-    this->camToWorld[1] = params.toQuatPos({this->bird.pos[1].x, 0, 0});
+    this->camToWorld[1] = params.toQuatPos({this->bird.aimTarget[1].x, 0, 0});
     this->camToWorld[1].quat = this->camToWorld[1].quat.negatedIfCloserTo(this->camToWorld[0].quat);
     if (cut) {
         this->camToWorld[0] = this->camToWorld[1];
