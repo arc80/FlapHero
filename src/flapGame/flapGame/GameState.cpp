@@ -43,10 +43,11 @@ Obstacle::TeleportResult Pipe::teleportCheck(GameState* gs) {
     // Only works on upright pipes
     if (this->pipeToWorld[2].z >= 0.8f) {
         Float3 posRelPipe = this->pipeToWorld.invertedOrtho() * gs->bird.pos[0];
-        if (posRelPipe.asFloat2().length2() < 0.4f) {
+        if (posRelPipe.asFloat2().length2() < 0.45f) {
             return {true, QuatPos::fromOrtho(this->pipeToWorld)};
         }
     }
+
     return {};
 }
 
@@ -342,6 +343,7 @@ void updateMovement(UpdateContext* uc) {
                     gSoLoud.play(a->enterPipeSound, 0.7f);
                     auto teleport = gs->mode.teleport().switchTo();
                     teleport->startPos = gs->bird.pos[0];
+                    teleport->startPipeCenter = tr.entrance.pos;
                     teleport->ejectPos = advanceToEjectPos(hit.obst) + Float3{0, 0, 0.2f};
                     return false;
                 }
@@ -411,8 +413,10 @@ void updateMovement(UpdateContext* uc) {
             gs->bird.aimTarget[1] = teleport->ejectPos - Float3{e * GameState::ScrollRate, 0, 0};
         }
         if (teleport->time < 0.4f) {
-            gs->bird.pos[1] = teleport->startPos;
-            gs->bird.pos[1].z -= teleport->time * 6.f;
+            float t = powf(1.f - (teleport->time / 0.4f), 1.5f);
+            gs->bird.pos[1] = {
+                mix(teleport->startPipeCenter.asFloat2(), teleport->startPos.asFloat2(), t),
+                teleport->startPos.z - teleport->time * 6.f};
         } else if (teleport->time >= duration - 0.4f) {
             gs->bird.pos[1] = teleport->ejectPos;
             gs->bird.pos[1].z -= (duration - teleport->time) * 6.f;
@@ -589,6 +593,7 @@ void adjustX(GameState* gs, float amount) {
     }
     if (auto teleport = gs->mode.teleport()) {
         teleport->startPos.x += amount;
+        teleport->startPipeCenter.x += amount;
         teleport->ejectPos.x += amount;
     } else if (auto impact = gs->mode.impact()) {
         impact->hit.pos.x += amount;

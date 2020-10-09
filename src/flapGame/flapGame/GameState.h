@@ -115,6 +115,7 @@ struct GameState {
         struct Teleport {
             float time = 0;
             Float3 startPos = {0, 0, 0};
+            Float3 startPipeCenter = {0, 0, 0};
             Float3 ejectPos = {0, 0, 0};
             bool didTele = false;
             bool didPlayPop = false;
