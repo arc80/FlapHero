@@ -617,7 +617,7 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
         GL_CHECK(DepthRange(0.5, 0.5));
         float angle = mix(ts->raysAngle[0], ts->raysAngle[1], dc->intervalFrac);
         Rect rayFrustum = dc->fullVF.frustum * (0.751708f / dc->fullVF.frustum.maxs.x);
-        a->rayShader->draw(extraZoom * Float4x4::makeProjection(rayFrustum, 0.001f, 2.f) *
+        a->rayShader->draw(extraZoom * Float4x4::makeProjection(rayFrustum, 0.01f, 2.f) *
                                Float4x4::makeRotation({1, 0, 0}, -0.33f * Pi) *
                                Float4x4::makeTranslation({0, 0.55f, -1}) *
                                Float4x4::makeScale(2.f) * Float4x4::makeRotation({0, 0, 1}, angle),
