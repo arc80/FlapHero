@@ -1253,7 +1253,7 @@ PLY_NO_INLINE void HypnoShader::draw(const Float4x4& modelToViewport, GLuint tex
                                      const Texture& palette, float atScale, float timeParam) const {
     static constexpr float base = 1.3f;
     static constexpr float minScale = 0.1f;
-    static constexpr float maxScale = 6.5f;
+    static constexpr float maxScale = 9.f;
 
     struct InstanceAttribs {
         Float3 placement = {0, 0, 0};

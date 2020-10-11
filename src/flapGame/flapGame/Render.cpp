@@ -184,8 +184,11 @@ void drawTitle(const TitleScreen* titleScreen, const Float4x4& extraZoom) {
 
     Float4x4 w2c = {{{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
     float worldDistance = 15.f;
+    float offset = dc->fullVF.bounds2D.mins.y * (0.08f / -200.f);
+    float frustumScale = mix(0.1875f, 0.2f, dc->fullVF.bounds2D.mins.y / -200.f);
     Float4x4 cameraToViewport =
-        extraZoom * Float4x4::makeProjection(dc->visibleExtents / worldDistance, 1.f, 40.f);
+        extraZoom *
+        Float4x4::makeProjection(dc->fullVF.frustum / frustumScale - Float2{0, offset}, 1.f, 40.f);
     Float3 skewNorm = getNorm(&titleScreen->titleRot, dc->fracTime);
     Float4x4 skewRot = Quaternion::fromUnitVectors(Float3{0, 0, 1}, skewNorm).toFloat4x4();
     Float4x4 mat = cameraToViewport * w2c * Float4x4::makeTranslation({0, worldDistance, 4.f}) *
@@ -223,10 +226,12 @@ void drawStars(const TitleScreen* titleScreen, const Float4x4& extraZoom) {
     Array<StarShader::InstanceData> insData;
     insData.reserve(titleScreen->starSys.stars.numItems());
     float lensDist = 2.f;
+    float offset = dc->fullVF.bounds2D.mins.y * (0.12f / -200.f);
     Float4x4 worldToViewport =
         extraZoom *
         Float4x4::makeProjection((fullBounds2D - fullBounds2D.mid()) *
-                                     (2.f / (lensDist * fullBounds2D.width())),
+                                         (2.f / (lensDist * fullBounds2D.width())) -
+                                     Float2{0, offset},
                                  0.01f, 10.f) *
         Float4x4::makeTranslation({0, 0, -lensDist});
     for (StarSystem::Star& star : titleScreen->starSys.stars) {
@@ -462,8 +467,8 @@ void renderGamePanel(const DrawContext* dc) {
         if (auto impact = gs->mode.impact()) {
             // Draw full-screen flash
             float t = clamp(impact->time + dc->fracTime, 0.f, 1.f);
-            a->flatShader->drawQuad(Float4x4::identity(), Float4{1, 1, 1, (1.f - t) * (1.f - t) * 0.8f},
-                                    false);
+            a->flatShader->drawQuad(Float4x4::identity(),
+                                    Float4{1, 1, 1, (1.f - t) * (1.f - t) * 0.8f}, false);
 
             u32 fm = (u32) quantizeDown(impact->flashFrame, 1.f);
             a->flashShader->drawQuad(
@@ -506,15 +511,18 @@ void renderGamePanel(const DrawContext* dc) {
                           String::from(gs->outerCtx->bestScore), {1.f, 0.45f, 0.05f, sp2.second});
 
             if (dead->showPrompt) {
+                float yOffset = min(20.f, -dc->fullVF.bounds2D.mins.y / 2);
                 TextBuffers playAgain = generateTextBuffers(a->sdfFont, "TAP TO PLAY AGAIN");
                 drawText(a->sdfCommon, a->sdfFont, playAgain,
                          Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                             Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
+                             Float4x4::makeTranslation({244, 12 - yOffset, 0}) *
+                             Float4x4::makeScale(0.9f) *
                              Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
                          {0.85f, 1.75f}, {0, 0, 0, 0.4f});
                 drawText(a->sdfCommon, a->sdfFont, playAgain,
                          Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                             Float4x4::makeTranslation({240, 24, 0}) * Float4x4::makeScale(0.9f) *
+                             Float4x4::makeTranslation({240, 16 - yOffset, 0}) *
+                             Float4x4::makeScale(0.9f) *
                              Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
                          {0.75f, 16.f}, {1.f, 1.f, 1.f, 1.f});
             }
@@ -553,6 +561,7 @@ void renderGamePanel(const DrawContext* dc) {
 void drawTitleScreenToTemp(TitleScreen* ts) {
     const Assets* a = Assets::instance;
     const DrawContext* dc = DrawContext::instance();
+    float aspect = dc->fullVF.bounds2D.height() / dc->fullVF.bounds2D.width();
 
     Float2 vpSize = dc->fullVF.viewport.size();
     if (!ts->tempTex.id || ts->tempTex.dims() != vpSize) {
@@ -599,7 +608,7 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
         float hypnoAngle = mix(ts->hypnoAngle[0], ts->hypnoAngle[1], dc->intervalFrac);
         float hypnoScale = powf(1.3f, mix(ts->hypnoZoom[0], ts->hypnoZoom[1], dc->intervalFrac));
         a->hypnoShader->draw(
-            Float4x4::makeOrtho({{-3.f, -4.f}, {3.f, 4.f}}, -1.f, 0.01f) *
+            Float4x4::makeOrtho({{-3.f, -3.f * aspect}, {3.f, 3.f * aspect}}, -1.f, 0.01f) *
                 Float4x4::makeTranslation({0, -1.7f, 0}) * Float4x4::makeScale(ez * hypnoScale),
             a->waveTexture.id, a->hypnoPaletteTexture, ez * hypnoScale, hypnoAngle);
     }
@@ -607,8 +616,8 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
         // Draw rays
         GL_CHECK(DepthRange(0.5, 0.5));
         float angle = mix(ts->raysAngle[0], ts->raysAngle[1], dc->intervalFrac);
-        a->rayShader->draw(extraZoom *
-                               Float4x4::makeProjection(Pi / 2, vpSize.x / vpSize.y, 0.001f, 2.f) *
+        Rect rayFrustum = dc->fullVF.frustum * (0.751708f / dc->fullVF.frustum.maxs.x);
+        a->rayShader->draw(extraZoom * Float4x4::makeProjection(rayFrustum, 0.001f, 2.f) *
                                Float4x4::makeRotation({1, 0, 0}, -0.33f * Pi) *
                                Float4x4::makeTranslation({0, 0.55f, -1}) *
                                Float4x4::makeScale(2.f) * Float4x4::makeRotation({0, 0, 1}, angle),
@@ -617,15 +626,17 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     drawStars(ts, extraZoom);
     // Draw prompt
     if (ts->showPrompt && enablePrompt) {
+        float yOffset = min(50.f, -dc->fullVF.bounds2D.mins.y / 2);
         TextBuffers tapToPlay = generateTextBuffers(a->sdfFont, "TAP TO PLAY");
         drawText(a->sdfCommon, a->sdfFont, tapToPlay,
                  extraZoom * Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
-                     Float4x4::makeTranslation({244, 20, 0}) * Float4x4::makeScale(0.9f) *
+                     Float4x4::makeTranslation({244, 20 - yOffset, 0}) * Float4x4::makeScale(0.9f) *
                      Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
                  {0.85f, 1.75f}, {0, 0, 0, 0.8f});
         drawOutlinedText(a->sdfOutline, a->sdfFont, tapToPlay,
                          extraZoom * Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
-                             Float4x4::makeTranslation({240, 24, 0}) * Float4x4::makeScale(0.9f) *
+                             Float4x4::makeTranslation({240, 24 - yOffset, 0}) *
+                             Float4x4::makeScale(0.9f) *
                              Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
                          {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.6f, 16.f}, {0.75f, 12.f}});
     }
@@ -651,10 +662,15 @@ void render(GameFlow* gf, const IntVec2& fbSize, float renderDT) {
 
     // Fit frustum in viewport
     Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
-    ViewportFrustum fullVF =
-        fitFrustumInViewport({{0, 0}, {(float) fbSize.x, (float) fbSize.y}},
-                             visibleExtents / GameState::WorldDistance, Rect{{0, 0}, {480, 640}})
+    ViewportFrustum fullVF = [&] {
+        float minAspect = 4.f / 3.f;
+        float aspect = clamp(float(fbSize.y) / fbSize.x, minAspect, 7.f / 3.f);
+        Rect frustumRect = expand(Rect{{0, 0}}, Float2{1.f, aspect} * 0.148594f);
+        Rect bounds2D = (Rect{{0, 0}, {1.f, aspect}} - Float2{0, (aspect - minAspect) / 2}) * 480.f;
+        return fitFrustumInViewport({{0, 0}, {(float) fbSize.x, (float) fbSize.y}}, frustumRect,
+                                    bounds2D)
             .quantize();
+    }();
 
     // Before drawing the panels, draw the title screen (if any) to a temporary buffer
     if (gf->gameState->titleScreen) {

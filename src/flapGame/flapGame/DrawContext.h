@@ -6,9 +6,11 @@ namespace flap {
 struct GameState;
 
 struct ViewportFrustum {
-    Rect viewport;
-    Rect frustum; // 3D
-    Rect bounds2D;
+    Rect viewport; // Viewport extents relative to render target
+    Rect frustum;  // Frustum rect on z = -1 plane
+    Rect bounds2D; // Logical 2D rect; used to determine text height
+
+    // If rendering to a non-retina display, bounds2D == viewport
 
     PLY_NO_DISCARD ViewportFrustum quantize() const {
         Rect qvp = {quantizeDown(this->viewport.mins + 0.5f, 1.f),
