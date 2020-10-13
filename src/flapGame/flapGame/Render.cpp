@@ -484,6 +484,14 @@ void renderGamePanel(const DrawContext* dc) {
             impact->flashFrame = wrap(nextFrame, 4.f);
         }
 
+        // Draw front clouds
+        float frontCloudX = mix(gs->frontCloudX[0], gs->frontCloudX[1], dc->intervalFrac);
+        for (const DrawMesh* dm : a->frontCloud) {
+            a->texturedShader->draw(cameraToViewport * worldToCamera *
+                                        Float4x4::makeTranslation({frontCloudX, -4.f, 21.f}),
+                                    a->frontCloudTexture.id, {1, 1, 1, 1}, dm, true);
+        }
+
         // Draw text overlays
         auto dead = gs->lifeState.dead();
         bool showGameOver = dead && dead->delay <= 0;

@@ -585,6 +585,8 @@ void Assets::load(StringView assetsPath) {
             getMeshes(&mm, scene, scene->mRootNode->FindNode("City"), VT::TexturedNormal);
         assets->cloud =
             getMeshes(&mm, scene, scene->mRootNode->FindNode("Cloud"), VT::TexturedFlat);
+        assets->frontCloud =
+            getMeshes(&mm, scene, scene->mRootNode->FindNode("FrontCloud"), VT::TexturedFlat);
         assets->shrubGroup = loadDrawGroup(scene, scene->mRootNode->FindNode("ShrubGroup"), &mm);
         assets->cloudGroup = loadDrawGroup(scene, scene->mRootNode->FindNode("CloudGroup"), &mm);
         assets->cityGroup = loadDrawGroup(scene, scene->mRootNode->FindNode("CityGroup"), &mm);
@@ -663,6 +665,15 @@ void Assets::load(StringView assetsPath) {
         SamplerParams params;
         params.repeatY = false;
         assets->cloudTexture.init(im, 3, params);
+    }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "FrontCloud.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        SamplerParams params;
+        params.repeatY = false;
+        assets->frontCloudTexture.init(im, 3, params);
     }
     {
         Buffer pngData =

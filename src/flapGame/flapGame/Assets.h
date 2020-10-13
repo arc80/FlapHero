@@ -71,6 +71,7 @@ struct Assets {
     Array<Owned<DrawMesh>> shrub2;
     Array<Owned<DrawMesh>> city;
     Array<Owned<DrawMesh>> cloud;
+    Array<Owned<DrawMesh>> frontCloud;
     Array<Owned<DrawMesh>> title;
     Array<Owned<DrawMesh>> titleSideBlue;
     Array<Owned<DrawMesh>> titleSideRed;
@@ -91,6 +92,7 @@ struct Assets {
     Texture waveTexture;
     Texture hypnoPaletteTexture;
     Texture cloudTexture;
+    Texture frontCloudTexture;
     Texture windowTexture;
     Texture stripeTexture;
     Texture shrubTexture;

@@ -291,6 +291,7 @@ struct GameState {
     Playfield playfield;
     float shrubX[2] = {-ShrubRepeat, -ShrubRepeat};
     float buildingX[2] = {0, 0};
+    float frontCloudX[2] = {0, 0};
     float cloudAngleOffset = 0.05f;
 
     // FX

@@ -581,6 +581,7 @@ void adjustX(GameState* gs, float amount) {
         gs->camToWorld[i].pos.x += amount;
         gs->shrubX[i] += amount;
         gs->buildingX[i] += amount;
+        gs->frontCloudX[i] += amount;
     }
     for (ObstacleSequence* seq : gs->playfield.sequences) {
         seq->xSeqRelWorld += amount;
@@ -683,6 +684,7 @@ void timeStep(UpdateContext* uc) {
     gs->camToWorld[0] = gs->camToWorld[1];
     gs->shrubX[0] = gs->shrubX[1];
     gs->buildingX[0] = gs->buildingX[1];
+    gs->frontCloudX[0] = gs->frontCloudX[1];
     gs->scoreTime[0] = gs->scoreTime[1];
 
     // Update title screen, if present
@@ -976,6 +978,8 @@ void GameState::updateCamera(bool cut) {
         wrapPair(shrubX[0], shrubX[1], GameState::ShrubRepeat * a->shrubGroup.groupScale);
         buildingX[1] = buildingX[0] + truck * (1.f - a->cityGroup.groupScale);
         wrapPair(buildingX[0], buildingX[1], GameState::BuildingRepeat * a->cityGroup.groupScale);
+        frontCloudX[1] = frontCloudX[0] + truck * 0.85f;
+        wrapPair(frontCloudX[0], frontCloudX[1], 28.f);
     }
 }
 
