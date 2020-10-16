@@ -151,8 +151,7 @@ struct FlatShader {
     static Owned<FlatShader> create();
 
     void draw(const Float4x4& modelToViewport, const DrawMesh* drawMesh, bool writeDepth);
-    void drawQuad(const Float4x4& modelToViewport, const Float4& linearColor,
-                  bool useDepth = true);
+    void drawQuad(const Float4x4& modelToViewport, const Float4& linearColor, bool useDepth = true);
 };
 
 struct StarShader {
@@ -270,24 +269,18 @@ struct PuffShader {
               ArrayView<const InstanceData> instanceData);
 };
 
-/*
-struct SweatShader {
-    struct InstanceData {
-        Float4x4 modelToViewport;
-        Float4 color;
-    };
-
+struct ShapeShader {
     ShaderProgram shader;
     GLint vertPositionAttrib = 0;
     GLint vertTexCoordAttrib = 0;
-    GLint instModelToViewportAttrib = 0;
-    GLint instColorAttrib = 0;
+    GLint modelToViewportUniform = 0;
     GLint textureUniform = 0;
+    GLint colorUniform = 0;
+    GLint slopeUniform = 0;
 
-    static Owned<StarShader> create();
-    void draw(const DrawMesh* drawMesh, GLuint textureID,
-              ArrayView<const InstanceData> instanceData);
+    static Owned<ShapeShader> create();
+    void draw(const Float4x4& modelToViewport, GLuint textureID, const Float4& colorAndRamp,
+              float slope, const DrawMesh* drawMesh);
 };
-*/
 
 } // namespace flap

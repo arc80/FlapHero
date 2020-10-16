@@ -763,13 +763,34 @@ void Assets::load(StringView assetsPath) {
         assets->puffNormalTexture.init(im, 3, params);
     }
     {
-        Buffer pngData = FileSystem::native()->loadBinary(NativePath::join(assetsPath, "sweat.png"));
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "sweat.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData, false);
         SamplerParams params;
         params.repeatX = false;
         params.repeatY = false;
         assets->sweatTexture.init(im, 3, params);
+    }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "Arrow.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        SamplerParams params;
+        params.repeatX = false;
+        params.repeatY = false;
+        assets->arrowTexture.init(im, 3, params);
+    }
+    {
+        Buffer pngData =
+            FileSystem::native()->loadBinary(NativePath::join(assetsPath, "Circle.png"));
+        PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
+        image::OwnImage im = loadPNG(pngData);
+        SamplerParams params;
+        params.repeatX = false;
+        params.repeatY = false;
+        assets->circleTexture.init(im, 3, params);
     }
 
     // Load font resources
@@ -797,6 +818,7 @@ void Assets::load(StringView assetsPath) {
     assets->copyShader = CopyShader::create();
     assets->gradientShader = GradientShader::create();
     assets->puffShader = PuffShader::create();
+    assets->shapeShader = ShapeShader::create();
 
     // Load sounds
     assets->titleMusic.load(
@@ -819,8 +841,7 @@ void Assets::load(StringView assetsPath) {
                                        .withNullTerminator()
                                        .bytes);
     }
-    assets->bounceSound.load(
-        NativePath::join(assetsPath, "Bounce.wav").withNullTerminator().bytes);
+    assets->bounceSound.load(NativePath::join(assetsPath, "Bounce.wav").withNullTerminator().bytes);
     assets->enterPipeSound.load(
         NativePath::join(assetsPath, "EnterPipe.wav").withNullTerminator().bytes);
     assets->exitPipeSound.load(

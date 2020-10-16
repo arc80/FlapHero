@@ -103,6 +103,8 @@ struct Assets {
     Texture starTexture;
     Texture puffNormalTexture;
     Texture sweatTexture;
+    Texture arrowTexture;
+    Texture circleTexture;
 
     Owned<SDFCommon> sdfCommon;
     Owned<SDFOutline> sdfOutline;
@@ -122,6 +124,7 @@ struct Assets {
     Owned<CopyShader> copyShader;
     Owned<GradientShader> gradientShader;
     Owned<PuffShader> puffShader;
+    Owned<ShapeShader> shapeShader;
 
     // Sounds
     SoLoud::Wav titleMusic;

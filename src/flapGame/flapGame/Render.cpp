@@ -460,7 +460,9 @@ void renderGamePanel(const DrawContext* dc) {
             Float4x4 birdToViewport =
                 cameraToViewport * worldToCamera * Float4x4::makeTranslation(birdRelWorld);
             gs->sweat.addInstances(birdToViewport, insData);
-            a->starShader->draw(a->quad, a->sweatTexture.id, insData.view());
+            if (!insData.isEmpty()) {
+                a->starShader->draw(a->quad, a->sweatTexture.id, insData.view());
+            }
         }
 
         // Draw impact flash
@@ -499,12 +501,12 @@ void renderGamePanel(const DrawContext* dc) {
             TextBuffers gameOver = generateTextBuffers(a->sdfFont, "GAME OVER");
             drawText(a->sdfCommon, a->sdfFont, gameOver,
                      Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                         Float4x4::makeTranslation({244, 520, 0}) * Float4x4::makeScale(1.8f) *
+                         Float4x4::makeTranslation({244, 506, 0}) * Float4x4::makeScale(1.8f) *
                          Float4x4::makeTranslation({-gameOver.xMid(), 0, 0}),
                      {0.85f, 1.75f}, {0, 0, 0, 0.4f});
             drawText(a->sdfCommon, a->sdfFont, gameOver,
                      Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                         Float4x4::makeTranslation({240, 524, 0}) * Float4x4::makeScale(1.8f) *
+                         Float4x4::makeTranslation({240, 510, 0}) * Float4x4::makeScale(1.8f) *
                          Float4x4::makeTranslation({-gameOver.xMid(), 0, 0}),
                      {0.75f, 32.f}, {1.f, 0.85f, 0.0f, 1.f});
 
@@ -533,6 +535,19 @@ void renderGamePanel(const DrawContext* dc) {
                              Float4x4::makeScale(0.9f) *
                              Float4x4::makeTranslation({-playAgain.xMid(), 0, 0}),
                          {0.75f, 16.f}, {1.f, 1.f, 1.f, 1.f});
+            }
+
+            {
+                // Draw back button
+                Float2 buttonPos = vf.bounds2D.topLeft() + Float2{38, -38};
+                a->shapeShader->draw(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
+                                         Float4x4::makeTranslation({buttonPos, 0}) *
+                                         Float4x4::makeScale(30.f),
+                                     a->circleTexture.id, {0.f, 0.f, 0.f, 0.3f}, 16, a->quad);
+                a->shapeShader->draw(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
+                                         Float4x4::makeTranslation({buttonPos, 0}) *
+                                         Float4x4::makeScale(20.f),
+                                     a->arrowTexture.id, {1, 1, 1, 1}, 16, a->quad);
             }
         }
 
