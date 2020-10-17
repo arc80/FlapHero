@@ -283,7 +283,8 @@ void updateMovement(UpdateContext* uc) {
 
     if (auto playing = gs->mode.playing()) {
         // Handle jump
-        if (uc->doJump) {
+        if (gs->doJump) {
+            gs->doJump = false;
             playing->timeDilation.none().switchTo();
             playing->zVel[0] = GameState::LaunchVel;
             playing->zVel[1] = GameState::LaunchVel;
@@ -626,42 +627,42 @@ void wrapPair(float& v0, float& v1, float range) {
 const FixedArray<Tuple<s32, s32>, 8> NoteMap = {{0, 0}, {0, 2}, {1, 0}, {1, 1},
                                                 {2, 0}, {2, 2}, {3, 0}, {3, 1}};
 
+void doInput(GameState* gs, const Float2& pos, bool down) {
+    switch (gs->mode.id) {
+        using ID = GameState::Mode::ID;
+        case ID::Title: {
+            if (down) {
+                gs->startPlaying();
+                gs->outerCtx->onGameStart();
+            }
+            break;
+        }
+        case ID::Playing:
+        case ID::Impact: {
+            if (down) {
+                gs->doJump = true;
+            }
+            break;
+        }
+        case ID::Blending:
+        case ID::Recovering: {
+            if (down) {
+                if ((gs->damage < 2) || GODMODE) {
+                    gs->mode.playing().switchTo();
+                    gs->doJump = true;
+                }
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+
 void timeStep(UpdateContext* uc) {
     Assets* a = Assets::instance;
     GameState* gs = uc->gs;
     float dt = gs->outerCtx->simulationTimeStep;
-
-    // Handle inputs
-    if (gs->buttonPressed) {
-        gs->buttonPressed = false;
-        switch (gs->mode.id) {
-            using ID = GameState::Mode::ID;
-            case ID::Title: {
-                gs->startPlaying();
-                gs->outerCtx->onGameStart();
-                break;
-            }
-            case ID::Playing: {
-                uc->doJump = true;
-                break;
-            }
-            case ID::Impact: {
-                // Keep button pressed status until recovering
-                gs->buttonPressed = true;
-                break;
-            }
-            case ID::Blending:
-            case ID::Recovering: {
-                if ((gs->damage < 2) || GODMODE) {
-                    gs->mode.playing().switchTo();
-                    uc->doJump = true;
-                }
-                break;
-            }
-            default:
-                break;
-        }
-    }
 
     // Initialize start of interval
     uc->prevDelta = gs->bird.pos[1] - gs->bird.pos[0];

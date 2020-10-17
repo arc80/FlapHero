@@ -86,7 +86,6 @@ struct GameState {
         float simulationTimeStep = 0.005f;
         float fracTime = 0.f;
         u32 bestScore = 0;
-        bool buttonPressed = false;
     };
 
     struct CurveSegment {
@@ -200,8 +199,8 @@ struct GameState {
 
     OuterContext* outerCtx = nullptr;
     Random random;
-    bool buttonPressed = false;
     Mode mode;
+    bool doJump = false;
     LifeState lifeState;
     Owned<TitleScreen> titleScreen;
 
@@ -305,7 +304,6 @@ struct GameState {
 
 struct UpdateContext {
     GameState* gs = nullptr;
-    bool doJump = false;
     Float3 prevDelta = {0, 0, 0};
     Quaternion deltaRot = {0, 0, 0, 1};
 
@@ -316,6 +314,7 @@ struct UpdateContext {
     };
 };
 
+void doInput(GameState* gs, const Float2& pos, bool down);
 void timeStep(UpdateContext* uc);
 
 } // namespace flap

@@ -33,14 +33,32 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
-    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
-        doInput(gf);
+    if (key == GLFW_KEY_SPACE) {
+        if (action == GLFW_PRESS) {
+            doInput(gf, {0, 0}, true);
+        } else if (action == GLFW_RELEASE) {
+            doInput(gf, {0, 0}, false);
+        }
     }
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
         flap::reloadAssets();
     }
     if (key == GLFW_KEY_P && action == GLFW_PRESS) {
         togglePause(gf);
+    }
+}
+
+static void mousebutton_callback(GLFWwindow* window, int button, int action, int mods) {
+    flap::GameFlow* gf = (flap::GameFlow*) glfwGetWindowUserPointer(window);
+    if (button == GLFW_MOUSE_BUTTON_1) {
+        int renderWidth = 0;
+        int renderHeight = 0;
+        glfwGetFramebufferSize(window, &renderWidth, &renderHeight);
+        double x = 0, y = 0;
+        glfwGetCursorPos(window, &x, &y);
+        Float2 pos2D = flap::map2DPos({float(renderWidth), float(renderHeight)},
+                                      {float(x) + 0.5f, float(renderHeight) - 0.5f - float(y)});
+        doInput(gf, pos2D, action == GLFW_PRESS);
     }
 }
 
@@ -57,7 +75,7 @@ int main(int argc, char* argv[]) {
     }
 
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);    
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
@@ -92,9 +110,10 @@ int main(int argc, char* argv[]) {
     flap::init(NativePath::join(FLAPGAME_REPO_FOLDER, "data"));
 
     // Create gf
-    flap::GameFlow *gf = flap::createGameFlow();
+    flap::GameFlow* gf = flap::createGameFlow();
     glfwSetWindowUserPointer(window, gf);
     glfwSetKeyCallback(window, key_callback);
+    glfwSetMouseButtonCallback(window, mousebutton_callback);
 
     // Main loop
     double lastTime = glfwGetTime();
@@ -120,7 +139,7 @@ int main(int argc, char* argv[]) {
 
     // Destroy gf
     destroy(gf);
-    
+
     // Shutdown game
     flap::shutdown();
 

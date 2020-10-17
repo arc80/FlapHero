@@ -17,8 +17,9 @@ void shutdown();
 GameFlow* createGameFlow();
 void destroy(GameFlow* gf);
 void update(GameFlow* gf, float dt);
-void doInput(GameFlow* gf);
+void doInput(GameFlow* gf, const Float2& pos, bool down);
 void togglePause(GameFlow* gf);
 void render(GameFlow* gf, const IntVec2& fbSize, float renderDT);
+Float2 map2DPos(const Float2& fbSize, const Float2& pos);
 
 } // namespace flap

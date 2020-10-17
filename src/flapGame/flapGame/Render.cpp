@@ -667,6 +667,19 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     GL_CHECK(BindFramebuffer(GL_FRAMEBUFFER, prevFBO));
 }
 
+ViewportFrustum getViewportFrustum(const Float2& fbSize) {
+    float minAspect = 4.f / 3.f;
+    float aspect = clamp(fbSize.y / fbSize.x, minAspect, 7.f / 3.f);
+    Rect frustumRect = expand(Rect{{0, 0}}, Float2{1.f, aspect} * 0.148594f);
+    Rect bounds2D = (Rect{{0, 0}, {1.f, aspect}} - Float2{0, (aspect - minAspect) / 2}) * 480.f;
+    return fitFrustumInViewport({{0, 0}, fbSize}, frustumRect, bounds2D).quantize();
+}
+
+Float2 map2DPos(const Float2& fbSize, const Float2& pos) {
+    ViewportFrustum vf = getViewportFrustum(fbSize);
+    return vf.bounds2D.mix(vf.viewport.unmix(pos));
+}
+
 void render(GameFlow* gf, const IntVec2& fbSize, float renderDT) {
     PLY_ASSERT(fbSize.x > 0 && fbSize.y > 0);
     const Assets* a = Assets::instance;
@@ -685,15 +698,7 @@ void render(GameFlow* gf, const IntVec2& fbSize, float renderDT) {
 
     // Fit frustum in viewport
     Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
-    ViewportFrustum fullVF = [&] {
-        float minAspect = 4.f / 3.f;
-        float aspect = clamp(float(fbSize.y) / fbSize.x, minAspect, 7.f / 3.f);
-        Rect frustumRect = expand(Rect{{0, 0}}, Float2{1.f, aspect} * 0.148594f);
-        Rect bounds2D = (Rect{{0, 0}, {1.f, aspect}} - Float2{0, (aspect - minAspect) / 2}) * 480.f;
-        return fitFrustumInViewport({{0, 0}, {(float) fbSize.x, (float) fbSize.y}}, frustumRect,
-                                    bounds2D)
-            .quantize();
-    }();
+    ViewportFrustum fullVF = getViewportFrustum(fbSize.to<Float2>());
 
     // Before drawing the panels, draw the title screen (if any) to a temporary buffer
     if (gf->gameState->titleScreen) {

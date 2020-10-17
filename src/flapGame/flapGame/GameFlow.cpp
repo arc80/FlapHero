@@ -35,8 +35,24 @@ GameFlow::GameFlow() {
     this->titleMusicVoice = gSoLoud.play(Assets::instance->titleMusic);
 }
 
-void doInput(GameFlow* gf) {
-    gf->buttonPressed = true;
+void doInput(GameFlow* gf, const Float2& pos, bool down) {
+    UpdateContext uc;
+    uc.gs = gf->gameState;
+    PLY_SET_IN_SCOPE(UpdateContext::instance_, &uc);
+
+    Assets* a = Assets::instance;
+    if (down) {
+        auto dead = gf->gameState->lifeState.dead();
+        if (dead && dead->delay <= 0) {
+            // start transition
+            auto trans = gf->trans.on().switchTo();
+            trans->oldGameState = std::move(gf->gameState);
+            gf->resetGame(true);
+            gSoLoud.play(a->swipeSound, 1.f);
+            return;
+        }
+    }
+    doInput(gf->gameState, pos, down);
 }
 
 void togglePause(GameFlow* gf) {
@@ -52,20 +68,6 @@ void update(GameFlow* gf, float dt) {
 
     // Timestep
     GameState* gs = gf->gameState;
-    if (gf->buttonPressed) {
-        auto dead = gs->lifeState.dead();
-        if (dead && dead->delay <= 0) {
-            // start transition
-            auto trans = gf->trans.on().switchTo();
-            trans->oldGameState = std::move(gf->gameState);
-            gf->resetGame(true);
-            gs = gf->gameState;
-            gSoLoud.play(a->swipeSound, 1.f);
-        } else {
-            gs->buttonPressed = true;
-        }
-        gf->buttonPressed = false;
-    }
     gf->fracTime += dt;
 
     while (gf->fracTime >= gf->simulationTimeStep) {
