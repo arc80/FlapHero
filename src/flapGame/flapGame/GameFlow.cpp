@@ -13,6 +13,14 @@ void GameFlow::onGameStart() {
     }
 }
 
+void GameFlow::onRestart() {
+    Assets* a = Assets::instance;
+    auto trans = this->trans.on().switchTo();
+    trans->oldGameState = std::move(this->gameState);
+    this->resetGame(true);
+    gSoLoud.play(a->swipeSound, 1.f);
+}
+
 void GameFlow::resetGame(bool isPlaying) {
     this->gameState = new GameState;
     this->gameState->outerCtx = this;
@@ -39,19 +47,6 @@ void doInput(GameFlow* gf, const Float2& pos, bool down) {
     UpdateContext uc;
     uc.gs = gf->gameState;
     PLY_SET_IN_SCOPE(UpdateContext::instance_, &uc);
-
-    Assets* a = Assets::instance;
-    if (down) {
-        auto dead = gf->gameState->lifeState.dead();
-        if (dead && dead->delay <= 0) {
-            // start transition
-            auto trans = gf->trans.on().switchTo();
-            trans->oldGameState = std::move(gf->gameState);
-            gf->resetGame(true);
-            gSoLoud.play(a->swipeSound, 1.f);
-            return;
-        }
-    }
     doInput(gf->gameState, pos, down);
 }
 

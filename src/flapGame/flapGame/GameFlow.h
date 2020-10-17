@@ -29,6 +29,7 @@ struct GameFlow final : GameState::OuterContext {
     GameFlow();
 
     virtual void onGameStart() override;
+    virtual void onRestart() override;
     void resetGame(bool isPlaying);
 };
 

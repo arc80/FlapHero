@@ -628,6 +628,15 @@ const FixedArray<Tuple<s32, s32>, 8> NoteMap = {{0, 0}, {0, 2}, {1, 0}, {1, 1},
                                                 {2, 0}, {2, 2}, {3, 0}, {3, 1}};
 
 void doInput(GameState* gs, const Float2& pos, bool down) {
+    auto dead = gs->lifeState.dead();
+    if (dead && dead->delay <= 0) {
+        if (down) {
+            gs->outerCtx->onRestart();
+            return;
+        }
+        return;
+    }
+
     switch (gs->mode.id) {
         using ID = GameState::Mode::ID;
         case ID::Title: {

@@ -82,6 +82,8 @@ struct GameState {
     struct OuterContext {
         virtual void onGameStart() {
         }
+        virtual void onRestart() {
+        }
 
         float simulationTimeStep = 0.005f;
         float fracTime = 0.f;
@@ -173,6 +175,7 @@ struct GameState {
             bool playedSound = false;
             bool showPrompt = false;
             float promptTime = 0;
+            bool buttonIsDown = false;
         };
 #include "codegen/switch-flap-GameState-LifeState.inl" //@@ply
     };
