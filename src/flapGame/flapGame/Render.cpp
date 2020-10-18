@@ -341,14 +341,6 @@ void renderGamePanel(const DrawContext* dc) {
     }
 
     if (!gs->mode.title()) {
-        // Draw obstacles
-        Obstacle::DrawParams odp;
-        odp.cameraToViewport = cameraToViewport;
-        odp.worldToCamera = worldToCamera;
-        for (const Obstacle* obst : gs->playfield.obstacles) {
-            obst->draw(odp);
-        }
-
         // Draw floor
         for (const DrawMesh* dm : a->floorStripe) {
             a->texMatShader->draw(
@@ -377,6 +369,14 @@ void renderGamePanel(const DrawContext* dc) {
                     Float4x4::makeTranslation({0.f, 0.f, dc->visibleExtents.mins.y + 4.f}) *
                     Float4x4::makeRotation({0, 0, 1}, Pi / 2.f),
                 dm, {}, &props);
+        }
+
+        // Draw obstacles
+        Obstacle::DrawParams odp;
+        odp.cameraToViewport = cameraToViewport;
+        odp.worldToCamera = worldToCamera;
+        for (const Obstacle* obst : gs->playfield.obstacles) {
+            obst->draw(odp);
         }
 
         // Draw shrubs
