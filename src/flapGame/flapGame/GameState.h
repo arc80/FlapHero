@@ -135,6 +135,7 @@ struct GameState {
             float time = 0;
             float totalTime = 1.f;
             FixedArray<Float2, 4> cps;
+            bool playedSound = false;
         };
         struct Blending {
             Float2 fromVel = {0, 0};
@@ -228,6 +229,7 @@ struct GameState {
     u32 damage = 0;
     u32 note = 0;
     SoLoud::handle flapVoice = -1;
+    SoLoud::handle wobbleVoice = -1;
     PLY_INLINE bool isWeak() const {
         return this->damage > 0;
     }

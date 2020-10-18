@@ -357,6 +357,9 @@ void updateMovement(UpdateContext* uc) {
             impact->hit = hit;
             impact->time = 0;
             gSoLoud.play(a->playerHitSound, 0.7f);
+            if (gs->wobbleVoice != -1) {
+                gSoLoud.fadeVolume(gs->wobbleVoice, 0.f, 0.15f);
+            }
             return true;
         };
 
@@ -482,12 +485,19 @@ void updateMovement(UpdateContext* uc) {
                 auto falling = gs->mode.falling().switchTo();
                 gs->rotator.fromMode().switchTo();
                 applyBounce(hit, prevVel);
+                if (gs->bird.pos[0].z > -8.f) {
+                    gSoLoud.play(a->fallSound);
+                }
             }
         }
     } else if (auto recovering = gs->mode.recovering()) {
         recovering->time += dt;
         float dur = recovering->totalTime;
         float ooDur = 1.f / dur;
+        if (!recovering->playedSound && recovering->time >= 0.1f) {
+            recovering->playedSound = true;
+            gs->wobbleVoice = gSoLoud.play(a->wobbleSound, 0.35f);
+        }
         if (recovering->time < recovering->totalTime) {
             // sample the curve
             float t = recovering->time * ooDur;

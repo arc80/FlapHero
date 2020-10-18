@@ -848,6 +848,10 @@ void Assets::load(StringView assetsPath) {
         NativePath::join(assetsPath, "PopOut.wav").withNullTerminator().bytes);
     assets->buttonSound.load(
         NativePath::join(assetsPath, "Button.wav").withNullTerminator().bytes);
+    assets->wobbleSound.load(
+        NativePath::join(assetsPath, "Wobble.ogg").withNullTerminator().bytes);
+    assets->fallSound.load(
+        NativePath::join(assetsPath, "fall.wav").withNullTerminator().bytes);
 }
 
 } // namespace flap
