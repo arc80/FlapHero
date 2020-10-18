@@ -137,7 +137,8 @@ struct Assets {
     SoLoud::Wav bounceSound;
     SoLoud::Wav enterPipeSound;
     SoLoud::Wav exitPipeSound;
-    SoLoud::Wav buttonSound;
+    SoLoud::Wav buttonUpSound;
+    SoLoud::Wav buttonDownSound;
     SoLoud::Wav wobbleSound;
     SoLoud::Wav fallSound;
 

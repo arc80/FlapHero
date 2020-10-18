@@ -846,8 +846,10 @@ void Assets::load(StringView assetsPath) {
         NativePath::join(assetsPath, "EnterPipe.wav").withNullTerminator().bytes);
     assets->exitPipeSound.load(
         NativePath::join(assetsPath, "PopOut.wav").withNullTerminator().bytes);
-    assets->buttonSound.load(
-        NativePath::join(assetsPath, "Button.wav").withNullTerminator().bytes);
+    assets->buttonUpSound.load(
+        NativePath::join(assetsPath, "ButtonUp.wav").withNullTerminator().bytes);
+    assets->buttonDownSound.load(
+        NativePath::join(assetsPath, "ButtonDown.wav").withNullTerminator().bytes);
     assets->wobbleSound.load(
         NativePath::join(assetsPath, "Wobble.ogg").withNullTerminator().bytes);
     assets->fallSound.load(

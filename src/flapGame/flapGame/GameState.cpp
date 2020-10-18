@@ -651,6 +651,8 @@ void doInput(GameState* gs, const Float2& pos, bool down) {
         if (down) {
             if (inBackButton) {
                 dead->backButtonState.down().switchTo();
+                gSoLoud.play(Assets::instance->buttonDownSound, 1.f);
+
             } else {
                 gs->outerCtx->onRestart();
             }
@@ -658,7 +660,7 @@ void doInput(GameState* gs, const Float2& pos, bool down) {
         } else {
             if (inBackButton) {
                 dead->backButtonState.released().switchTo();
-                gSoLoud.play(Assets::instance->buttonSound, 1.5f);
+                gSoLoud.play(Assets::instance->buttonUpSound, 1.5f);
             } else {
                 dead->backButtonState.up().switchTo();
             }
