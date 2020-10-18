@@ -28,6 +28,7 @@ struct ViewportFrustum {
 
 ViewportFrustum fitFrustumInViewport(const Rect& viewport, const Rect& frustum,
                                      const Rect& bounds2D);
+ViewportFrustum getViewportFrustum(const Float2& fbSize);
 
 struct DrawContext {
     const GameState* gs = nullptr;

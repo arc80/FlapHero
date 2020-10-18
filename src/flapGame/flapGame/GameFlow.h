@@ -24,12 +24,14 @@ struct GameFlow final : GameState::OuterContext {
     bool isPaused = false;
     Owned<GameState> gameState;
     Transition trans;
+    float musicCountdown = 0.f;
     SoLoud::handle titleMusicVoice = 0;
 
     GameFlow();
 
     virtual void onGameStart() override;
     virtual void onRestart() override;
+    virtual void backToTitle() override;
     void resetGame(bool isPlaying);
 };
 

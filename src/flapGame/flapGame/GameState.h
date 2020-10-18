@@ -84,6 +84,8 @@ struct GameState {
         }
         virtual void onRestart() {
         }
+        virtual void backToTitle() {
+        }
 
         float simulationTimeStep = 0.005f;
         float fracTime = 0.f;
@@ -170,12 +172,25 @@ struct GameState {
         struct Alive {
         };
         struct Dead {
+            struct ButtonState {
+                // ply make switch
+                struct Up {
+                };
+                struct Down {
+                };
+                struct Released {
+                    float time = 0.f;
+                    bool didGoBack = false;
+                };
+#include "codegen/switch-flap-GameState-LifeState-Dead-ButtonState.inl" //@@ply
+            };
+
             float delay = 0.5f;
             float animateSignTime = 0;
             bool playedSound = false;
             bool showPrompt = false;
             float promptTime = 0;
-            bool buttonIsDown = false;
+            ButtonState backButtonState;
         };
 #include "codegen/switch-flap-GameState-LifeState.inl" //@@ply
     };
@@ -309,6 +324,7 @@ struct UpdateContext {
     GameState* gs = nullptr;
     Float3 prevDelta = {0, 0, 0};
     Quaternion deltaRot = {0, 0, 0, 1};
+    Rect bounds2D = {{0, 0}, {0, 0}};
 
     static UpdateContext* instance_;
     static PLY_INLINE UpdateContext* instance() {

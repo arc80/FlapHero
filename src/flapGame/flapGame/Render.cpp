@@ -259,7 +259,9 @@ void applyTitleScreen(const DrawContext* dc, float opacity, float premul) {
     GL_CHECK(Enable(GL_STENCIL_TEST));
     GL_CHECK(StencilFunc(GL_EQUAL, 0, 0xFF));
     GL_CHECK(StencilOp(GL_KEEP, GL_KEEP, GL_KEEP));
-    a->copyShader->drawQuad(Float4x4::identity(), ts->tempTex.id, opacity, premul);
+    Rect orthoFrustum = dc->fullVF.bounds2D.unmix(dc->vf.bounds2D) * 2.f - Float2{1.f};
+    a->copyShader->drawQuad(Float4x4::makeOrtho(orthoFrustum, -1.f, 1.f), ts->tempTex.id, opacity,
+                            premul);
     GL_CHECK(Disable(GL_STENCIL_TEST));
 }
 
@@ -540,20 +542,32 @@ void renderGamePanel(const DrawContext* dc) {
             {
                 // Draw back button
                 Float2 buttonPos = vf.bounds2D.topLeft() + Float2{38, -38};
+                float scale = 1.f;
+                if (dead->backButtonState.down()) {
+                    scale = 0.85f;
+                } else if (auto released = dead->backButtonState.released()) {
+                    float t = released->time + dc->fracTime;
+                    if (t < 0.05f) {
+                        scale = mix(0.85f, 1.35f, t / 0.08f);
+                    } else {
+                        t = clamp(unmix(0.25f, 0.05f, t), 0.f, 1.f);
+                        scale = mix(1.f, 1.35f, t * t);
+                    }
+                }
                 a->shapeShader->draw(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
                                          Float4x4::makeTranslation({buttonPos, 0}) *
-                                         Float4x4::makeScale(30.f),
+                                         Float4x4::makeScale(30.f * scale),
                                      a->circleTexture.id, {0.f, 0.f, 0.f, 0.3f}, 16, a->quad);
                 a->shapeShader->draw(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
                                          Float4x4::makeTranslation({buttonPos, 0}) *
-                                         Float4x4::makeScale(20.f),
+                                         Float4x4::makeScale(20.f * scale),
                                      a->arrowTexture.id, {1, 1, 1, 1}, 16, a->quad);
             }
         }
 
         if (!showGameOver && !gs->mode.title()) {
             // Draw score
-            float scoreTime = mix(gs->scoreTime[0], gs->scoreTime[1], dc->fracTime);
+            float scoreTime = mix(gs->scoreTime[0], gs->scoreTime[1], dc->intervalFrac);
             float zoom = powf(1.5f, scoreTime * scoreTime);
             TextBuffers tb = generateTextBuffers(a->sdfFont, String::from(gs->score));
             Float4x4 zoomMat = Float4x4::makeTranslation({0, 10.f, 0}) *
@@ -675,12 +689,7 @@ ViewportFrustum getViewportFrustum(const Float2& fbSize) {
     return fitFrustumInViewport({{0, 0}, fbSize}, frustumRect, bounds2D).quantize();
 }
 
-Float2 map2DPos(const Float2& fbSize, const Float2& pos) {
-    ViewportFrustum vf = getViewportFrustum(fbSize);
-    return vf.bounds2D.mix(vf.viewport.unmix(pos));
-}
-
-void render(GameFlow* gf, const IntVec2& fbSize, float renderDT) {
+void render(GameFlow* gf, const Float2& fbSize, float renderDT) {
     PLY_ASSERT(fbSize.x > 0 && fbSize.y > 0);
     const Assets* a = Assets::instance;
     PLY_SET_IN_SCOPE(DynamicArrayBuffers::instance, &gf->dynBuffers);
@@ -698,7 +707,7 @@ void render(GameFlow* gf, const IntVec2& fbSize, float renderDT) {
 
     // Fit frustum in viewport
     Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
-    ViewportFrustum fullVF = getViewportFrustum(fbSize.to<Float2>());
+    ViewportFrustum fullVF = getViewportFrustum(fbSize);
 
     // Before drawing the panels, draw the title screen (if any) to a temporary buffer
     if (gf->gameState->titleScreen) {
@@ -714,7 +723,7 @@ void render(GameFlow* gf, const IntVec2& fbSize, float renderDT) {
     }
 
     // Clear viewport
-    GL_CHECK(Viewport(0, 0, fbSize.x, fbSize.y));
+    GL_CHECK(Viewport(0, 0, (GLsizei) fbSize.x, (GLsizei) fbSize.y));
     GL_CHECK(DepthRange(0.0, 1.0));
     GL_CHECK(DepthMask(GL_TRUE));
     GL_CHECK(ClearColor(0, 0, 0, 1));

@@ -628,11 +628,30 @@ const FixedArray<Tuple<s32, s32>, 8> NoteMap = {{0, 0}, {0, 2}, {1, 0}, {1, 1},
                                                 {2, 0}, {2, 2}, {3, 0}, {3, 1}};
 
 void doInput(GameState* gs, const Float2& pos, bool down) {
+    UpdateContext* uc = UpdateContext::instance();
     auto dead = gs->lifeState.dead();
     if (dead && dead->delay <= 0) {
-        if (down) {
-            gs->outerCtx->onRestart();
+        if (dead->backButtonState.released())
             return;
+
+        Float2 buttonPos = uc->bounds2D.topLeft() + Float2{38, -38};
+        bool inBackButton =
+            (pos - buttonPos).length() <= 33 ||
+            Rect{{0, buttonPos.y}, {buttonPos.x, uc->bounds2D.maxs.y}}.contains(pos);
+        if (down) {
+            if (inBackButton) {
+                dead->backButtonState.down().switchTo();
+            } else {
+                gs->outerCtx->onRestart();
+            }
+            return;
+        } else {
+            if (inBackButton) {
+                dead->backButtonState.released().switchTo();
+                gSoLoud.play(Assets::instance->buttonSound, 1.5f);
+            } else {
+                dead->backButtonState.up().switchTo();
+            }
         }
         return;
     }
@@ -901,6 +920,8 @@ void timeStep(UpdateContext* uc) {
         adjustX(gs, -GameState::WrapAmount);
     }
 
+    gs->scoreTime[1] = approach(gs->scoreTime[1], 0.f, dt);
+
     if (auto dead = gs->lifeState.dead()) {
         if (dead->delay > 0) {
             dead->delay -= dt;
@@ -923,9 +944,15 @@ void timeStep(UpdateContext* uc) {
                 dead->promptTime = 0.f;
             }
         }
-    }
 
-    gs->scoreTime[1] = approach(gs->scoreTime[1], 0.f, dt);
+        if (auto released = dead->backButtonState.released()) {
+            released->time += dt;
+            if (!released->didGoBack && released->time >= 0.05f) {
+                gs->outerCtx->backToTitle();
+                released->didGoBack = true;
+            }
+        }
+    }
 }
 
 struct MixCameraParams {

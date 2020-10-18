@@ -137,6 +137,7 @@ struct Assets {
     SoLoud::Wav bounceSound;
     SoLoud::Wav enterPipeSound;
     SoLoud::Wav exitPipeSound;
+    SoLoud::Wav buttonSound;
 
     static Owned<Assets> instance;
 

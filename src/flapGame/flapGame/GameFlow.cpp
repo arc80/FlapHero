@@ -1,6 +1,7 @@
 #include <flapGame/Core.h>
 #include <flapGame/GameFlow.h>
 #include <flapGame/Assets.h>
+#include <flapGame/DrawContext.h>
 
 namespace flap {
 
@@ -26,6 +27,9 @@ void GameFlow::resetGame(bool isPlaying) {
     this->gameState->outerCtx = this;
     UpdateContext uc;
     uc.gs = this->gameState;
+    if (UpdateContext::instance_) {
+        uc.bounds2D = UpdateContext::instance_->bounds2D;
+    }
     PLY_SET_IN_SCOPE(UpdateContext::instance_, &uc);
     if (isPlaying) {
         this->gameState->startPlaying();
@@ -38,16 +42,28 @@ void GameFlow::resetGame(bool isPlaying) {
     }
 }
 
+void GameFlow::backToTitle() {
+    Assets* a = Assets::instance;
+    auto trans = this->trans.on().switchTo();
+    trans->oldGameState = std::move(this->gameState);
+    this->resetGame(false);
+    gSoLoud.play(a->swipeSound, 1.f);
+    this->musicCountdown = 0.3f;
+}
+
 GameFlow::GameFlow() {
     this->resetGame(false);
     this->titleMusicVoice = gSoLoud.play(Assets::instance->titleMusic);
 }
 
-void doInput(GameFlow* gf, const Float2& pos, bool down) {
+void doInput(GameFlow* gf, const Float2& fbSize, const Float2& pos, bool down) {
+    ViewportFrustum vf = getViewportFrustum(fbSize);
     UpdateContext uc;
     uc.gs = gf->gameState;
+    uc.bounds2D = vf.bounds2D;
     PLY_SET_IN_SCOPE(UpdateContext::instance_, &uc);
-    doInput(gf->gameState, pos, down);
+    Float2 pos2D = vf.bounds2D.mix(vf.viewport.unmix(pos));
+    doInput(gf->gameState, pos2D, down);
 }
 
 void togglePause(GameFlow* gf) {
@@ -62,16 +78,29 @@ void update(GameFlow* gf, float dt) {
     dt = min(dt, GameFlow::MaxTimeStep);
 
     // Timestep
-    GameState* gs = gf->gameState;
     gf->fracTime += dt;
 
     while (gf->fracTime >= gf->simulationTimeStep) {
         gf->fracTime -= gf->simulationTimeStep;
+
+        if (gf->musicCountdown > 0) {
+            gf->musicCountdown -= gf->simulationTimeStep;
+            if (gf->musicCountdown <= 0) {
+                gf->musicCountdown = 0;
+                if (gf->gameState->mode.title()) {
+                    gf->titleMusicVoice = gSoLoud.play(Assets::instance->titleMusic);
+                }
+            }
+        }
+
         {
             UpdateContext uc;
             PLY_SET_IN_SCOPE(UpdateContext::instance_, &uc);
-            uc.gs = gs;
+            uc.gs = gf->gameState;
             timeStep(&uc);
+            if (gf->gameState->score >= gf->bestScore) {
+                gf->bestScore = gf->gameState->score;
+            }
         }
 
         if (auto trans = gf->trans.on()) {
@@ -86,9 +115,6 @@ void update(GameFlow* gf, float dt) {
                 timeStep(&uc);
             }
         }
-    }
-    if (gs->score >= gf->bestScore) {
-        gf->bestScore = gs->score;
     }
 }
 

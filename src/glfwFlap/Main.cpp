@@ -28,6 +28,13 @@ void APIENTRY debugCallback(GLenum source, GLenum type, GLuint id, GLenum severi
 }
 #endif
 
+Float2 getFramebufferSize(GLFWwindow* window) {
+    int renderWidth = 0;
+    int renderHeight = 0;
+    glfwGetFramebufferSize(window, &renderWidth, &renderHeight);
+    return {(float) renderWidth, (float) renderHeight};
+}
+
 static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     flap::GameFlow* gf = (flap::GameFlow*) glfwGetWindowUserPointer(window);
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
@@ -35,9 +42,9 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
     }
     if (key == GLFW_KEY_SPACE) {
         if (action == GLFW_PRESS) {
-            doInput(gf, {0, 0}, true);
+            doInput(gf, getFramebufferSize(window), {0, 0}, true);
         } else if (action == GLFW_RELEASE) {
-            doInput(gf, {0, 0}, false);
+            doInput(gf, getFramebufferSize(window), {0, 0}, false);
         }
     }
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
@@ -51,14 +58,10 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 static void mousebutton_callback(GLFWwindow* window, int button, int action, int mods) {
     flap::GameFlow* gf = (flap::GameFlow*) glfwGetWindowUserPointer(window);
     if (button == GLFW_MOUSE_BUTTON_1) {
-        int renderWidth = 0;
-        int renderHeight = 0;
-        glfwGetFramebufferSize(window, &renderWidth, &renderHeight);
         double x = 0, y = 0;
         glfwGetCursorPos(window, &x, &y);
-        Float2 pos2D = flap::map2DPos({float(renderWidth), float(renderHeight)},
-                                      {float(x) + 0.5f, float(renderHeight) - 0.5f - float(y)});
-        doInput(gf, pos2D, action == GLFW_PRESS);
+        Float2 fbSize = getFramebufferSize(window);
+        doInput(gf, fbSize, {(float) x + 0.5f, fbSize.y - 0.5f - (float) y}, action == GLFW_PRESS);
     }
 }
 
@@ -127,7 +130,7 @@ int main(int argc, char* argv[]) {
         // Update the gf
         update(gf, (float) (now - lastTime));
         if (renderWidth > 0 && renderHeight > 0) {
-            render(gf, {renderWidth, renderHeight}, (float) (now - lastTime));
+            render(gf, {(float) renderWidth, (float) renderHeight}, (float) (now - lastTime));
         }
 
         // Present framebuffer

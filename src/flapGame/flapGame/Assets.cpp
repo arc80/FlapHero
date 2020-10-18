@@ -846,6 +846,8 @@ void Assets::load(StringView assetsPath) {
         NativePath::join(assetsPath, "EnterPipe.wav").withNullTerminator().bytes);
     assets->exitPipeSound.load(
         NativePath::join(assetsPath, "PopOut.wav").withNullTerminator().bytes);
+    assets->buttonSound.load(
+        NativePath::join(assetsPath, "Button.wav").withNullTerminator().bytes);
 }
 
 } // namespace flap
