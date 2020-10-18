@@ -18,6 +18,8 @@ struct TitleRotator {
     Float3 endNorm = {0, 0, 1};
     float endAngle = 0;
     float time = 0;
+
+    TitleRotator();
 };
 
 struct StarSystem {

@@ -217,7 +217,7 @@ struct GameState {
     static constexpr float SlowMotionFactor = 0.15f;
 
     OuterContext* outerCtx = nullptr;
-    Random random;
+    Random random{2};
     Mode mode;
     bool doJump = false;
     LifeState lifeState;
@@ -248,9 +248,9 @@ struct GameState {
 
     // Bird animation
     struct BirdAnim {
-        float wingTime[2] = {0, 0};
+        float wingTime[2] = {0.45f, 0.45f};
         bool eyeMoving = false;
-        u32 eyePos[2] = {0, 0};
+        u32 eyePos[2] = {1, 1};
         float eyeTime[2] = {0, 0};
     };
     BirdAnim birdAnim;
@@ -275,8 +275,8 @@ struct GameState {
         // ply make switch
         struct Follow {};
         struct Orbit {
-            float angle = 0;
-            bool rising = false;
+            float angle = -0.65f;
+            bool rising = true;
             float risingTime = 0;
 
             PLY_INLINE float getYRise() const {
