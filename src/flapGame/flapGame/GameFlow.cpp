@@ -74,7 +74,6 @@ void update(GameFlow* gf, float dt) {
     if (gf->isPaused)
         return;
 
-    Assets* a = Assets::instance;
     dt = min(dt, GameFlow::MaxTimeStep);
 
     // Timestep

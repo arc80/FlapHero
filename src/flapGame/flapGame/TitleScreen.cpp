@@ -9,9 +9,6 @@
 namespace flap {
 
 TitleRotator::TitleRotator() {
-    UpdateContext* uc = UpdateContext::instance();
-    Random& random = uc->gs->random;
-
     this->endAngle = 0.9f;
     this->startNorm = Float3{Complex::fromAngle(this->endAngle), 1.2f}.normalized();
     this->endNorm = this->startNorm;

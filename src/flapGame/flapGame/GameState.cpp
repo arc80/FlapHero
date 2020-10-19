@@ -286,8 +286,8 @@ void updateMovement(UpdateContext* uc) {
         if (gs->doJump) {
             gs->doJump = false;
             playing->timeDilation.none().switchTo();
-            playing->zVel[0] = 33.5f;
-            playing->zVel[1] = 33.5f;
+            playing->zVel[0] = 31.5f;
+            playing->zVel[1] = 31.5f;
             playing->curGravity = GameState::NormalGravity;
             auto angle = gs->rotator.angle();
             angle->isFlipping = false;
@@ -428,7 +428,7 @@ void updateMovement(UpdateContext* uc) {
             if (!teleport->didTele) {
                 gs->bird.pos[0] = gs->bird.pos[1];
                 teleport->didTele = true;
-                auto angle = gs->rotator.angle().switchTo();
+                gs->rotator.angle().switchTo();
             }
             auto angle = gs->rotator.angle();
             if (!angle) {
@@ -459,31 +459,34 @@ void updateMovement(UpdateContext* uc) {
             if ((gs->damage < 2) || GODMODE) {
                 gs->puffs.append(
                     new Puffs{impact->hit.pos, gs->random.next32(), impact->hit.norm, true});
+                if (gs->doJump) {
+                    gs->mode.playing().switchTo();
+                } else {
+                    // Build recovery motion path
+                    Float2 start2D = {gs->bird.pos[0].x, gs->bird.pos[0].z};
+                    Float2 norm2D = {impact->hit.norm.x, impact->hit.norm.z};
+                    float m = (impact->hit.recoverClockwise ? 1.f : -1.f); // mirror
 
-                // Build recovery motion path
-                Float2 start2D = {gs->bird.pos[0].x, gs->bird.pos[0].z};
-                Float2 norm2D = {impact->hit.norm.x, impact->hit.norm.z};
-                float m = (impact->hit.recoverClockwise ? 1.f : -1.f); // mirror
-
-                auto recovering = gs->mode.recovering().switchTo();
-                recovering->time = 0;
-                recovering->totalTime = 0.6f;
-                float R = 1.3f;
-                recovering->cps[0] = start2D;
-                recovering->cps[1] = start2D + Complex::mul(norm2D, {0.6f * R, 0.f});
-                recovering->cps[2] = start2D + Complex::mul(norm2D, {R, m * R * -0.4f});
-                recovering->cps[3] = start2D + Complex::mul(norm2D, {R, m * R * -1.2f});
-                auto angle = gs->rotator.angle();
-                angle->isFlipping = true;
-                angle->startAngle = GameState::DefaultAngle - 2.f * Pi * m;
-                angle->totalTime = 0.9f;
-                angle->time = 0.f;
+                    auto recovering = gs->mode.recovering().switchTo();
+                    recovering->time = 0;
+                    recovering->totalTime = 0.6f;
+                    float R = 1.3f;
+                    recovering->cps[0] = start2D;
+                    recovering->cps[1] = start2D + Complex::mul(norm2D, {0.6f * R, 0.f});
+                    recovering->cps[2] = start2D + Complex::mul(norm2D, {R, m * R * -0.4f});
+                    recovering->cps[3] = start2D + Complex::mul(norm2D, {R, m * R * -1.2f});
+                    auto angle = gs->rotator.angle();
+                    angle->isFlipping = true;
+                    angle->startAngle = GameState::DefaultAngle - 2.f * Pi * m;
+                    angle->totalTime = 0.9f;
+                    angle->time = 0.f;
+                }
             } else {
                 // Fall to death
                 gs->lifeState.dead().switchTo();
                 Obstacle::Hit hit = impact->hit;
                 Float3 prevVel = impact->prevVel;
-                auto falling = gs->mode.falling().switchTo();
+                gs->mode.falling().switchTo();
                 gs->rotator.fromMode().switchTo();
                 applyBounce(hit, prevVel);
                 if (gs->bird.pos[0].z > -8.f) {
@@ -669,7 +672,6 @@ void doInput(GameState* gs, const Float2& pos, bool down) {
     switch (gs->mode.id) {
         using ID = GameState::Mode::ID;
         case ID::Title: {
-            auto title = gs->mode.title();
             float yOffset = min(50.f, -uc->bounds2D.mins.y / 2);
             Float2 buttonPos = Float2{62, 56 - yOffset};
             bool inOSButton = (pos - buttonPos).length() <= 85;

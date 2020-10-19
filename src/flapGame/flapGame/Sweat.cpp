@@ -16,7 +16,6 @@ void Sweat::addInstances(const Float4x4& birdToViewport,
         float t = min(1.f, this->time + DrawContext::instance()->fracTime * 2.f) + lag;
         if (t < 0 || t > 1.f)
             return;
-        float omt = 1.f - t;
         float distance = interpolateCubic(1.3f, 1.8f, 2.3f, 2.3f, t);
         float alpha = clamp(mix(1.25f, 0.f, t), 0.f, 1.f);
         float size = clamp(mix(0.f, 2.f, t), 0.f, 1.f);

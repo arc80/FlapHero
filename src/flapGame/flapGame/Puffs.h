@@ -13,7 +13,7 @@ struct Puffs {
 
     PLY_INLINE Puffs(const Float3& pos, u32 seed,
                      const Float3& dir = Float3{0.3f, 0, 1.f}.normalized(), bool big = false)
-        : pos{pos}, seed{seed}, dir{dir}, big{big} {
+        : pos{pos}, dir{dir}, seed{seed}, big{big} {
     }
     bool update(float dt);
     void addInstances(Array<PuffShader::InstanceData>& instances) const;
