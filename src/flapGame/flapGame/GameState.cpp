@@ -83,7 +83,7 @@ struct PipeSequence : ObstacleSequence {
             float pipeX = this->xSeqRelWorld + this->pipeIndex * GameState::PipeSpacing;
 
             // Add new obstacles
-            float gapHeight = mix(-4.f, 4.f, gs->random.nextFloat());
+            float gapHeight = mix(-5.f, 5.5f, gs->random.nextFloat());
             gs->playfield.obstacles.append(
                 new Pipe{Float3x4::makeTranslation({pipeX, 0, gapHeight - 4.f})});
             gs->playfield.obstacles.append(
@@ -286,8 +286,8 @@ void updateMovement(UpdateContext* uc) {
         if (gs->doJump) {
             gs->doJump = false;
             playing->timeDilation.none().switchTo();
-            playing->zVel[0] = GameState::LaunchVel;
-            playing->zVel[1] = GameState::LaunchVel;
+            playing->zVel[0] = 33.5f;
+            playing->zVel[1] = 33.5f;
             playing->curGravity = GameState::NormalGravity;
             auto angle = gs->rotator.angle();
             angle->isFlipping = false;
@@ -383,6 +383,7 @@ void updateMovement(UpdateContext* uc) {
             Float3 midVel = {GameState::ScrollRate, 0,
                              (playing->zVel[0] + playing->zVel[1]) * 0.5f};
             gs->bird.pos[1] = gs->bird.pos[0] + midVel * dtScaled;
+            gs->bird.pos[1].z = min(gs->bird.pos[1].z, 22.f);
 
             // Rotation
             float useZ = playing->zVel[1];

@@ -185,10 +185,10 @@ struct GameState {
     };
 
     // Constants
-    static constexpr float NormalGravity = 118.f;
+    static constexpr float NormalGravity = 121.f;
     static constexpr float LaunchVel = 30.f;
     static constexpr float LowestHeight = -10.766f;
-    static constexpr float TerminalVelocity = -60.f;
+    static constexpr float TerminalVelocity = -50.f;
     static constexpr float ScrollRate = 10.f;
     static constexpr float WrapAmount = 6.75f;
     static constexpr float PipeSpacing = 13.f;

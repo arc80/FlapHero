@@ -42,9 +42,9 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
     }
     if (key == GLFW_KEY_SPACE) {
         if (action == GLFW_PRESS) {
-            doInput(gf, getFramebufferSize(window), {0, 0}, true);
+            doInput(gf, getFramebufferSize(window), {240, 320}, true);
         } else if (action == GLFW_RELEASE) {
-            doInput(gf, getFramebufferSize(window), {0, 0}, false);
+            doInput(gf, getFramebufferSize(window), {240, 320}, false);
         }
     }
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
