@@ -673,8 +673,10 @@ void doInput(GameState* gs, const Float2& pos, bool down) {
             Float2 buttonPos = Float2{62, 56 - yOffset};
             bool inOSButton = (pos - buttonPos).length() <= 85;
             switch (gs->titleScreen->osb.button.doInput(down, inOSButton)) {
-                case Button::Handled:
+                case Button::Handled: {
+                    gs->titleScreen->osb.pulsateTime = 0.f;
                     return;
+                }
                 case Button::Clicked: {
                     return;
                 }
