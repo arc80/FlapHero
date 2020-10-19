@@ -1,6 +1,7 @@
 #pragma once
 #include <flapGame/Core.h>
 #include <flapGame/GLHelpers.h>
+#include <flapGame/Button.h>
 
 namespace flap {
 
@@ -53,6 +54,13 @@ struct TitleScreen {
     float hypnoAngle[2] = {0, 0};
     float hypnoZoom[2] = {3, 3};
     float raysAngle[2] = {0, 0};
+
+    struct OpenSourceButton {
+        float pulsateTime = 0.f;
+        float angle = 0.f;
+        Button button;
+    };
+    OpenSourceButton osb;
 };
 
 void updateTitleScreen(TitleScreen* titleScreen);

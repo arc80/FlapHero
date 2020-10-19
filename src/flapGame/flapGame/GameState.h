@@ -51,7 +51,8 @@ struct Obstacle : RefCounted<Obstacle> {
         Float4x4 worldToCamera = Float4x4::identity();
     };
 
-    virtual ~Obstacle() {}
+    virtual ~Obstacle() {
+    }
     virtual bool collisionCheck(GameState* gs, const LambdaView<bool(const Hit&)>& cb) = 0;
     virtual TeleportResult teleportCheck(GameState* gs) {
         return {};
@@ -170,28 +171,15 @@ struct GameState {
 
     struct LifeState {
         // ply make switch
-        struct Alive {
-        };
+        struct Alive {};
         struct Dead {
-            struct ButtonState {
-                // ply make switch
-                struct Up {
-                };
-                struct Down {
-                };
-                struct Released {
-                    float time = 0.f;
-                    bool didGoBack = false;
-                };
-#include "codegen/switch-flap-GameState-LifeState-Dead-ButtonState.inl" //@@ply
-            };
-
             float delay = 0.5f;
             float animateSignTime = 0;
             bool playedSound = false;
             bool showPrompt = false;
             float promptTime = 0;
-            ButtonState backButtonState;
+            Button backButton;
+            bool didGoBack = false;
         };
 #include "codegen/switch-flap-GameState-LifeState.inl" //@@ply
     };

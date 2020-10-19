@@ -79,6 +79,7 @@ struct Assets {
     Array<Owned<DrawMesh>> blackOutline;
     Array<Owned<DrawMesh>> star;
     Array<Owned<DrawMesh>> rays;
+    Array<Owned<DrawMesh>> stamp;
     Owned<DrawMesh> quad;
     DrawGroup shrubGroup;
     DrawGroup cloudGroup;

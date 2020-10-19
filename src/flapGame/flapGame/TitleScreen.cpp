@@ -154,6 +154,12 @@ void updateTitleScreen(TitleScreen* titleScreen) {
     titleScreen->hypnoAngle[1] -= adjustAngle;
     wrapInterval({titleScreen->hypnoAngle, 2}, dt * 1.3f, Pi * 2.f);
     wrapInterval({titleScreen->raysAngle, 2}, dt * 0.5f, Pi * 2.f);
+    titleScreen->osb.angle = wrap(titleScreen->osb.angle + dt * 0.3f, Pi * 2.f);
+    if (titleScreen->osb.button.update(dt)) {
+        titleScreen->osb.pulsateTime = wrap(titleScreen->osb.pulsateTime + dt, 2.f);
+    } else {
+        titleScreen->osb.pulsateTime = 0;
+    }
 }
 
 } // namespace flap

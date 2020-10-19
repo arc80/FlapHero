@@ -542,18 +542,7 @@ void renderGamePanel(const DrawContext* dc) {
             {
                 // Draw back button
                 Float2 buttonPos = vf.bounds2D.topLeft() + Float2{38, -38};
-                float scale = 1.f;
-                if (dead->backButtonState.down()) {
-                    scale = 0.85f;
-                } else if (auto released = dead->backButtonState.released()) {
-                    float t = released->time + dc->fracTime;
-                    if (t < 0.05f) {
-                        scale = mix(0.85f, 1.35f, t / 0.08f);
-                    } else {
-                        t = clamp(unmix(0.25f, 0.05f, t), 0.f, 1.f);
-                        scale = mix(1.f, 1.35f, t * t);
-                    }
-                }
+                float scale = dead->backButton.getScale();
                 a->shapeShader->draw(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
                                          Float4x4::makeTranslation({buttonPos, 0}) *
                                          Float4x4::makeScale(30.f * scale),
@@ -667,15 +656,69 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
         TextBuffers tapToPlay = generateTextBuffers(a->sdfFont, "TAP TO PLAY");
         drawText(a->sdfCommon, a->sdfFont, tapToPlay,
                  extraZoom * Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
-                     Float4x4::makeTranslation({244, 20 - yOffset, 0}) * Float4x4::makeScale(0.9f) *
+                     Float4x4::makeTranslation({308, 20 - yOffset, 0}) * Float4x4::makeScale(1.1f) *
                      Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
                  {0.85f, 1.75f}, {0, 0, 0, 0.8f});
         drawOutlinedText(a->sdfOutline, a->sdfFont, tapToPlay,
                          extraZoom * Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
-                             Float4x4::makeTranslation({240, 24 - yOffset, 0}) *
-                             Float4x4::makeScale(0.9f) *
+                             Float4x4::makeTranslation({304, 24 - yOffset, 0}) *
+                             Float4x4::makeScale(1.1f) *
                              Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
                          {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.6f, 16.f}, {0.75f, 12.f}});
+    }
+
+    // Draw open source button
+    {
+        float pulsate = 1.f;
+        if (dc->gs->titleScreen->osb.button.state.up()) {
+            float t = ts->osb.pulsateTime + dc->fracTime;
+            if (t < 0.75f) {
+            } else if (t < 1.f) {
+                pulsate = mix(1.f, 0.85f, applySimpleCubic(unmix(0.75f, 1.f, t)));
+            } else if (t < 1.15f) {
+                pulsate = mix(0.85f, 1.25f, applySimpleCubic(unmix(1.f, 1.15f, t)));
+            } else if (t < 1.4f) {
+                pulsate = mix(1.25f, 1.f, applySimpleCubic(unmix(1.15f, 1.4f, t)));
+            }
+        } else {
+            pulsate = dc->gs->titleScreen->osb.button.getScale();
+        }
+        float yOffset = min(50.f, -dc->fullVF.bounds2D.mins.y / 2);
+        Float4x4 b2w = extraZoom * Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
+                       Float4x4::makeTranslation({62, 56 - yOffset, 0}) *
+                       Float4x4::makeRotation({0, 0, 1}, 0.1f) *
+                       Float4x4::makeScale(pulsate * 0.85f);
+        for (const DrawMesh* dm : a->stamp) {
+            a->flatShader->draw(b2w * Float4x4::makeTranslation({0, 0, 0}) *
+                                    Float4x4::makeScale({72, 66, 1}) *
+                                    Float4x4::makeRotation({0, 0, 1}, ts->osb.angle),
+                                dm, false, false);
+        }
+        TextBuffers thisGameIs = generateTextBuffers(a->sdfFont, "THIS GAME IS");
+        drawText(a->sdfCommon, a->sdfFont, thisGameIs,
+                 b2w * Float4x4::makeTranslation({0, 31, 0}) * Float4x4::makeScale(0.45f) *
+                     Float4x4::makeTranslation({-thisGameIs.xMid(), 0, 0}),
+                 {0.75f, 8.f}, {0.06f, 0.06f, 0.06f, 1.f});
+        TextBuffers open = generateTextBuffers(a->sdfFont, "OPEN");
+        drawText(a->sdfCommon, a->sdfFont, open,
+                 b2w * Float4x4::makeTranslation({0, 6, 0}) * Float4x4::makeScale(0.7f) *
+                     Float4x4::makeTranslation({-open.xMid(), 0, 0}),
+                 {0.75f, 12.f}, {0, 0, 0, 1.f});
+        TextBuffers source = generateTextBuffers(a->sdfFont, "SOURCE");
+        drawText(a->sdfCommon, a->sdfFont, source,
+                 b2w * Float4x4::makeTranslation({0, -16, 0}) * Float4x4::makeScale(0.7f) *
+                     Float4x4::makeTranslation({-source.xMid(), 0, 0}),
+                 {0.75f, 12.f}, {0, 0, 0, 1.f});
+        TextBuffers tapHere = generateTextBuffers(a->sdfFont, "TAP HERE");
+        drawText(a->sdfCommon, a->sdfFont, tapHere,
+                 b2w * Float4x4::makeTranslation({0, -34, 0}) * Float4x4::makeScale(0.45f) *
+                     Float4x4::makeTranslation({-tapHere.xMid(), 0, 0}),
+                 {0.75f, 8.f}, {0.06f, 0.06f, 0.06f, 1.f});
+        TextBuffers forInfo = generateTextBuffers(a->sdfFont, "FOR INFO");
+        drawText(a->sdfCommon, a->sdfFont, forInfo,
+                 b2w * Float4x4::makeTranslation({0, -50, 0}) * Float4x4::makeScale(0.45f) *
+                     Float4x4::makeTranslation({-forInfo.xMid(), 0, 0}),
+                 {0.75f, 8.f}, {0.06f, 0.06f, 0.06f, 1.f});
     }
 
     GL_CHECK(BindFramebuffer(GL_FRAMEBUFFER, prevFBO));

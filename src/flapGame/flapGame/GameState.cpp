@@ -641,28 +641,26 @@ void doInput(GameState* gs, const Float2& pos, bool down) {
     UpdateContext* uc = UpdateContext::instance();
     auto dead = gs->lifeState.dead();
     if (dead && dead->delay <= 0) {
-        if (dead->backButtonState.released())
+        if (dead->backButton.wasClicked)
             return;
 
         Float2 buttonPos = uc->bounds2D.topLeft() + Float2{38, -38};
         bool inBackButton =
             (pos - buttonPos).length() <= 33 ||
             Rect{{0, buttonPos.y}, {buttonPos.x, uc->bounds2D.maxs.y}}.contains(pos);
+
+        switch (dead->backButton.doInput(down, inBackButton)) {
+            case Button::Handled:
+                return;
+            case Button::Clicked: {
+                return;
+            }
+            default:
+                break;
+        }
+
         if (down) {
-            if (inBackButton) {
-                dead->backButtonState.down().switchTo();
-                gSoLoud.play(Assets::instance->buttonDownSound, 1.f);
-            } else {
-                gs->outerCtx->onRestart();
-            }
-            return;
-        } else {
-            if (inBackButton) {
-                dead->backButtonState.released().switchTo();
-                gSoLoud.play(Assets::instance->buttonUpSound, 1.5f);
-            } else {
-                dead->backButtonState.up().switchTo();
-            }
+            gs->outerCtx->onRestart();
         }
         return;
     }
@@ -670,6 +668,20 @@ void doInput(GameState* gs, const Float2& pos, bool down) {
     switch (gs->mode.id) {
         using ID = GameState::Mode::ID;
         case ID::Title: {
+            auto title = gs->mode.title();
+            float yOffset = min(50.f, -uc->bounds2D.mins.y / 2);
+            Float2 buttonPos = Float2{62, 56 - yOffset};
+            bool inOSButton = (pos - buttonPos).length() <= 85;
+            switch (gs->titleScreen->osb.button.doInput(down, inOSButton)) {
+                case Button::Handled:
+                    return;
+                case Button::Clicked: {
+                    return;
+                }
+                default:
+                    break;
+            }
+
             if (down) {
                 gs->startPlaying();
                 gs->outerCtx->onGameStart();
@@ -934,6 +946,8 @@ void timeStep(UpdateContext* uc) {
     gs->scoreTime[1] = approach(gs->scoreTime[1], 0.f, dt);
 
     if (auto dead = gs->lifeState.dead()) {
+        dead->backButton.update(dt);
+
         if (dead->delay > 0) {
             dead->delay -= dt;
             if (dead->delay <= 0) {
@@ -956,12 +970,9 @@ void timeStep(UpdateContext* uc) {
             }
         }
 
-        if (auto released = dead->backButtonState.released()) {
-            released->time += dt;
-            if (!released->didGoBack && released->time >= 0.05f) {
-                gs->outerCtx->backToTitle();
-                released->didGoBack = true;
-            }
+        if (!dead->didGoBack && dead->backButton.timeSinceClicked >= 0.05f) {
+            gs->outerCtx->backToTitle();
+            dead->didGoBack = true;
         }
     }
 }

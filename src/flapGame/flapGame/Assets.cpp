@@ -613,6 +613,8 @@ void Assets::load(StringView assetsPath) {
             getMeshes(nullptr, scene, scene->mRootNode->FindNode("Star"), VT::TexturedFlat);
         assets->rays =
             getMeshes(nullptr, scene, scene->mRootNode->FindNode("Rays"), VT::NotSkinned);
+        assets->stamp =
+            getMeshes(nullptr, scene, scene->mRootNode->FindNode("Stamp"), VT::NotSkinned);
     }
     assets->quad = makeQuadDrawMesh();
     {

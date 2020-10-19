@@ -735,9 +735,13 @@ PLY_NO_INLINE Owned<FlatShader> FlatShader::create() {
 }
 
 PLY_NO_INLINE void FlatShader::draw(const Float4x4& modelToViewport, const DrawMesh* drawMesh,
-                                    bool writeDepth) {
+                                    bool writeDepth, bool useDepth) {
     GL_CHECK(UseProgram(this->shader.id));
-    GL_CHECK(Enable(GL_DEPTH_TEST));
+    if (useDepth) {
+        GL_CHECK(Enable(GL_DEPTH_TEST));
+    } else {
+        GL_CHECK(Disable(GL_DEPTH_TEST));
+    }
     GL_CHECK(DepthMask(writeDepth ? GL_TRUE : GL_FALSE));
     GL_CHECK(Disable(GL_BLEND));
 

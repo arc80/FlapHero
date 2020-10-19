@@ -150,7 +150,7 @@ struct FlatShader {
 
     static Owned<FlatShader> create();
 
-    void draw(const Float4x4& modelToViewport, const DrawMesh* drawMesh, bool writeDepth);
+    void draw(const Float4x4& modelToViewport, const DrawMesh* drawMesh, bool writeDepth, bool useDepth = true);
     void drawQuad(const Float4x4& modelToViewport, const Float4& linearColor, bool useDepth = true);
 };
 
