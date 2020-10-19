@@ -2,6 +2,10 @@
 #include <flapGame/TitleScreen.h>
 #include <flapGame/GameState.h>
 
+#if PLY_TARGET_WIN32
+#include <shellapi.h>
+#endif
+
 namespace flap {
 
 TitleRotator::TitleRotator() {
@@ -159,6 +163,13 @@ void updateTitleScreen(TitleScreen* titleScreen) {
         titleScreen->osb.pulsateTime = wrap(titleScreen->osb.pulsateTime + dt, 2.f);
     } else {
         titleScreen->osb.pulsateTime = 0;
+    }
+    if (titleScreen->osb.button.wasClicked && titleScreen->osb.button.timeSinceClicked >= 0.2f) {
+        titleScreen->osb.button.wasClicked = false;
+        titleScreen->osb.button.timeSinceClicked = 0.f;
+#if PLY_TARGET_WIN32
+        ShellExecute(NULL, "open", "https://arc80.com/flaphero", NULL, NULL, SW_SHOWNORMAL);
+#endif
     }
 }
 
