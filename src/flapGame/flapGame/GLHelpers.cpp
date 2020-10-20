@@ -75,10 +75,11 @@ PLY_NO_INLINE Shader Shader::compile(GLenum type, StringView source) {
     GLuint id = GL_NO_CHECK(CreateShader(type));
     PLY_ASSERT(GL_NO_CHECK(GetError()) == GL_NO_ERROR);
 #if PLY_TARGET_IOS || PLY_TARGET_ANDROID
-    String fullSource = String::format("#version 300 es\n"
-                                       "precision mediump float;\n"
-                                       "{}{}",
-                                       source, '\0');
+    String fullSource =
+        String::format("#version 300 es\n"
+                       "precision {} float;\n"
+                       "{}{}",
+                       type == GL_VERTEX_SHADER ? "highp" : "mediump", source, '\0');
 #else
     String fullSource = String::format("#version 330\n{}{}", source, '\0');
 #endif
@@ -263,7 +264,8 @@ PLY_NO_INLINE void RenderToTexture::init(const Texture& tex, bool withDepth) {
         GL_CHECK(GenRenderbuffers(1, &this->depthRBID));
         GL_CHECK(BindRenderbuffer(GL_RENDERBUFFER, (GLuint) this->depthRBID));
 #if PLY_TARGET_ANDROID || PLY_TARGET_IOS
-        // :TODO: GL_INVALID_ENUM error on Android...  Could GL_DEPTH_COMPONENT24 be used on all platforms?
+        // :TODO: GL_INVALID_ENUM error on Android...  Could GL_DEPTH_COMPONENT24 be used on all
+        // platforms?
         GL_CHECK(RenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, tex.width, tex.height));
 #else
         GL_CHECK(RenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, tex.width, tex.height));
@@ -276,7 +278,8 @@ PLY_NO_INLINE void RenderToTexture::init(const Texture& tex, bool withDepth) {
     GL_CHECK(BindFramebuffer(GL_FRAMEBUFFER, this->fboID));
     GL_CHECK(FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex.id, 0));
     if (withDepth) {
-        GL_CHECK(FramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, this->depthRBID));
+        GL_CHECK(FramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
+                                         this->depthRBID));
     }
     GLenum status = GL_NO_CHECK(CheckFramebufferStatus(GL_FRAMEBUFFER));
     PLY_ASSERT(status == GL_FRAMEBUFFER_COMPLETE);
