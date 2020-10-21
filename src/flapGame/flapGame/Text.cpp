@@ -163,7 +163,12 @@ PLY_NO_INLINE Owned<SDFFont> SDFFont::bake(ConstBufferView ttfBuffer, float pixe
     glyphImages.reserve(96);
     for (u32 i = 0; i < 96; i++) {
         // Find glyph index for this code point
-        s32 g = stbtt_FindGlyphIndex(&stbFont, i + 32);
+        int codePoint = i + 32;
+        if (codePoint == 64) {
+            // Replace @ with copyright symbol
+            codePoint = 0xa9;
+        }
+        s32 g = stbtt_FindGlyphIndex(&stbFont, codePoint);
 
         // Create temporary glyph image (manually freed below)
         IntVec2 glyphOffset = {0, 0};

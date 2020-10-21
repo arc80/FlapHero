@@ -658,7 +658,7 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
                  extraZoom * Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
                      Float4x4::makeTranslation({304, 20 - yOffset, 0}) * Float4x4::makeScale(1.1f) *
                      Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
-                 {0.85f, 1.75f}, {0, 0, 0, 0.8f});
+                 {0.85f, 1.75f}, {0.05f, 0.05f, 0.05f, 0.8f});
         drawOutlinedText(a->sdfOutline, a->sdfFont, tapToPlay,
                          extraZoom * Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
                              Float4x4::makeTranslation({300, 24 - yOffset, 0}) *
@@ -719,6 +719,17 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
                  b2w * Float4x4::makeTranslation({0, -50, 0}) * Float4x4::makeScale(0.45f) *
                      Float4x4::makeTranslation({-forInfo.xMid(), 0, 0}),
                  {0.75f, 8.f}, {0.60f, 0.40f, 0.029f, 1.f});
+    }
+
+    {
+        // Draw copyright
+        float yOffset = min(50.f, -dc->fullVF.bounds2D.mins.y / 2);
+        TextBuffers copyright = generateTextBuffers(a->sdfFont, "@ 2020 Arc80 Software Inc.");
+        drawText(a->sdfCommon, a->sdfFont, copyright,
+                 extraZoom * Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
+                     Float4x4::makeTranslation({302, 4 - yOffset, 0}) * Float4x4::makeScale(0.36f) *
+                     Float4x4::makeTranslation({-copyright.xMid(), 0, 0}),
+                 {0.75f, 10.f}, {0.05f, 0.05f, 0.05f, 1});
     }
 
     GL_CHECK(BindFramebuffer(GL_FRAMEBUFFER, prevFBO));
