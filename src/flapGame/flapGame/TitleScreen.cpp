@@ -4,6 +4,9 @@
 
 #if PLY_TARGET_WIN32
 #include <shellapi.h>
+#elif PLY_TARGET_IOS
+extern "C"
+void openOpenSourcePage();
 #endif
 
 namespace flap {
@@ -166,6 +169,8 @@ void updateTitleScreen(TitleScreen* titleScreen) {
         titleScreen->osb.button.timeSinceClicked = 0.f;
 #if PLY_TARGET_WIN32
         ShellExecute(NULL, "open", "https://arc80.com/flaphero", NULL, NULL, SW_SHOWNORMAL);
+#elif PLY_TARGET_IOS
+        openOpenSourcePage();
 #endif
     }
 }
