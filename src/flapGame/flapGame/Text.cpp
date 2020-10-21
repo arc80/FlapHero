@@ -155,6 +155,7 @@ PLY_NO_INLINE Owned<SDFFont> SDFFont::bake(ConstBufferView ttfBuffer, float pixe
     stbFont.userdata = nullptr;
     int rc = stbtt_InitFont(&stbFont, ttfBuffer.bytes, 0);
     PLY_ASSERT(rc);
+    PLY_UNUSED(rc);
 
     float scale = stbtt_ScaleForPixelHeight(&stbFont, pixelHeight);
 

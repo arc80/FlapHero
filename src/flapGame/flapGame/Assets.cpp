@@ -110,6 +110,7 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
     aiString aiName;
     aiReturn rc = srcMat->Get(AI_MATKEY_NAME, aiName);
     PLY_ASSERT(rc == AI_SUCCESS);
+    PLY_UNUSED(rc);
 
     {
         // Diffuse color
@@ -305,6 +306,7 @@ Array<PoseBone> extractPose(ArrayView<const Bone> skel, const aiAnimation* srcAn
 void extractBirdAnimData(BirdAnimData* bad, const aiScene* scene) {
     const aiNode* basePoseFromNode = scene->mRootNode->FindNode("Body");
     PLY_ASSERT(basePoseFromNode->mNumMeshes > 0);
+    PLY_UNUSED(basePoseFromNode);
     extractBones(&bad->birdSkel, scene->mRootNode->FindNode("BirdSkel"));
     PLY_ASSERT(scene->mNumAnimations == 1);
     bad->loWingPose = extractPose(bad->birdSkel.view(), scene->mAnimations[0], 0,
