@@ -31,7 +31,7 @@ void APIENTRY debugCallback(GLenum source, GLenum type, GLuint id, GLenum severi
 Float2 getFramebufferSize(GLFWwindow* window) {
     int renderWidth = 0;
     int renderHeight = 0;
-    glfwGetFramebufferSize(window, &renderWidth, &renderHeight);
+    glfwGetWindowSize(window, &renderWidth, &renderHeight);
     return {(float) renderWidth, (float) renderHeight};
 }
 
