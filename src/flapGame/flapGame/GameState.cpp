@@ -1048,6 +1048,7 @@ void GameState::updateCamera(bool cut) {
 }
 
 void GameState::startPlaying() {
+    this->random = Random{};
     auto playing = this->mode.playing().switchTo();
     playing->curGravity = 0.f;
     playing->gravApproach = 20.f;
