@@ -184,8 +184,9 @@ void drawTitle(const TitleScreen* titleScreen, const Float4x4& extraZoom) {
 
     Float4x4 w2c = {{{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
     float worldDistance = 15.f;
-    float offset = dc->fullVF.bounds2D.mins.y * (0.08f / -200.f);
-    float frustumScale = mix(0.1875f, 0.2f, dc->fullVF.bounds2D.mins.y / -200.f);
+    float offset = 0.25f;
+    float frustumScale = mix(0.15f, 0.18f, dc->fullVF.bounds2D.mins.y / -200.f);
+
     Float4x4 cameraToViewport =
         extraZoom *
         Float4x4::makeProjection(dc->fullVF.frustum / frustumScale - Float2{0, offset}, 1.f, 40.f);
@@ -503,12 +504,12 @@ void renderGamePanel(const DrawContext* dc) {
             TextBuffers gameOver = generateTextBuffers(a->sdfFont, "GAME OVER");
             drawText(a->sdfCommon, a->sdfFont, gameOver,
                      Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                         Float4x4::makeTranslation({244, 506, 0}) * Float4x4::makeScale(1.8f) *
+                         Float4x4::makeTranslation({244, 492, 0}) * Float4x4::makeScale(1.8f) *
                          Float4x4::makeTranslation({-gameOver.xMid(), 0, 0}),
                      {0.85f, 1.75f}, {0, 0, 0, 0.4f});
             drawText(a->sdfCommon, a->sdfFont, gameOver,
                      Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
-                         Float4x4::makeTranslation({240, 510, 0}) * Float4x4::makeScale(1.8f) *
+                         Float4x4::makeTranslation({240, 496, 0}) * Float4x4::makeScale(1.8f) *
                          Float4x4::makeTranslation({-gameOver.xMid(), 0, 0}),
                      {0.75f, 32.f}, {1.f, 0.85f, 0.0f, 1.f});
 
@@ -541,15 +542,15 @@ void renderGamePanel(const DrawContext* dc) {
 
             {
                 // Draw back button
-                Float2 buttonPos = vf.bounds2D.topLeft() + Float2{38, -38};
+                Float2 buttonPos = vf.bounds2D.topLeft() + Float2{44, -44};
                 float scale = dead->backButton.getScale();
                 a->shapeShader->draw(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
                                          Float4x4::makeTranslation({buttonPos, 0}) *
-                                         Float4x4::makeScale(30.f * scale),
+                                         Float4x4::makeScale(36.f * scale),
                                      a->circleTexture.id, {0.f, 0.f, 0.f, 0.3f}, 16, a->quad);
                 a->shapeShader->draw(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f) *
                                          Float4x4::makeTranslation({buttonPos, 0}) *
-                                         Float4x4::makeScale(20.f * scale),
+                                         Float4x4::makeScale(24.f * scale),
                                      a->arrowTexture.id, {1, 1, 1, 1}, 16, a->quad);
             }
         }
@@ -635,7 +636,7 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
         float hypnoScale = powf(1.3f, mix(ts->hypnoZoom[0], ts->hypnoZoom[1], dc->intervalFrac));
         a->hypnoShader->draw(
             Float4x4::makeOrtho({{-3.f, -3.f * aspect}, {3.f, 3.f * aspect}}, -1.f, 0.01f) *
-                Float4x4::makeTranslation({0, -1.7f, 0}) * Float4x4::makeScale(ez * hypnoScale),
+                Float4x4::makeTranslation({0, -1.2f, 0}) * Float4x4::makeScale(ez * hypnoScale),
             a->waveTexture.id, a->hypnoPaletteTexture, ez * hypnoScale, hypnoAngle);
     }
     for (const DrawMesh* dm : a->rays) {
@@ -644,24 +645,25 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
         float angle = mix(ts->raysAngle[0], ts->raysAngle[1], dc->intervalFrac);
         Rect rayFrustum = dc->fullVF.frustum * (0.751708f / dc->fullVF.frustum.maxs.x);
         a->rayShader->draw(extraZoom * Float4x4::makeProjection(rayFrustum, 0.01f, 2.f) *
-                               Float4x4::makeRotation({1, 0, 0}, -0.33f * Pi) *
+                               Float4x4::makeRotation({1, 0, 0}, -0.28f * Pi) *
                                Float4x4::makeTranslation({0, 0.55f, -1}) *
                                Float4x4::makeScale(2.f) * Float4x4::makeRotation({0, 0, 1}, angle),
                            dm);
     }
     drawStars(ts, extraZoom);
     // Draw prompt
+    float footerY = dc->fullVF.bounds2D.mins.y;
+    float promptY = mix(10.f, -150.f, clamp(unmix(-10.f, -240.f, dc->fullVF.bounds2D.mins.y), 0.f, 1.f));
     if (ts->showPrompt && enablePrompt) {
-        float yOffset = min(50.f, -dc->fullVF.bounds2D.mins.y / 2);
         TextBuffers tapToPlay = generateTextBuffers(a->sdfFont, "TAP TO PLAY");
         drawText(a->sdfCommon, a->sdfFont, tapToPlay,
                  extraZoom * Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
-                     Float4x4::makeTranslation({304, 20 - yOffset, 0}) * Float4x4::makeScale(1.1f) *
+                     Float4x4::makeTranslation({308, 20 + promptY, 0}) * Float4x4::makeScale(1.1f) *
                      Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
                  {0.85f, 1.75f}, {0.05f, 0.05f, 0.05f, 0.8f});
         drawOutlinedText(a->sdfOutline, a->sdfFont, tapToPlay,
                          extraZoom * Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
-                             Float4x4::makeTranslation({300, 24 - yOffset, 0}) *
+                             Float4x4::makeTranslation({304, 24 + promptY, 0}) *
                              Float4x4::makeScale(1.1f) *
                              Float4x4::makeTranslation({-tapToPlay.xMid(), 0, 0}),
                          {1, 1, 1, 0}, {0, 0, 0, 0}, {{0.6f, 16.f}, {0.75f, 12.f}});
@@ -683,9 +685,8 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
         } else {
             pulsate = dc->gs->titleScreen->osb.button.getScale();
         }
-        float yOffset = min(50.f, -dc->fullVF.bounds2D.mins.y / 2);
         Float4x4 b2w = extraZoom * Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
-                       Float4x4::makeTranslation({62, 56 - yOffset, 0}) *
+                       Float4x4::makeTranslation({62, 56 + footerY, 0}) *
                        Float4x4::makeRotation({0, 0, 1}, 0.1f) *
                        Float4x4::makeScale(pulsate * 0.8f);
         for (const DrawMesh* dm : a->stamp) {
@@ -723,11 +724,10 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
 
     {
         // Draw copyright
-        float yOffset = min(50.f, -dc->fullVF.bounds2D.mins.y / 2);
         TextBuffers copyright = generateTextBuffers(a->sdfFont, "@ 2020 Arc80 Software Inc.");
         drawText(a->sdfCommon, a->sdfFont, copyright,
                  extraZoom * Float4x4::makeOrtho(dc->fullVF.bounds2D, -1.f, 1.f) *
-                     Float4x4::makeTranslation({302, 4 - yOffset, 0}) * Float4x4::makeScale(0.36f) *
+                     Float4x4::makeTranslation({306, 4 + promptY, 0}) * Float4x4::makeScale(0.36f) *
                      Float4x4::makeTranslation({-copyright.xMid(), 0, 0}),
                  {0.75f, 10.f}, {0.05f, 0.05f, 0.05f, 1});
     }

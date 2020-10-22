@@ -648,9 +648,9 @@ void doInput(GameState* gs, const Float2& pos, bool down) {
         if (dead->backButton.wasClicked)
             return;
 
-        Float2 buttonPos = uc->bounds2D.topLeft() + Float2{38, -38};
+        Float2 buttonPos = uc->bounds2D.topLeft() + Float2{44, -44};
         bool inBackButton =
-            (pos - buttonPos).length() <= 33 ||
+            (pos - buttonPos).length() <= 40 ||
             Rect{{0, buttonPos.y}, {buttonPos.x, uc->bounds2D.maxs.y}}.contains(pos);
 
         switch (dead->backButton.doInput(down, inBackButton)) {
@@ -672,8 +672,8 @@ void doInput(GameState* gs, const Float2& pos, bool down) {
     switch (gs->mode.id) {
         using ID = GameState::Mode::ID;
         case ID::Title: {
-            float yOffset = min(50.f, -uc->bounds2D.mins.y / 2);
-            Float2 buttonPos = Float2{62, 56 - yOffset};
+            float footerY = uc->bounds2D.mins.y;
+            Float2 buttonPos = Float2{62, 56 + footerY};
             bool inOSButton = (pos - buttonPos).length() <= 85;
             switch (gs->titleScreen->osb.button.doInput(down, inOSButton)) {
                 case Button::Handled: {
@@ -1006,8 +1006,8 @@ void GameState::updateCamera(bool cut) {
     if (auto orbit = this->camera.orbit()) {
         // Orbiting
         params.frameToFocusYaw = orbit->angle + Pi / 2.f;
-        params.lookFromRelFrame = {0, -15.f, 3.5f};
-        params.shiftRelFrame = {0, 0, 1.5f + orbit->getYRise()};
+        params.lookFromRelFrame = {0, -16.f, 3.5f};
+        params.shiftRelFrame = {0, 0, 1.f + orbit->getYRise()};
     } else if (auto follow = this->camera.follow()) {
         // Following
         params.lookFromRelFrame = {0, -GameState::WorldDistance, 0};
@@ -1019,9 +1019,9 @@ void GameState::updateCamera(bool cut) {
         t = t0 * 0.9f + interpolateCubic(0.f, 0.5f, 1.f, 1.f, t) * 0.1f;
         float angle = mix(trans->startAngle, 0.f, t);
         params.frameToFocusYaw = angle;
-        params.lookFromRelFrame = mix(Float3{0, -15.f, 3.5f * mix(1.f, 3.f, t)},
+        params.lookFromRelFrame = mix(Float3{0, -16.f, 3.5f * mix(1.f, 3.f, t)},
                                       Float3{0, -GameState::WorldDistance, 0}, t);
-        params.shiftRelFrame = mix(Float3{0, 0, 1.5f + trans->startYRise},
+        params.shiftRelFrame = mix(Float3{0, 0, 1.f + trans->startYRise},
                                    Float3{GameState::FollowCamRelBirdX, 0, 0}, t);
     } else {
         PLY_ASSERT(0);
