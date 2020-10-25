@@ -31,7 +31,7 @@ void timeStep(TitleRotator* rot) {
             rot->endAngle = wrap(
                 rot->endAngle + mix(minDeltaAngle, 2.f * Pi - minDeltaAngle, random.nextFloat()),
                 2.f * Pi);
-            rot->endNorm = Float3{Complex::fromAngle(rot->endAngle), 1.2f}.normalized();
+            rot->endNorm = Float3{Complex::fromAngle(rot->endAngle), 1.5f}.normalized();
             rot->time = 0;
         }
     } else {
