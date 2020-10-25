@@ -422,8 +422,10 @@ void main() {
     // Add rim
     float rimAmt = clamp(rimFactor.x - rimFactor.y * fn.z, 0.0, 1.0);
     color = color * mix(1.0, rim.a, rimAmt) + rim.rgb * rimAmt;
+    // Saturate
+    color = mix(vec3(dot(color, vec3(0.333))), color, 1.05);
     // Tone map
-    vec3 toneMapped = color / (vec3(0.35) + color);
+    vec3 toneMapped = color / (vec3(0.28) + color);
     outColor = vec4(toneMapped, 1.0);
 }
 )");

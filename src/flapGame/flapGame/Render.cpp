@@ -521,7 +521,7 @@ void renderGamePanel(const DrawContext* dc) {
                           {1, 1, 1, sp.second});
             drawScoreSign(Float4x4::makeOrtho(vf.bounds2D, -1.f, 1.f), {240, 250},
                           0.5f * powf(2.5f, sp2.first), "BEST",
-                          String::from(gs->outerCtx->bestScore), {1.f, 0.45f, 0.05f, sp2.second});
+                          String::from(gs->outerCtx->bestScore), {1.f, 0.55f, 0.02f, sp2.second});
 
             if (dead->showPrompt) {
                 float yOffset = min(20.f, -dc->fullVF.bounds2D.mins.y / 2);
