@@ -431,7 +431,7 @@ void Assets::load(StringView assetsPath) {
                 getMaterial(srcBird, assets->birdMeshes, "Beak", VT::Skinned);
             props->diffuse = Float3{1.05f, 0.09f, 0.035f} * 1.2f;
             props->diffuseClamp = {-0.f, 1.35f, 0.1f};
-            props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.05f, 1.f};
+            props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.35f) * 0.06f, 1.f};
             props->rimFactor = {4.5f, 9.f};
             props->specular = Float3{0.9f, 0.6f, 0.2f} * 0.12f;
             props->specPower = 2.f;
@@ -441,7 +441,7 @@ void Assets::load(StringView assetsPath) {
                 getMaterial(srcBird, assets->birdMeshes, "Skin", VT::Skinned);
             props->diffuse = Float3{1, 0.8f, 0.02f} * 0.75f;
             props->diffuseClamp = {-0.1f, 1.2f, 0.1f};
-            props->rim = {mix(Float3{1, 1, 0.8f}, skyColor, 0.8f) * 0.11f, 1.f};
+            props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.5f) * 0.1f, 1.f};
             props->rimFactor = {4.5f, 9.f};
             props->specLightDir = Float3{0.5f, -1.f, 0.f}.normalized();
             props->specular = Float3{1, 1, 0.8f} * 0.12f;
@@ -452,7 +452,7 @@ void Assets::load(StringView assetsPath) {
                 getMaterial(srcBird, assets->birdMeshes, "Wing", VT::Skinned);
             props->diffuse = Float3{1, 0.8f, 0.1f} * 1.15f;
             props->diffuseClamp = {0.05f, 1.1f, 0.15f};
-            props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.08f, 1.f};
+            props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.5f) * 0.1f, 1.f};
             props->rimFactor = {5.f, 9.f};
             props->specLightDir = Float3{0.65f, -1.f, -0.3f}.normalized();
             props->specular = Float3{1, 0.8f, 0.8f} * 0.2f;
@@ -463,7 +463,7 @@ void Assets::load(StringView assetsPath) {
                 getMaterial(srcBird, assets->birdMeshes, "Belly", VT::Skinned);
             props->diffuse = Float3{0.85f, 0.18f, 0.01f} * 1.9f;
             props->diffuseClamp = {-0.1f, 1.5f, 0.2f};
-            props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.8f) * 0.08f, 1.f};
+            props->rim = {mix(Float3{1, 1, 1}, skyColor, 0.5f) * 0.1f, 1.f};
             props->rimFactor = {4.5f, 9.f};
             props->specLightDir = Float3{0.65f, -1.f, 0.5f}.normalized();
             props->specular = Float3{1, 0.6f, 0.6f} * 0.15f;

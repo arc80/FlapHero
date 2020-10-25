@@ -929,7 +929,7 @@ PLY_NO_INLINE Owned<RayShader> RayShader::create() {
                                 "\n"
                                 "void main() {\n"
                                 "    float a = clamp((fragZ - 0.17) * 20.0, 0.0, 1.0);\n;"
-                                "    fragColor = vec4(1.0, 1.0, 1.0, 0.15 * a);\n"
+                                "    fragColor = vec4(1.0, 1.0, 1.0, 0.2 * a);\n"
                                 "}\n");
 
         // Link shader program
@@ -1205,9 +1205,9 @@ out vec4 fragColor;
 
 void main() {
     vec4 sam = texture(texImage, fragTexCoord.xy);
-    vec3 c0 = texture(palette, vec2((0.5 - fragTexCoord.z) / paletteSize, 0.5)).rgb * sam.r;
+    vec3 c0 = texture(palette, vec2((0.5 - fragTexCoord.z) / paletteSize, 0.5)).rgb;
     vec3 c1 = texture(palette, vec2((1.5 - fragTexCoord.z) / paletteSize, 0.5)).rgb;
-    fragColor = vec4(mix(c0, c1, sam.g), 1.0);
+    fragColor = vec4(mix(c0, c1, sam.g) * sam.r, 1.0);
 }
 )");
 

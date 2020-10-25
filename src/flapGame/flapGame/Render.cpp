@@ -194,7 +194,7 @@ void drawTitle(const TitleScreen* titleScreen, const Float4x4& extraZoom) {
     Float4x4 skewRot = Quaternion::fromUnitVectors(Float3{0, 0, 1}, skewNorm).toFloat4x4();
     Float4x4 mat = cameraToViewport * w2c * Float4x4::makeTranslation({0, worldDistance, 4.f}) *
                    Float4x4::makeRotation({1, 0, 0}, Pi / 2.f) * skewRot *
-                   Float4x4::makeTranslation({0, 0, 2.2f}) * Float4x4::makeScale(7.8f);
+                   Float4x4::makeTranslation({0, 0, 2.2f}) * Float4x4::makeScale(8.f);
     GL_CHECK(DepthRange(0.0, 0.5));
     for (const DrawMesh* dm : a->title) {
         a->flatShader->draw(mat, dm, true);
