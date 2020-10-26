@@ -235,7 +235,7 @@ struct GameState {
 
     // Bird animation
     struct BirdAnim {
-        float wingTime[2] = {0.45f, 0.45f};
+        float wingTime[2] = {0.85f, 0.85f};
         bool eyeMoving = false;
         u32 eyePos[2] = {1, 1};
         float eyeTime[2] = {0, 0};

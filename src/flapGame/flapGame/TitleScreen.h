@@ -52,7 +52,7 @@ struct TitleScreen {
     bool showPrompt = true;
     float promptTime = 0;
     float hypnoAngle[2] = {0, 0};
-    float hypnoZoom[2] = {3, 3};
+    float hypnoZoom[2] = {7, 7};
     float raysAngle[2] = {0, 0};
 
     struct OpenSourceButton {
