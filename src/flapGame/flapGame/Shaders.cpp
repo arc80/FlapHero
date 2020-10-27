@@ -929,7 +929,7 @@ PLY_NO_INLINE Owned<RayShader> RayShader::create() {
                                 "\n"
                                 "void main() {\n"
                                 "    float a = clamp((fragZ - 0.17) * 20.0, 0.0, 1.0);\n;"
-                                "    fragColor = vec4(1.0, 1.0, 1.0, 0.2 * a);\n"
+                                "    fragColor = vec4(1.0, 1.0, 1.0, 0.15 * a);\n"
                                 "}\n");
 
         // Link shader program
