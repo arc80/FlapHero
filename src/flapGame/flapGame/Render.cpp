@@ -244,7 +244,7 @@ void drawStars(const TitleScreen* titleScreen, const Float4x4& extraZoom) {
         float alpha = 1.f - clamp((life - 1.5f) * 1.f, 0.f, 1.f);
         ins.modelToViewport = worldToViewport * Float4x4::makeTranslation(pos) *
                               Float4x4::makeRotation({0, 0, 1}, angle) *
-                              Float4x4::makeScale(scale * 0.09f);
+                              Float4x4::makeScale(scale * 0.13f);
         ins.color = mix(Float4{1.5f, 1.5f, 1.5f, 1.f}, star.color, min(1.f, life * 1.5f));
         ins.color.a() *= alpha;
     }

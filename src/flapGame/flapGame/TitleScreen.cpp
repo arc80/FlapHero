@@ -86,14 +86,13 @@ void timeStep(StarSystem* starSys) {
     starSys->countdown -= dt;
     if (starSys->countdown <= 0) {
         Float2 burstPos = {0.5f + 0.5f * starSys->side * random.nextFloat(),
-                           1.f - 0.8f * powf(random.nextFloat(), 1.5f) - 0.2f * random.nextFloat()};
-        Array<Float3> sphPoints = getMitchellSpherePoints(random, 22);
+                           1.1f - 1.1f * powf(random.nextFloat(), 1.5f) - 0.25f * random.nextFloat()};
+        Array<Float3> sphPoints = getMitchellSpherePoints(random, 15);
         for (const Float3& sr : sphPoints) {
             StarSystem::Star& star = starSys->stars.append();
             star.pos[0] = {Rect{{-0.8f, -0.5f}, {0.8f, 1.1f}}.mix(burstPos), 0.f};
             star.pos[1] = star.pos[0];
-            star.vel = sr * 1.f;
-            star.vel.x *= 0.88f;
+            star.vel = sr * 1.1f;
             star.vel.asFloat2() += Rect{{-1.0f, 0.8f}, {1.0f, 1.3f}}.mix(burstPos);
             star.angle[0] = mix(0.f, 2.f * Pi, random.nextFloat());
             star.angle[1] = star.angle[0];
@@ -102,7 +101,7 @@ void timeStep(StarSystem* starSys) {
             star.color =
                 mix(Float4{1.0f, 1.0f, 0.2f, 0.87f}, Float4{1.0f, 1.0f, 1.0f, 0.97f}, c * c * 0.8f);
         }
-        starSys->countdown = 0.5f;
+        starSys->countdown = 0.25f;
         starSys->side *= -1.f;
     }
     for (u32 i = 0; i < starSys->stars.numItems();) {
