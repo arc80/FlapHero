@@ -288,7 +288,7 @@ void renderGamePanel(const DrawContext* dc) {
     const Assets* a = Assets::instance;
     const GameState* gs = dc->gs;
 
-    Float3 skyColor = fromSRGB(Float3{113.f / 255, 200.f / 255, 206.f / 255});
+    Float3 skyColor = fromSRGB(Float3{0x2a / 255.f, 0xce / 255.f, 0xff / 255.f});
     float frustumScale = 1.f;
     if (auto dead = gs->lifeState.dead()) {
         frustumScale = min(frustumScale,
@@ -384,13 +384,13 @@ void renderGamePanel(const DrawContext* dc) {
         {
             UberShader::Props props;
             props.lightDir = Float3{1, -1, 0}.normalized();
-            props.diffuse = mix(Float3{0.1f, 0.99f, 0.1f} * 1.f, skyColor, 0.f);
-            props.diffuse2 = mix(Float3{0.1f, 0.6f, 0.2f} * 0.4f, skyColor, 0.1f);
-            props.diffuseClamp = {0.3f, 1.1f, 0.3f};
+            props.diffuse = mix(Float3{0.05f, 0.99f, 0.1f} * 1.f, skyColor, 0.02f);
+            props.diffuse2 = mix(Float3{0.05f, 0.99f, 0.1f} * 0.5f, skyColor, 0.03f);
+            props.diffuseClamp = {0.15f, 1.1f, 0.15f};
             props.specLightDir = Float3{1, -1, 0.2f}.normalized();
-            props.specular = Float3{0.7f, 1, 0} * 0.06f;
+            props.specular = Float3{0.7f, 1, 0} * 0.07f;
             props.specPower = 4.f;
-            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.5f) * 0.2f, 1.f};
+            props.rim = {mix(Float3{1, 1, 1}, skyColor, 0.3f) * 0.1f, 1.f};
             props.rimFactor = {1.6f, 4.5f};
             float shrubX = mix(gs->shrubX[0], gs->shrubX[1], dc->intervalFrac);
             for (s32 i = -1; i <= 1; i++) {
@@ -413,10 +413,10 @@ void renderGamePanel(const DrawContext* dc) {
         skyBoxW2C[3].asFloat2() = {0, 0};
         {
             UberShader::Props props;
-            props.diffuse = Float3{0.95f, 1.15f, 0.45f} * 2.2f;
-            props.diffuse2 = Float3{0.3f, 1.f, 1.f} * 2.f;
+            props.diffuse = Float3{0.95f, 1.15f, 0.35f} * 2.2f;
+            props.diffuse2 = Float3{0.2f, 1.f, 1.f} * 2.f;
             props.diffuseClamp = {-1.f, 1.f, 0.4f};
-            props.rim = {Float3{0.25f, 1.f, 1.f} * 0.7f, 0.3f};
+            props.rim = {Float3{0.f, 1.f, 1.f} * 0.7f, 0.3f};
             props.rimFactor = {2.f, 2.f};
             props.specular = {0, 0, 0};
             props.texID = a->windowTexture.id;
