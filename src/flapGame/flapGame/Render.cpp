@@ -288,7 +288,7 @@ void renderGamePanel(const DrawContext* dc) {
     const Assets* a = Assets::instance;
     const GameState* gs = dc->gs;
 
-    Float3 skyColor = fromSRGB(Float3{0x2a / 255.f, 0xce / 255.f, 0xff / 255.f});
+    Float3 skyColor = fromSRGB(Float3{80 / 255.f, 203 / 255.f, 1});
     float frustumScale = 1.f;
     if (auto dead = gs->lifeState.dead()) {
         frustumScale = min(frustumScale,
