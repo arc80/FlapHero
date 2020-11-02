@@ -167,7 +167,7 @@ void updateTitleScreen(TitleScreen* titleScreen) {
         titleScreen->osb.button.wasClicked = false;
         titleScreen->osb.button.timeSinceClicked = 0.f;
 #if PLY_TARGET_WIN32
-        ShellExecute(NULL, "open", "https://arc80.com/opensource/flaphero", NULL, NULL, SW_SHOWNORMAL);
+        ShellExecute(NULL, "open", "https://arc80.com/flaphero/opensource", NULL, NULL, SW_SHOWNORMAL);
 #elif PLY_TARGET_IOS
         openOpenSourcePage();
 #endif
