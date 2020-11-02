@@ -13,7 +13,7 @@ namespace flap {
 
 TitleRotator::TitleRotator() {
     this->endAngle = 0.9f;
-    this->startNorm = Float3{Complex::fromAngle(this->endAngle), 1.2f}.normalized();
+    this->startNorm = Float3{Complex::fromAngle(this->endAngle), 1.65f}.normalized();
     this->endNorm = this->startNorm;
 }
 
@@ -31,7 +31,7 @@ void timeStep(TitleRotator* rot) {
             rot->endAngle = wrap(
                 rot->endAngle + mix(minDeltaAngle, 2.f * Pi - minDeltaAngle, random.nextFloat()),
                 2.f * Pi);
-            rot->endNorm = Float3{Complex::fromAngle(rot->endAngle), 1.45f}.normalized();
+            rot->endNorm = Float3{Complex::fromAngle(rot->endAngle), 1.65f}.normalized();
             rot->time = 0;
         }
     } else {
