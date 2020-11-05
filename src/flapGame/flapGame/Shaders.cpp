@@ -1593,8 +1593,8 @@ PLY_NO_INLINE Owned<ShapeShader> ShapeShader::create() {
                                 "out vec4 fragColor;\n"
                                 "\n"
                                 "void main() {\n"
-                                "    float sample = texture(texImage, fragTexCoord).r;\n"
-                                "    float mask = clamp((sample - 0.5) * slope + 0.5, 0.0, 1.0);\n"
+                                "    float value = texture(texImage, fragTexCoord).r;\n"
+                                "    float mask = clamp((value - 0.5) * slope + 0.5, 0.0, 1.0);\n"
                                 "    fragColor = color;\n"
                                 "    fragColor.a *= mask;\n"
                                 "}\n");
