@@ -126,6 +126,7 @@ struct Assets {
     Owned<GradientShader> gradientShader;
     Owned<PuffShader> puffShader;
     Owned<ShapeShader> shapeShader;
+    Owned<ColorCorrectShader> colorCorrectShader;
 
     // Sounds
     SoLoud::Wav titleMusic;

@@ -1434,6 +1434,66 @@ PLY_NO_INLINE void CopyShader::drawQuad(const Float4x4& modelToViewport, GLuint 
 
 //---------------------------------------------------------
 
+PLY_NO_INLINE Owned<ColorCorrectShader> ColorCorrectShader::create() {
+    Owned<ColorCorrectShader> colorCorrect = new ColorCorrectShader;
+    {
+        Shader vertexShader = Shader::compile(
+            GL_VERTEX_SHADER, "in vec3 vertPosition;\n"
+                              "out vec2 fragTexCoord; \n"
+                              "\n"
+                              "void main() {\n"
+                              "    gl_Position = vec4(vertPosition, 1.0);\n"
+                              "    fragTexCoord = vertPosition.xy * 0.5 + 0.5;\n"
+                              "}\n");
+
+        Shader fragmentShader = Shader::compile(
+            GL_FRAGMENT_SHADER, "in vec2 fragTexCoord;\n"
+                                "uniform sampler2D texImage;\n"
+                                "out vec4 outColor;\n"
+                                "\n"
+                                "void main() {\n"
+                                "    vec4 src = texture(texImage, fragTexCoord);\n"
+                                "    outColor = vec4(pow(src.rgb, vec3(0.4545)), src.a);\n"
+                                "}\n");
+
+        // Link shader program
+        colorCorrect->shader = ShaderProgram::link({vertexShader.id, fragmentShader.id});
+    }
+
+    // Get shader program's vertex attribute and uniform locations
+    colorCorrect->vertPositionAttrib =
+        GL_NO_CHECK(GetAttribLocation(colorCorrect->shader.id, "vertPosition"));
+    PLY_ASSERT(colorCorrect->vertPositionAttrib >= 0);
+    colorCorrect->textureUniform =
+        GL_NO_CHECK(GetUniformLocation(colorCorrect->shader.id, "texImage"));
+    PLY_ASSERT(colorCorrect->textureUniform >= 0);
+
+    return colorCorrect;
+}
+
+PLY_NO_INLINE void ColorCorrectShader::draw(const DrawMesh* drawMesh, GLuint textureID) const {
+    GL_CHECK(UseProgram(this->shader.id));
+    GL_CHECK(Disable(GL_DEPTH_TEST));
+    GL_CHECK(Disable(GL_BLEND));
+
+    GL_CHECK(ActiveTexture(GL_TEXTURE0));
+    GL_CHECK(BindTexture(GL_TEXTURE_2D, textureID));
+    GL_CHECK(Uniform1i(this->textureUniform, 0));
+
+    // Draw mesh (typically a fullscreen quad)
+    PLY_ASSERT(drawMesh->vertexType == DrawMesh::VertexType::TexturedFlat);
+    GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, drawMesh->vbo.id));
+    GL_CHECK(EnableVertexAttribArray(this->vertPositionAttrib));
+    GL_CHECK(VertexAttribPointer(this->vertPositionAttrib, 3, GL_FLOAT, GL_FALSE,
+                                 (GLsizei) sizeof(VertexPT), (GLvoid*) offsetof(VertexPT, pos)));
+    GL_CHECK(BindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawMesh->indexBuffer.id));
+    GL_CHECK(
+        DrawElements(GL_TRIANGLES, (GLsizei) drawMesh->numIndices, GL_UNSIGNED_SHORT, (void*) 0));
+    GL_CHECK(DisableVertexAttribArray(this->vertPositionAttrib));
+}
+
+//---------------------------------------------------------
+
 PLY_NO_INLINE Owned<PuffShader> PuffShader::create() {
     Owned<PuffShader> puffShader = new PuffShader;
     {

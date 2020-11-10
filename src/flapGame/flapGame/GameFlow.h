@@ -27,6 +27,10 @@ struct GameFlow final : GameState::OuterContext {
     float musicCountdown = 0.f;
     SoLoud::handle titleMusicVoice = 0;
 
+    // Temporary buffers used for manual color correction (Android)
+    Texture fullScreenTex;
+    RenderToTexture fullScreenRTT;
+
     GameFlow();
 
     virtual void onGameStart() override;

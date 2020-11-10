@@ -263,13 +263,7 @@ PLY_NO_INLINE void RenderToTexture::init(const Texture& tex, bool withDepth) {
     if (withDepth) {
         GL_CHECK(GenRenderbuffers(1, &this->depthRBID));
         GL_CHECK(BindRenderbuffer(GL_RENDERBUFFER, (GLuint) this->depthRBID));
-#if PLY_TARGET_ANDROID || PLY_TARGET_IOS
-        // :TODO: GL_INVALID_ENUM error on Android...  Could GL_DEPTH_COMPONENT24 be used on all
-        // platforms?
-        GL_CHECK(RenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, tex.width, tex.height));
-#else
-        GL_CHECK(RenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, tex.width, tex.height));
-#endif
+        GL_CHECK(RenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, tex.width, tex.height));
         GL_CHECK(BindRenderbuffer(GL_RENDERBUFFER, 0));
     }
     GLint prevFBO;
@@ -279,6 +273,8 @@ PLY_NO_INLINE void RenderToTexture::init(const Texture& tex, bool withDepth) {
     GL_CHECK(FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex.id, 0));
     if (withDepth) {
         GL_CHECK(FramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
+                                         this->depthRBID));
+        GL_CHECK(FramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
                                          this->depthRBID));
     }
     GLenum status = GL_NO_CHECK(CheckFramebufferStatus(GL_FRAMEBUFFER));

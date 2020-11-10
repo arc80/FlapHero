@@ -585,26 +585,30 @@ void renderGamePanel(const DrawContext* dc) {
     }
 }
 
-void drawTitleScreenToTemp(TitleScreen* ts) {
-    const Assets* a = Assets::instance;
-    const DrawContext* dc = DrawContext::instance();
-    float aspect = dc->fullVF.bounds2D.height() / dc->fullVF.bounds2D.width();
-
-    Float2 vpSize = dc->fullVF.viewport.size();
-    if (!ts->tempTex.id || ts->tempTex.dims() != vpSize) {
+void ensureRenderTargetSize(Texture* tex, RenderToTexture* rtt, const Float2& dims) {
+    if (!tex->id || tex->dims() != dims) {
         // Create temporary buffer
-        ts->tempRTT.destroy();
-        ts->tempTex.destroy();
+        rtt->destroy();
+        tex->destroy();
         SamplerParams params;
         params.minFilter = false;
         params.magFilter = false;
         params.repeatX = false;
         params.repeatY = false;
         params.sRGB = false;
-        PLY_ASSERT(isQuantized(vpSize, 1.f));
-        ts->tempTex.init((u32) vpSize.x, (u32) vpSize.y, image::Format::RGBA, 1, params);
-        ts->tempRTT.init(ts->tempTex, true);
+        PLY_ASSERT(isQuantized(dims, 1.f));
+        tex->init((u32) dims.x, (u32) dims.y, image::Format::RGBA, 1, params);
+        rtt->init(*tex, true);
     }
+}
+
+void drawTitleScreenToTemp(TitleScreen* ts) {
+    const Assets* a = Assets::instance;
+    const DrawContext* dc = DrawContext::instance();
+    float aspect = dc->fullVF.bounds2D.height() / dc->fullVF.bounds2D.width();
+
+    Float2 vpSize = dc->fullVF.viewport.size();
+    ensureRenderTargetSize(&ts->tempTex, &ts->tempRTT, vpSize);
 
     float ez = 1.f;
     Float4x4 extraZoom = Float4x4::identity();
@@ -743,7 +747,7 @@ ViewportFrustum getViewportFrustum(const Float2& fbSize) {
     return fitFrustumInViewport({{0, 0}, fbSize}, frustumRect, bounds2D).quantize();
 }
 
-void render(GameFlow* gf, const Float2& fbSize, float renderDT) {
+void render(GameFlow* gf, const Float2& fbSize, float renderDT, bool useManualColorCorrection) {
     PLY_ASSERT(fbSize.x > 0 && fbSize.y > 0);
     const Assets* a = Assets::instance;
     PLY_SET_IN_SCOPE(DynamicArrayBuffers::instance, &gf->dynBuffers);
@@ -774,6 +778,11 @@ void render(GameFlow* gf, const Float2& fbSize, float renderDT) {
         dc.intervalFrac = intervalFrac;
         dc.visibleExtents = visibleExtents;
         drawTitleScreenToTemp(gf->gameState->titleScreen);
+    }
+
+    if (useManualColorCorrection) {
+        ensureRenderTargetSize(&gf->fullScreenTex, &gf->fullScreenRTT, fbSize);
+        GL_CHECK(BindFramebuffer(GL_FRAMEBUFFER, gf->fullScreenRTT.fboID));
     }
 
     // Clear viewport
@@ -847,6 +856,18 @@ void render(GameFlow* gf, const Float2& fbSize, float renderDT) {
         }
     } else {
         renderPanel(gf->gameState, fullVF);
+    }
+
+    if (useManualColorCorrection) {
+        // Copy to default framebuffer with color correction
+        GL_CHECK(BindFramebuffer(GL_FRAMEBUFFER, 0));
+        GL_CHECK(Viewport(0, 0, (GLsizei) fbSize.x, (GLsizei) fbSize.y));
+        GL_CHECK(DepthRange(0.0, 1.0));
+        GL_CHECK(DepthMask(GL_TRUE));
+        GL_CHECK(ClearColor(0, 0, 0, 1));
+        GL_CHECK(ClearDepth(1.0));
+        GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
+        a->colorCorrectShader->draw(a->quad, gf->fullScreenTex.id);
     }
 }
 

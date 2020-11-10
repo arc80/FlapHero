@@ -248,6 +248,15 @@ struct CopyShader {
                   float premul) const;
 };
 
+struct ColorCorrectShader {
+    ShaderProgram shader;
+    GLint vertPositionAttrib = 0;
+    GLint textureUniform = 0;
+
+    static PLY_NO_INLINE Owned<ColorCorrectShader> create();
+    void draw(const DrawMesh* drawMesh, GLuint textureID) const;
+};
+
 struct PuffShader {
     struct InstanceData {
         Float4x4 modelToWorld;

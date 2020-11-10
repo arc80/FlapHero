@@ -823,6 +823,7 @@ void Assets::load(StringView assetsPath) {
     assets->gradientShader = GradientShader::create();
     assets->puffShader = PuffShader::create();
     assets->shapeShader = ShapeShader::create();
+    assets->colorCorrectShader = ColorCorrectShader::create();
 
     // Load sounds
     assets->titleMusic.load(
