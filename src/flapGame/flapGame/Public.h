@@ -21,5 +21,7 @@ void doInput(GameFlow* gf, const Float2& fbSize, const Float2& pos, bool down, s
 void togglePause(GameFlow* gf);
 void render(GameFlow* gf, const Float2& fbSize, float renderDT,
             bool useManualColorCorrection = false, s32 navBarSize = 0);
+void onAppDeactivate(GameFlow* gf);
+void onAppActivate(GameFlow* gf);
 
 } // namespace flap

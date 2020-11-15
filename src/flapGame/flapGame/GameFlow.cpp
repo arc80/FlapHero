@@ -143,6 +143,14 @@ void destroy(GameFlow* gf) {
     delete gf;
 }
 
+void onAppDeactivate(GameFlow*) {
+    gSoLoud.fadeGlobalVolume(0.f, 0.5f);
+}
+
+void onAppActivate(GameFlow*) {
+    gSoLoud.fadeGlobalVolume(1.f, 0.2f);
+}
+
 } // namespace flap
 
 #include "codegen/GameFlow.inl"
