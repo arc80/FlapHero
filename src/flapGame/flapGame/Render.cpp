@@ -656,8 +656,10 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     }
     drawStars(ts, extraZoom);
     // Draw prompt
-    float footerY = dc->fullVF.bounds2D.mins.y;
-    float promptY = mix(10.f, -150.f, clamp(unmix(-10.f, -240.f, dc->fullVF.bounds2D.mins.y), 0.f, 1.f));
+    float footerY = dc->safeBottom;
+    float bottomMargin = dc->safeBottom - dc->fullVF.bounds2D.mins.y;
+    float promptY = mix(10.f, -150.f,
+                        clamp(unmix(-10.f, -240.f, dc->fullVF.bounds2D.mins.y), 0.f, 1.f)) + bottomMargin;
     if (ts->showPrompt && enablePrompt) {
         TextBuffers tapToPlay = generateTextBuffers(a->sdfFont, "TAP TO PLAY");
         drawText(a->sdfCommon, a->sdfFont, tapToPlay,
@@ -747,7 +749,8 @@ ViewportFrustum getViewportFrustum(const Float2& fbSize) {
     return fitFrustumInViewport({{0, 0}, fbSize}, frustumRect, bounds2D).quantize();
 }
 
-void render(GameFlow* gf, const Float2& fbSize, float renderDT, bool useManualColorCorrection) {
+void render(GameFlow* gf, const Float2& fbSize, float renderDT, bool useManualColorCorrection,
+            s32 navBarSize) {
     PLY_ASSERT(fbSize.x > 0 && fbSize.y > 0);
     const Assets* a = Assets::instance;
     PLY_SET_IN_SCOPE(DynamicArrayBuffers::instance, &gf->dynBuffers);
@@ -766,6 +769,9 @@ void render(GameFlow* gf, const Float2& fbSize, float renderDT, bool useManualCo
     // Fit frustum in viewport
     Rect visibleExtents = expand(Rect{{0, 0}}, Float2{23.775f, 31.7f} * 0.5f);
     ViewportFrustum fullVF = getViewportFrustum(fbSize);
+    float safeBottom = mix(
+        fullVF.bounds2D.mins.y, fullVF.bounds2D.maxs.y,
+        clamp(unmix(fullVF.viewport.mins.y, fullVF.viewport.maxs.y, (float) navBarSize), 0.f, 1.f));
 
     // Before drawing the panels, draw the title screen (if any) to a temporary buffer
     if (gf->gameState->titleScreen) {
@@ -777,6 +783,7 @@ void render(GameFlow* gf, const Float2& fbSize, float renderDT, bool useManualCo
         dc.fracTime = gf->fracTime;
         dc.intervalFrac = intervalFrac;
         dc.visibleExtents = visibleExtents;
+        dc.safeBottom = safeBottom;
         drawTitleScreenToTemp(gf->gameState->titleScreen);
     }
 
@@ -804,6 +811,7 @@ void render(GameFlow* gf, const Float2& fbSize, float renderDT, bool useManualCo
         dc.fracTime = gf->fracTime;
         dc.intervalFrac = intervalFrac;
         dc.visibleExtents = visibleExtents;
+        dc.safeBottom = safeBottom;
         renderGamePanel(&dc);
     };
 

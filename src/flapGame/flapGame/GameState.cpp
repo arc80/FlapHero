@@ -672,7 +672,7 @@ void doInput(GameState* gs, const Float2& pos, bool down) {
     switch (gs->mode.id) {
         using ID = GameState::Mode::ID;
         case ID::Title: {
-            float footerY = uc->bounds2D.mins.y;
+            float footerY = uc->safeBottom;
             Float2 buttonPos = Float2{62, 56 + footerY};
             bool inOSButton = (pos - buttonPos).length() <= 85;
             switch (gs->titleScreen->osb.button.doInput(down, inOSButton)) {
