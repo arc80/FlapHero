@@ -4,7 +4,7 @@
 
 #if PLY_TARGET_WIN32
 #include <shellapi.h>
-#elif PLY_TARGET_IOS
+#elif PLY_TARGET_IOS || PLY_TARGET_ANDROID
 extern "C"
 void openOpenSourcePage();
 #endif
@@ -168,7 +168,7 @@ void updateTitleScreen(TitleScreen* titleScreen) {
         titleScreen->osb.button.timeSinceClicked = 0.f;
 #if PLY_TARGET_WIN32
         ShellExecute(NULL, "open", "https://arc80.com/flaphero/opensource", NULL, NULL, SW_SHOWNORMAL);
-#elif PLY_TARGET_IOS
+#elif PLY_TARGET_IOS || PLY_TARGET_ANDROID
         openOpenSourcePage();
 #endif
     }
