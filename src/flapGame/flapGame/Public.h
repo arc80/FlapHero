@@ -17,10 +17,10 @@ void shutdown();
 GameFlow* createGameFlow();
 void destroy(GameFlow* gf);
 void update(GameFlow* gf, float dt);
-void doInput(GameFlow* gf, const Float2& fbSize, const Float2& pos, bool down, s32 navBarSize = 0);
+void doInput(GameFlow* gf, const Float2& fbSize, const Float2& pos, bool down);
 void togglePause(GameFlow* gf);
 void render(GameFlow* gf, const Float2& fbSize, float renderDT,
-            bool useManualColorCorrection = false, s32 navBarSize = 0);
+            bool useManualColorCorrection = false);         
 void onAppDeactivate(GameFlow* gf);
 void onAppActivate(GameFlow* gf);
 

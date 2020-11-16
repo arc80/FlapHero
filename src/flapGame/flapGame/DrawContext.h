@@ -38,7 +38,6 @@ struct DrawContext {
     float fracTime = 0;
     float intervalFrac = 0;
     Rect visibleExtents = {{0, 0}, {0, 0}};
-    float safeBottom = 0; // in ViewportFrustum::bounds2D coordinates
 
     static DrawContext* instance_;
     static PLY_INLINE DrawContext* instance() {

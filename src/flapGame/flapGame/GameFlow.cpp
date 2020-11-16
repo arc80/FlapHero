@@ -56,14 +56,11 @@ GameFlow::GameFlow() {
     this->titleMusicVoice = gSoLoud.play(Assets::instance->titleMusic);
 }
 
-void doInput(GameFlow* gf, const Float2& fbSize, const Float2& pos, bool down, s32 navBarSize) {
+void doInput(GameFlow* gf, const Float2& fbSize, const Float2& pos, bool down) {
     ViewportFrustum vf = getViewportFrustum(fbSize);
     UpdateContext uc;
     uc.gs = gf->gameState;
     uc.bounds2D = vf.bounds2D;
-    uc.safeBottom = mix(
-        vf.bounds2D.mins.y, vf.bounds2D.maxs.y,
-        clamp(unmix(vf.viewport.mins.y, vf.viewport.maxs.y, (float) navBarSize), 0.f, 1.f));
     PLY_SET_IN_SCOPE(UpdateContext::instance_, &uc);
     Float2 pos2D = vf.bounds2D.mix(vf.viewport.unmix(pos));
     doInput(gf->gameState, pos2D, down);
