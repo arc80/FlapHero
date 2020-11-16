@@ -3,6 +3,11 @@
 #include <flapGame/Assets.h>
 #include <flapGame/DrawContext.h>
 
+#if PLY_TARGET_ANDROID
+extern "C"
+void exitAppFromBackButton();
+#endif
+
 namespace flap {
 
 SoLoud::Soloud gSoLoud; // SoLoud engine
@@ -44,11 +49,14 @@ void GameFlow::resetGame(bool isPlaying) {
 
 void GameFlow::backToTitle() {
     Assets* a = Assets::instance;
-    auto trans = this->trans.on().switchTo();
-    trans->oldGameState = std::move(this->gameState);
-    this->resetGame(false);
-    gSoLoud.play(a->swipeSound, 1.f);
-    this->musicCountdown = 0.3f;
+    auto transOn = this->trans.on();
+    if (!transOn) {
+        transOn.switchTo();
+        transOn->oldGameState = std::move(this->gameState);
+        this->resetGame(false);
+        gSoLoud.play(a->swipeSound, 1.f);
+        this->musicCountdown = 0.3f;
+    }
 }
 
 GameFlow::GameFlow() {
@@ -69,6 +77,16 @@ void doInput(GameFlow* gf, const Float2& fbSize, const Float2& pos, bool down, f
 
 void togglePause(GameFlow* gf) {
     gf->isPaused = !gf->isPaused;
+}
+
+void onBackPressed(GameFlow* gf) {
+    if (gf->gameState->mode.title()) {
+#if PLY_TARGET_ANDROID
+        exitAppFromBackButton();
+#endif
+    } else {
+        gf->backToTitle();
+    }
 }
 
 void update(GameFlow* gf, float dt) {

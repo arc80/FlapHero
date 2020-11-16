@@ -50,6 +50,9 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
         flap::reloadAssets();
     }
+    if (key == GLFW_KEY_B && action == GLFW_PRESS) {
+        onBackPressed(gf);
+    }
     if (key == GLFW_KEY_P && action == GLFW_PRESS) {
         togglePause(gf);
     }
