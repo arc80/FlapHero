@@ -643,6 +643,8 @@ const FixedArray<Tuple<s32, s32>, 8> NoteMap = {{0, 0}, {0, 2}, {1, 0}, {1, 1},
 
 void doInput(GameState* gs, const Float2& pos, bool down) {
     UpdateContext* uc = UpdateContext::instance();
+    bool ignore = uc->possibleSwipeFromEdge;
+
     auto dead = gs->lifeState.dead();
     if (dead && dead->delay <= 0) {
         if (dead->backButton.wasClicked)
@@ -663,7 +665,7 @@ void doInput(GameState* gs, const Float2& pos, bool down) {
                 break;
         }
 
-        if (down) {
+        if (down && !ignore) {
             gs->outerCtx->onRestart();
         }
         return;
@@ -687,7 +689,7 @@ void doInput(GameState* gs, const Float2& pos, bool down) {
                     break;
             }
 
-            if (down) {
+            if (down && !ignore) {
                 gs->startPlaying();
                 gs->outerCtx->onGameStart();
             }
@@ -695,14 +697,14 @@ void doInput(GameState* gs, const Float2& pos, bool down) {
         }
         case ID::Playing:
         case ID::Impact: {
-            if (down) {
+            if (down && !ignore) {
                 gs->doJump = true;
             }
             break;
         }
         case ID::Blending:
         case ID::Recovering: {
-            if (down) {
+            if (down && !ignore) {
                 if ((gs->damage < 2) || GODMODE) {
                     gs->mode.playing().switchTo();
                     gs->doJump = true;

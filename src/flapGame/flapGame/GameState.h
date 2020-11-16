@@ -314,6 +314,7 @@ struct UpdateContext {
     Float3 prevDelta = {0, 0, 0};
     Quaternion deltaRot = {0, 0, 0, 1};
     Rect bounds2D = {{0, 0}, {0, 0}};
+    bool possibleSwipeFromEdge = false;
 
     static UpdateContext* instance_;
     static PLY_INLINE UpdateContext* instance() {

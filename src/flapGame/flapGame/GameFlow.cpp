@@ -56,11 +56,12 @@ GameFlow::GameFlow() {
     this->titleMusicVoice = gSoLoud.play(Assets::instance->titleMusic);
 }
 
-void doInput(GameFlow* gf, const Float2& fbSize, const Float2& pos, bool down) {
+void doInput(GameFlow* gf, const Float2& fbSize, const Float2& pos, bool down, float swipeMargin) {
     ViewportFrustum vf = getViewportFrustum(fbSize);
     UpdateContext uc;
     uc.gs = gf->gameState;
     uc.bounds2D = vf.bounds2D;
+    uc.possibleSwipeFromEdge = (pos.y < swipeMargin || pos.y > fbSize.y - swipeMargin);
     PLY_SET_IN_SCOPE(UpdateContext::instance_, &uc);
     Float2 pos2D = vf.bounds2D.mix(vf.viewport.unmix(pos));
     doInput(gf->gameState, pos2D, down);
