@@ -116,6 +116,7 @@ struct UberShader {
     GLint lightDirUniform = -1;
     GLint specLightDirUniform = -1;
     GLint boneXformsUniform = -1;
+    GLint boneXformsCUniform = -1;
     GLint texImageUniform = -1;
 
     static Owned<UberShader> create(u32 flags);

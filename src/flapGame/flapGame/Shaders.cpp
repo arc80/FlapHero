@@ -333,6 +333,13 @@ PLY_NO_INLINE void PipeShader::draw(const Float4x4& cameraToViewport, const Floa
 PLY_NO_INLINE Owned<UberShader> UberShader::create(u32 flags) {
     using F = UberShader::Flags;
     const bool skinned = (flags & F::Skinned) != 0;
+#ifdef PLY_TARGET_ANDROID
+    // SKINNED_COMPAT is a workaround for a bug on LG Nexus 5 (Adreno 330)
+    // https://developer.qualcomm.com/comment/6960#comment-6960
+    const bool skinnedCompat = true;
+#else
+    const bool skinnedCompat = false;
+#endif
     const bool duotone = (flags & F::Duotone) != 0;
 
     Owned<UberShader> uberShader = new UberShader;
@@ -342,6 +349,9 @@ PLY_NO_INLINE Owned<UberShader> UberShader::create(u32 flags) {
             StringWriter sw;
             if (skinned) {
                 sw << "#define SKINNED 1\n";
+                if (skinnedCompat) {
+                    sw << "#define SKINNED_COMPAT 1\n";
+                }
             }
             if (duotone) {
                 sw << "#define DUOTONE 1\n";
@@ -361,20 +371,38 @@ uniform mat4 cameraToViewport;
 #ifdef SKINNED
 in vec2 vertBlendIndices;
 in vec2 vertBlendWeights;
+#ifdef SKINNED_COMPAT
+uniform vec4 boneXformsC[64];
+#else
 uniform mat4 boneXforms[16];
 #endif
+#endif
 out vec3 fragNormal;
+
+#ifdef SKINNED
+vec4 doTransform(int i, vec4 v) {
+#ifdef SKINNED_COMPAT
+    int j = i * 4;
+    return boneXformsC[j + 0] * v.x + 
+           boneXformsC[j + 1] * v.y + 
+           boneXformsC[j + 2] * v.z + 
+           boneXformsC[j + 3] * v.w;
+#else
+    return boneXforms[i] * v;
+#endif
+}
+#endif
             
 void main() {
 #ifdef SKINNED
     // Skinned
-    vec4 pos = boneXforms[int(vertBlendIndices.x)] * vec4(vertPosition, 1.0)
+    vec4 pos = doTransform(int(vertBlendIndices.x), vec4(vertPosition, 1.0))
+               * vertBlendWeights.x;
+    pos += doTransform(int(vertBlendIndices.y), vec4(vertPosition, 1.0))
+           * vertBlendWeights.y;
+    vec4 norm = doTransform(int(vertBlendIndices.x), vec4(vertNormal, 0.0))
                 * vertBlendWeights.x;
-    pos += boneXforms[int(vertBlendIndices.y)] * vec4(vertPosition, 1.0)
-            * vertBlendWeights.y;
-    vec4 norm = boneXforms[int(vertBlendIndices.x)] * vec4(vertNormal, 0.0)
-                * vertBlendWeights.x;
-    norm += boneXforms[int(vertBlendIndices.y)] * vec4(vertNormal, 0.0)
+    norm += doTransform(int(vertBlendIndices.y), vec4(vertNormal, 0.0))
             * vertBlendWeights.y;
 #else
     // Not skinned
@@ -483,7 +511,10 @@ void main() {
     PLY_ASSERT(uberShader->specLightDirUniform >= 0);
     uberShader->boneXformsUniform =
         GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "boneXforms"));
-    PLY_ASSERT(skinned == (uberShader->boneXformsUniform >= 0));
+    PLY_ASSERT((skinned && !skinnedCompat) == (uberShader->boneXformsUniform >= 0));
+    uberShader->boneXformsCUniform =
+        GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "boneXformsC"));
+    PLY_ASSERT((skinned && skinnedCompat) == (uberShader->boneXformsCUniform >= 0));
     uberShader->texImageUniform =
         GL_NO_CHECK(GetUniformLocation(uberShader->shader.id, "texImage"));
     PLY_ASSERT(duotone == (uberShader->texImageUniform >= 0));
@@ -524,15 +555,21 @@ PLY_NO_INLINE void UberShader::draw(const Float4x4& cameraToViewport, const Floa
     GL_CHECK(Uniform3fv(this->lightDirUniform, 1, (const GLfloat*) &props->lightDir));
     GL_CHECK(Uniform3fv(this->specLightDirUniform, 1, (const GLfloat*) &props->specLightDir));
 
-    if (this->boneXformsUniform >= 0) {
+    if (this->boneXformsUniform >= 0 || this->boneXformsCUniform >= 0) {
         Array<Float4x4> boneXforms;
         boneXforms.resize(drawMesh->bones.numItems());
         for (u32 i = 0; i < drawMesh->bones.numItems(); i++) {
             u32 indexInSkel = drawMesh->bones[i].indexInSkel;
             boneXforms[i] = boneToModel[indexInSkel] * drawMesh->bones[i].baseModelToBone;
         }
-        GL_CHECK(UniformMatrix4fv(this->boneXformsUniform, boneXforms.numItems(), GL_FALSE,
-                                  (const GLfloat*) boneXforms.get()));
+        if (this->boneXformsUniform >= 0) {
+            GL_CHECK(UniformMatrix4fv(this->boneXformsUniform, boneXforms.numItems(), GL_FALSE,
+                                      (const GLfloat*) boneXforms.get()));
+        } else {
+            PLY_ASSERT(this->boneXformsCUniform >= 0);
+            GL_CHECK(Uniform4fv(this->boneXformsCUniform, boneXforms.numItems() * 4,
+                                (const GLfloat*) boneXforms.get()));
+        }
     }
     if (duotone) {
         GL_CHECK(Uniform3fv(this->diffuse2Uniform, 1, (const GLfloat*) &props->diffuse2));
@@ -1437,14 +1474,14 @@ PLY_NO_INLINE void CopyShader::drawQuad(const Float4x4& modelToViewport, GLuint 
 PLY_NO_INLINE Owned<ColorCorrectShader> ColorCorrectShader::create() {
     Owned<ColorCorrectShader> colorCorrect = new ColorCorrectShader;
     {
-        Shader vertexShader = Shader::compile(
-            GL_VERTEX_SHADER, "in vec3 vertPosition;\n"
-                              "out vec2 fragTexCoord; \n"
-                              "\n"
-                              "void main() {\n"
-                              "    gl_Position = vec4(vertPosition, 1.0);\n"
-                              "    fragTexCoord = vertPosition.xy * 0.5 + 0.5;\n"
-                              "}\n");
+        Shader vertexShader =
+            Shader::compile(GL_VERTEX_SHADER, "in vec3 vertPosition;\n"
+                                              "out vec2 fragTexCoord; \n"
+                                              "\n"
+                                              "void main() {\n"
+                                              "    gl_Position = vec4(vertPosition, 1.0);\n"
+                                              "    fragTexCoord = vertPosition.xy * 0.5 + 0.5;\n"
+                                              "}\n");
 
         Shader fragmentShader = Shader::compile(
             GL_FRAGMENT_SHADER, "in vec2 fragTexCoord;\n"
