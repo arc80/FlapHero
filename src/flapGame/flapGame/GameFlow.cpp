@@ -6,6 +6,8 @@
 #if PLY_TARGET_ANDROID
 extern "C"
 void exitAppFromBackButton();
+extern "C"
+void onMusicStartStop(bool start);
 #endif
 
 namespace flap {
@@ -14,6 +16,9 @@ SoLoud::Soloud gSoLoud; // SoLoud engine
 
 void GameFlow::onGameStart() {
     if (this->titleMusicVoice) {
+#if PLY_TARGET_ANDROID
+        onMusicStartStop(false);
+#endif
         gSoLoud.fadeVolume(this->titleMusicVoice, 0, 0.15);
         this->titleMusicVoice = 0;
     }
@@ -62,6 +67,9 @@ void GameFlow::backToTitle() {
 GameFlow::GameFlow() {
     this->resetGame(false);
     this->titleMusicVoice = gSoLoud.play(Assets::instance->titleMusic);
+#if PLY_TARGET_ANDROID
+    onMusicStartStop(true);
+#endif
 }
 
 void doInput(GameFlow* gf, const Float2& fbSize, const Float2& pos, bool down, float swipeMargin) {
@@ -107,6 +115,9 @@ void update(GameFlow* gf, float dt) {
                 gf->musicCountdown = 0;
                 if (gf->gameState->mode.title()) {
                     gf->titleMusicVoice = gSoLoud.play(Assets::instance->titleMusic);
+#if PLY_TARGET_ANDROID
+                    onMusicStartStop(true);
+#endif
                 }
             }
         }
@@ -165,6 +176,13 @@ void onAppDeactivate(GameFlow*) {
 
 void onAppActivate(GameFlow*) {
     gSoLoud.fadeGlobalVolume(1.f, 0.2f);
+}
+
+void stopMusic(GameFlow* gf) {
+    if (gf->titleMusicVoice) {
+        gSoLoud.fadeVolume(gf->titleMusicVoice, 0, 0.15);
+        gf->titleMusicVoice = 0;
+    }
 }
 
 } // namespace flap

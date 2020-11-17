@@ -21,6 +21,7 @@ void doInput(GameFlow* gf, const Float2& fbSize, const Float2& pos, bool down,
              float swipeMargin = 0.f);
 void togglePause(GameFlow* gf);
 void onBackPressed(GameFlow* gf);
+void stopMusic(GameFlow* gf);
 void render(GameFlow* gf, const Float2& fbSize, float renderDT,
             bool useManualColorCorrection = false);
 void onAppDeactivate(GameFlow* gf);
