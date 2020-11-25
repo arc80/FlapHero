@@ -912,9 +912,10 @@ PLY_NO_INLINE void StarShader::draw(const DrawMesh* drawMesh, GLuint textureID,
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, ibo));
     for (u32 c = 0; c < 4; c++) {
         GL_CHECK(EnableVertexAttribArray(this->instModelToViewportAttrib + c));
-        GL_CHECK(VertexAttribPointer(this->instModelToViewportAttrib + c, 4, GL_FLOAT, GL_FALSE,
-                                     (GLsizei) sizeof(InstanceData),
-                                     (GLvoid*) offsetof(InstanceData, modelToViewport.col[c])));
+        GL_CHECK(VertexAttribPointer(
+            this->instModelToViewportAttrib + c, 4, GL_FLOAT, GL_FALSE,
+            (GLsizei) sizeof(InstanceData),
+            (GLvoid*) (offsetof(InstanceData, modelToViewport) + sizeof(Float4) * c)));
         GL_CHECK(VertexAttribDivisor(this->instModelToViewportAttrib + c, 1));
     }
     GL_CHECK(EnableVertexAttribArray(this->instColorAttrib));
@@ -1636,9 +1637,9 @@ PLY_NO_INLINE void PuffShader::draw(const Float4x4& worldToViewport, GLuint text
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, ibo));
     for (u32 c = 0; c < 4; c++) {
         GL_CHECK(EnableVertexAttribArray(this->instModelToWorldAttrib + c));
-        GL_CHECK(VertexAttribPointer(this->instModelToWorldAttrib + c, 4, GL_FLOAT, GL_FALSE,
-                                     (GLsizei) sizeof(InstanceData),
-                                     (GLvoid*) offsetof(InstanceData, modelToWorld.col[c])));
+        GL_CHECK(VertexAttribPointer(
+            this->instModelToWorldAttrib + c, 4, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(InstanceData),
+            (GLvoid*) (offsetof(InstanceData, modelToWorld) + sizeof(Float4) * c)));
         GL_CHECK(VertexAttribDivisor(this->instModelToWorldAttrib + c, 1));
     }
     GL_CHECK(EnableVertexAttribArray(this->instColorAlphaAttrib));

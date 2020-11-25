@@ -36,6 +36,13 @@ ExternResult extern_assimp_macports(ExternCommand cmd, ExternProviderArgs* args)
     return prov.handle(cmd, args);
 }
 
+// [ply extern="assimp" provider="apt"]
+ExternResult extern_assimp_apt(ExternCommand cmd, ExternProviderArgs* args) {
+    PackageProvider prov{PackageProvider::Apt, "libassimp-dev",
+                         [&](StringView) { args->dep->libs.append("-lassimp"); }};
+    return prov.handle(cmd, args);
+}
+
 // [ply extern="glfw" provider="homebrew"]
 ExternResult extern_glfw_homebrew(ExternCommand cmd, ExternProviderArgs* args) {
     PackageProvider prov{PackageProvider::Homebrew, "glfw", [&](StringView prefix) {

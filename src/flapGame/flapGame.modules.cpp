@@ -73,19 +73,17 @@ ExternResult extern_soloud_source(ExternCommand cmd, ExternProviderArgs* args) {
         args->dep->buildTarget->addSourceFiles(NativePath::join(installFolder, "src/audiosource"));
         args->dep->buildTarget->addSourceFiles(NativePath::join(installFolder, "src/core"));
         args->dep->buildTarget->addSourceFiles(NativePath::join(installFolder, "src/filter"));
-        if (args->toolchain->get("targetPlatform")->text() == "windows") {
-            args->dep->buildTarget->addSourceFiles(
-                NativePath::join(installFolder, "src/backend/miniaudio"));
-            args->dep->buildTarget->setPreprocessorDefinition(Visibility::Private, "WITH_MINIAUDIO",
-                                                              "1");
-        } else {
+        if (args->toolchain->get("apple")->isValid()) {
             args->dep->buildTarget->addSourceFiles(
                 NativePath::join(installFolder, "src/backend/coreaudio"));
             args->dep->buildTarget->setPreprocessorDefinition(Visibility::Private, "WITH_COREAUDIO",
                                                               "1");
-        }
-        if (args->toolchain->get("apple")->isValid()) {
             args->dep->buildTarget->dep->libs.append("-framework AudioToolbox");
+        } else {
+            args->dep->buildTarget->addSourceFiles(
+                NativePath::join(installFolder, "src/backend/miniaudio"));
+            args->dep->buildTarget->setPreprocessorDefinition(Visibility::Private, "WITH_MINIAUDIO",
+                                                              "1");
         }
         return {ExternResult::Instantiated, ""};
     }
