@@ -16,7 +16,7 @@ Over time, as Plywood improves, these builds steps will become simpler. Please c
 
 ## License
 
-Flap Hero's source code is made available under the [MIT License](https://choosealicense.com/licenses/mit/). The assets found in the [data](/data) folder, including 3D models, sounds and music, are released to the public domain [(CC0 license)](https://creativecommons.org/share-your-work/public-domain/cc0/).
+Flap Hero's source code is made available under the [MIT License](https://choosealicense.com/licenses/mit/). The assets found in the [data](/data) folder, including 3D models, sounds and music, are released to the public domain [(CC0 license)](https://creativecommons.org/share-your-work/public-domain/cc0/), except for `poppins-bold-694-webfont.ttf`, which is a modified version of the [Poppins font](https://www.fontsquirrel.com/fonts/poppins) distributed under the Open Font license.
 
 ## Credits
 
