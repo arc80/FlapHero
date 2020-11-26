@@ -4,15 +4,31 @@ This is the source code for [Flap Hero](https://arc80.com/flaphero/), a small, f
 
 ![](https://arc80.com/images/flap-icon@2x.png)
 
-See [this blog post](https://preshing.com/20201126/a-small-open-source-game-in-cpp) for more information.
+Flap Hero is built using [Plywood](https://github.com/arc80/plywood). See [this blog post](https://preshing.com/20201126/a-small-open-source-game-in-cpp) for more information.
 
 At this time, it's only possible to build the **Windows**, **Linux** and **macOS** versions of Flap Hero. You can't build the Android or iOS versions yet. (See "Why Can't I Build on Android or iOS?" at the end of this document.) In the meantime, rest assured that the game works basically the same way on all platforms.
 
 #### About These Build Instructions
 
-Please note that Plywood is still a young project, and Flap Hero is the first Plywood application to rely on several third-party libraries at the same time ([Assimp](https://www.assimp.org/), [SoLoud](https://sol.gfxile.net/soloud/) and [GLFW](https://www.glfw.org/)). Therefore, be warned that the following build steps are not exactly easy — but they're doable.
+Please note that Plywood is still a young project, and Flap Hero is the first Plywood application that relies on several third-party libraries at the same time. Therefore, be warned that the following build steps are not exactly easy — but they're doable.
 
 Over time, as Plywood improves, these builds steps will become simpler. Please consider [backing the project on Patreon](https://www.patreon.com/preshing) if you'd like to support that effort!
+
+## License
+
+Flap Hero's source code is made available under the [MIT License](https://choosealicense.com/licenses/mit/). The assets found in the [data](/data) folder, including 3D models, sounds and music, are released to the public domain [(CC0 license)](https://creativecommons.org/share-your-work/public-domain/cc0/).
+
+## Credits
+
+Plywood uses the following third-party libraries:
+
+* [Assimp](https://www.assimp.org/) to load 3D models (BSD license)
+* [SoLoud](https://sol.gfxile.net/soloud/) for audio (zlib license)
+* [GLFW](https://www.glfw.org/) for desktop windowing & input (zlib license)
+* [stb](https://github.com/nothings/stb) to load textures and fonts (MIT license/public domain)
+* OpenGL loader generated using [Glad](https://glad.dav1d.de/) (MIT license)
+
+Thanks to Jean-Noé Morrissette for help with the initial Android port.
 
 ## Build Instructions
 
