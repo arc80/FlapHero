@@ -28,7 +28,7 @@ Plywood uses the following third-party libraries:
 * [stb](https://github.com/nothings/stb) to load textures and fonts (MIT license/public domain)
 * OpenGL loader generated using [Glad](https://glad.dav1d.de/) (MIT license)
 
-Thanks to Jean-Noé Morrissette for help with the initial Android port.
+Thanks to Jean-Noé Morissette for help with the initial Android port.
 
 ## Build Instructions
 
