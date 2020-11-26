@@ -11,7 +11,7 @@ namespace flap {
 Owned<Assets> Assets::instance;
 
 StringView toStringView(const aiString& aiStr) {
-    return {aiStr.data, aiStr.length};
+    return {aiStr.data, safeDemote<u32>(aiStr.length)};
 }
 
 void applyAlphaChannel(image::Image& dst, image::Image& src) {
@@ -157,6 +157,12 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
                 Float4x4::makeScale(0.01f);
             out->bones[mb].indexInSkel = bi;
         }
+        if (srcMesh->mNumBones == 0) {
+            // Force at least one bone to exist. This is needed when loading SickBird's eyes using
+            // Assimp 4.1.0. In other Assimp versions, mNumBones is always > 0.
+            out->bones.append();
+            out->bones[0].baseModelToBone = forSkel[0].boneToModel.invertedOrtho();
+        }
         // Normalize weights
         for (VertexPNW2& vertex : vertices) {
             float totalW = vertex.blendWeights[0] + vertex.blendWeights[1];
@@ -218,8 +224,16 @@ Array<Owned<DrawMesh>> getMeshes(MeshMap* mm, const aiScene* srcScene, const aiN
     Array<Owned<DrawMesh>> result;
     for (u32 m = 0; m < srcNode->mNumMeshes; m++) {
         const aiMesh* srcMesh = srcScene->mMeshes[srcNode->mMeshes[m]];
-        if (!filter.isValid() ||
-            filter(toStringView(srcScene->mMaterials[srcMesh->mMaterialIndex]->GetName()))) {
+        bool doAppend = true;
+        if (filter.isValid()) {
+            aiString matName;
+            aiReturn rc =
+                srcScene->mMaterials[srcMesh->mMaterialIndex]->Get(AI_MATKEY_NAME, matName);
+            PLY_ASSERT(rc == AI_SUCCESS);
+            PLY_UNUSED(rc);
+            doAppend = filter(toStringView(matName));
+        }
+        if (doAppend) {
             result.append(toDrawMesh(mm, srcScene, srcMesh, vertexType, forSkel));
         }
     }
@@ -855,10 +869,8 @@ void Assets::load(StringView assetsPath) {
         NativePath::join(assetsPath, "ButtonUp.wav").withNullTerminator().bytes);
     assets->buttonDownSound.load(
         NativePath::join(assetsPath, "ButtonDown.wav").withNullTerminator().bytes);
-    assets->wobbleSound.load(
-        NativePath::join(assetsPath, "Wobble.ogg").withNullTerminator().bytes);
-    assets->fallSound.load(
-        NativePath::join(assetsPath, "fall.wav").withNullTerminator().bytes);
+    assets->wobbleSound.load(NativePath::join(assetsPath, "Wobble.ogg").withNullTerminator().bytes);
+    assets->fallSound.load(NativePath::join(assetsPath, "fall.wav").withNullTerminator().bytes);
 }
 
 } // namespace flap
