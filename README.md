@@ -109,7 +109,7 @@ Finally, skip to the "Finishing Up" section below.
 
 ## Installing Third-Party Libraries on macOS
 
-On macOS, Flap Hero currently gets its dependencies from [Homebrew](https://brew.sh/), except for SoLoud which gets built from source at the same time that Flap Hero is built. Make you have Homebrew installed by following the instructions [on the official website](https://brew.sh).
+On macOS, Flap Hero currently gets its dependencies from [Homebrew](https://brew.sh/), except for SoLoud which gets built from source at the same time that Flap Hero is built. Make sure you have Homebrew installed by following the instructions [on the official website](https://brew.sh).
 
 From the workspace root folder, execute the following commands. This will select the necessary providers in the current build folder.
 
