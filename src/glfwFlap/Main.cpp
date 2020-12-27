@@ -15,7 +15,7 @@
 using namespace ply;
 
 void error_callback(int error, const char* description) {
-    StdErr::createStringWriter().format("Error: {}\n", description);
+    StdErr::text().format("Error: {}\n", description);
 }
 
 #if WITH_GL_DEBUG_MESSAGES
@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
     glfwSetErrorCallback(error_callback);
 
     if (!glfwInit()) {
-        StdErr::createStringWriter() << "Error: Could not initialize GLFW\n";
+        StdErr::text() << "Error: Could not initialize GLFW\n";
         exit(EXIT_FAILURE);
     }
 

@@ -93,7 +93,7 @@ PLY_NO_INLINE Shader Shader::compile(GLenum type, StringView source) {
         if (lengthIncludingNullTerm > 0) {
             char* buf = new char[lengthIncludingNullTerm];
             GL_CHECK(GetShaderInfoLog(id, lengthIncludingNullTerm, NULL, buf));
-            StdErr::createStringWriter().format("Error compiling shader:\n{}\n", buf);
+            StdErr::text().format("Error compiling shader:\n{}\n", buf);
             delete[] buf;
         }
         PLY_ASSERT(0);
@@ -115,7 +115,7 @@ PLY_NO_INLINE ShaderProgram ShaderProgram::link(std::initializer_list<GLuint> sh
         if (lengthIncludingNullTerm > 0) {
             char* buf = new char[lengthIncludingNullTerm];
             GL_CHECK(GetProgramInfoLog(progID, lengthIncludingNullTerm, NULL, buf));
-            StdErr::createStringWriter().format("Error linking shader:\n{}\n", buf);
+            StdErr::text().format("Error linking shader:\n{}\n", buf);
             delete[] buf;
         }
         PLY_ASSERT(0);
