@@ -93,7 +93,8 @@ void timeStep(StarSystem* starSys) {
             star.pos[0] = {Rect{{-0.8f, -0.5f}, {0.8f, 1.1f}}.mix(burstPos), 0.f};
             star.pos[1] = star.pos[0];
             star.vel = sr * 1.1f;
-            star.vel.asFloat2() += Rect{{-1.0f, 0.8f}, {1.0f, 1.3f}}.mix(burstPos);
+            star.vel = {star.vel.asFloat2() + Rect{{-1.0f, 0.8f}, {1.0f, 1.3f}}.mix(burstPos),
+                        star.vel.z};
             star.angle[0] = mix(0.f, 2.f * Pi, random.nextFloat());
             star.angle[1] = star.angle[0];
             star.avel = mix(1.f, 2.4f, random.nextFloat()) * (s32(random.next32() & 2) - 1);

@@ -311,7 +311,7 @@ Array<PoseBone> extractPose(ArrayView<const Bone> skel, const aiAnimation* srcAn
             safeDemote<u32>(find(skel, [&](const Bone& bone) { return bone.name == boneName; }));
         const Bone& bone = skel[bi];
         Float4x4 delta = poseBoneToParent[bi].invertedOrtho() * bone.boneToParent;
-        float zAngle = atan2f(delta[1][0], delta[0][0]);
+        float zAngle = atan2f(delta[1].x, delta[0].x);
         result.append(bi, zAngle);
     }
     return result;
@@ -395,7 +395,7 @@ DrawGroup loadDrawGroup(const aiScene* srcScene, const aiNode* srcNode, const Me
     DrawGroup dg;
     Float4x4 groupToWorld = ((Float4x4*) &srcNode->mTransformation)->transposed();
     dg.groupRelWorld = groupToWorld[3].asFloat3();
-    dg.groupScale = groupToWorld[0][0];
+    dg.groupScale = groupToWorld[0].x;
     for (u32 c = 0; c < srcNode->mNumChildren; c++) {
         const aiNode* srcChild = srcNode->mChildren[c];
         for (u32 m = 0; m < srcChild->mNumMeshes; m++) {

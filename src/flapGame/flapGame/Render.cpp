@@ -410,7 +410,8 @@ void renderGamePanel(const DrawContext* dc) {
 
         // Draw cities
         Float4x4 skyBoxW2C = worldToCamera;
-        skyBoxW2C[3].asFloat2() = {0, 0};
+        skyBoxW2C[3].x = 0;
+        skyBoxW2C[3].y = 0;
         {
             UberShader::Props props;
             props.diffuse = Float3{0.95f, 1.15f, 0.35f} * 2.2f;
