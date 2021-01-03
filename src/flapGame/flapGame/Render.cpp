@@ -476,7 +476,7 @@ void renderGamePanel(const DrawContext* dc) {
             a->flatShader->drawQuad(Float4x4::identity(),
                                     Float4{1, 1, 1, (1.f - t) * (1.f - t) * 0.8f}, false);
 
-            u32 fm = (u32) quantizeDown(impact->flashFrame, 1.f);
+            u32 fm = (u32) roundDown(impact->flashFrame);
             a->flashShader->drawQuad(
                 cameraToViewport * worldToCamera * Float4x4::makeTranslation(impact->hit.pos) *
                     Float4x4::makeRotation({1, 0, 0}, Pi * 0.5f) * Float4x4::makeScale(1.7f),
@@ -484,7 +484,7 @@ void renderGamePanel(const DrawContext* dc) {
                 a->flashTexture.id, {1.2f, 1.2f, 0, 0.8f});
             // Advance frame
             float nextFrame = impact->flashFrame + dc->renderDT * 60.f;
-            if ((u32) quantizeDown(nextFrame, 1.f) >= fm + 2) {
+            if ((u32) roundDown(nextFrame) >= fm + 2) {
                 nextFrame = (float) fm + 1.f;
             }
             impact->flashFrame = wrap(nextFrame, 4.f);
@@ -597,7 +597,7 @@ void ensureRenderTargetSize(Texture* tex, RenderToTexture* rtt, const Float2& di
         params.repeatX = false;
         params.repeatY = false;
         params.sRGB = false;
-        PLY_ASSERT(isQuantized(dims, 1.f));
+        PLY_ASSERT(isRounded(dims));
         tex->init((u32) dims.x, (u32) dims.y, image::Format::RGBA, 1, params);
         rtt->init(*tex, true);
     }
@@ -658,7 +658,8 @@ void drawTitleScreenToTemp(TitleScreen* ts) {
     drawStars(ts, extraZoom);
     // Draw prompt
     float footerY = dc->fullVF.bounds2D.mins.y;
-    float promptY = mix(10.f, -150.f, clamp(unmix(-10.f, -240.f, dc->fullVF.bounds2D.mins.y), 0.f, 1.f));
+    float promptY =
+        mix(10.f, -150.f, clamp(unmix(-10.f, -240.f, dc->fullVF.bounds2D.mins.y), 0.f, 1.f));
     if (ts->showPrompt && enablePrompt) {
         TextBuffers tapToPlay = generateTextBuffers(a->sdfFont, "TAP TO PLAY");
         drawText(a->sdfCommon, a->sdfFont, tapToPlay,
@@ -745,7 +746,7 @@ ViewportFrustum getViewportFrustum(const Float2& fbSize) {
     float aspect = clamp(fbSize.y / fbSize.x, minAspect, 7.f / 3.f);
     Rect frustumRect = expand(Rect{{0, 0}}, Float2{1.f, aspect} * 0.148594f);
     Rect bounds2D = (Rect{{0, 0}, {1.f, aspect}} - Float2{0, (aspect - minAspect) / 2}) * 480.f;
-    return fitFrustumInViewport({{0, 0}, fbSize}, frustumRect, bounds2D).quantize();
+    return fitFrustumInViewport({{0, 0}, fbSize}, frustumRect, bounds2D).snappedToPixels();
 }
 
 void render(GameFlow* gf, const Float2& fbSize, float renderDT, bool useManualColorCorrection) {
@@ -815,7 +816,7 @@ void render(GameFlow* gf, const Float2& fbSize, float renderDT, bool useManualCo
         slide = interpolateCubic<float>(0, 0.1f, 0.9f, 1, slide);
 
         // Place divider
-        float divWidth = quantizeNearest(max(1.f, fullVF.viewport.width() / 60.f), 1.f);
+        float divWidth = roundNearest(max(1.f, fullVF.viewport.width() / 60.f));
         float divRight = fullVF.viewport.mins.x + (fullVF.viewport.width() + divWidth) * slide;
         float divLeft = divRight - divWidth;
 
@@ -824,7 +825,7 @@ void render(GameFlow* gf, const Float2& fbSize, float renderDT, bool useManualCo
             ViewportFrustum leftVF = fullVF;
             leftVF.viewport.mins.x = divLeft - fullVF.viewport.width();
             leftVF.viewport.maxs.x = divLeft;
-            leftVF = leftVF.clip(fullVF.viewport).quantize();
+            leftVF = leftVF.clip(fullVF.viewport).snappedToPixels();
 
             if (!leftVF.viewport.isEmpty()) {
                 renderPanel(gf->gameState, leftVF);
@@ -833,10 +834,9 @@ void render(GameFlow* gf, const Float2& fbSize, float renderDT, bool useManualCo
 
         // Draw vertical bar
         {
-            Rect barRect = quantizeNearest(
-                intersect(fullVF.viewport, Rect{{divLeft, fullVF.viewport.mins.y},
-                                                {divRight, fullVF.viewport.maxs.y}}),
-                1.f);
+            Rect barRect =
+                roundNearest(intersect(fullVF.viewport, Rect{{divLeft, fullVF.viewport.mins.y},
+                                                             {divRight, fullVF.viewport.maxs.y}}));
             if (!barRect.isEmpty()) {
                 GL_CHECK(Viewport((GLint) barRect.mins.x, (GLint) barRect.mins.y,
                                   (GLsizei) barRect.width(), (GLsizei) barRect.height()));
@@ -849,7 +849,7 @@ void render(GameFlow* gf, const Float2& fbSize, float renderDT, bool useManualCo
             ViewportFrustum rightVF = fullVF;
             rightVF.viewport.mins.x = divRight;
             rightVF.viewport.maxs.x = divRight + fullVF.viewport.width();
-            rightVF = rightVF.clip(fullVF.viewport).quantize();
+            rightVF = rightVF.clip(fullVF.viewport).snappedToPixels();
             if (!rightVF.viewport.isEmpty()) {
                 PLY_ASSERT(!trans->oldGameState->mode.title());
                 renderPanel(trans->oldGameState, rightVF);

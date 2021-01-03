@@ -12,9 +12,8 @@ struct ViewportFrustum {
 
     // If rendering to a non-retina display, bounds2D == viewport
 
-    PLY_NO_DISCARD ViewportFrustum quantize() const {
-        Rect qvp = {quantizeDown(this->viewport.mins + 0.5f, 1.f),
-                    quantizeDown(this->viewport.maxs + 0.5f, 1.f)};
+    PLY_NO_DISCARD ViewportFrustum snappedToPixels() const {
+        Rect qvp = {roundNearest(this->viewport.mins), roundNearest(this->viewport.maxs)};
         Rect fracs = this->viewport.unmix(qvp);
         return {qvp, this->frustum.mix(fracs), this->bounds2D.mix(fracs)};
     }

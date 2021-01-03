@@ -924,7 +924,7 @@ void timeStep(UpdateContext* uc) {
 
         // Add new obstacle sequences
         if (gs->playfield.sequences.isEmpty()) {
-            gs->playfield.sequences.append(new PipeSequence{quantizeUp(visibleEdge, 1.f)});
+            gs->playfield.sequences.append(new PipeSequence{roundUp(visibleEdge)});
         }
 
         // Add new obstacles

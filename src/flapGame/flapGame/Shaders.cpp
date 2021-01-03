@@ -1304,8 +1304,8 @@ PLY_NO_INLINE void HypnoShader::draw(const Float4x4& modelToViewport, GLuint tex
     };
 
     Array<InstanceAttribs> instAttribs;
-    float exp = quantizeUp((logf(minScale) - logf(atScale)) / logf(base), 1.f);
-    float maxExp = quantizeDown((logf(maxScale) - logf(atScale)) / logf(base), 1.f);
+    float exp = roundUp((logf(minScale) - logf(atScale)) / logf(base));
+    float maxExp = roundDown((logf(maxScale) - logf(atScale)) / logf(base));
 
     while (exp <= maxExp) {
         float s0 = powf(base, exp);
