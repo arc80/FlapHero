@@ -182,7 +182,7 @@ void drawTitle(const TitleScreen* titleScreen, const Float4x4& extraZoom) {
     const Assets* a = Assets::instance;
     const DrawContext* dc = DrawContext::instance();
 
-    Float4x4 w2c = {{{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
+    Float4x4 w2c = {{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}};
     float worldDistance = 15.f;
     float offset = 0.25f;
     float frustumScale = mix(0.15f, 0.18f, dc->fullVF.bounds2D.mins.y / -200.f);
@@ -191,7 +191,8 @@ void drawTitle(const TitleScreen* titleScreen, const Float4x4& extraZoom) {
         extraZoom *
         Float4x4::makeProjection(dc->fullVF.frustum / frustumScale - Float2{0, offset}, 1.f, 40.f);
     Float3 skewNorm = getNorm(&titleScreen->titleRot, dc->fracTime);
-    Float4x4 skewRot = Quaternion::fromUnitVectors(Float3{0, 0, 1}, skewNorm).toFloat4x4();
+    Float4x4 skewRot =
+        Float4x4::fromQuaternion(Quaternion::fromUnitVectors(Float3{0, 0, 1}, skewNorm));
     Float4x4 mat = cameraToViewport * w2c * Float4x4::makeTranslation({0, worldDistance, 4.f}) *
                    Float4x4::makeRotation({1, 0, 0}, Pi / 2.f) * skewRot *
                    Float4x4::makeTranslation({0, 0, 3.2f}) * Float4x4::makeScale(7.f);
@@ -313,9 +314,10 @@ void renderGamePanel(const DrawContext* dc) {
         GL_CHECK(StencilFunc(GL_ALWAYS, 1, 0xFF));
         GL_CHECK(StencilOp(GL_KEEP, GL_KEEP, GL_REPLACE));
         GL_CHECK(StencilMask(0xFF));
-        Float4x4 modelToCamera =
-            worldToCamera * Float4x4::makeTranslation(birdRelWorld) * birdRot.toFloat4x4() *
-            Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) * Float4x4::makeScale(1.0833f);
+        Float4x4 modelToCamera = worldToCamera * Float4x4::makeTranslation(birdRelWorld) *
+                                 Float4x4::fromQuaternion(birdRot) *
+                                 Float4x4::makeRotation({0, 0, 1}, Pi / 2.f) *
+                                 Float4x4::makeScale(1.0833f);
         if (gs->isWeak()) {
             auto desaturate = [](const Float3 color, float amt) -> Float3 {
                 Float3 gray = Float3{dot(color, Float3{0.333f})};
