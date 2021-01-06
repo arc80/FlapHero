@@ -85,7 +85,7 @@ Array<QuatPos> tonguePtsToXforms(ArrayView<const Float3> pts) {
         const Quaternion& prevRot = result[i - 1].quat;
         Float3 prevDir = prevRot.rotateUnitY();
         Float3 dir = (pts[i] - pts[i - 1]).safeNormalized(prevDir);
-        Quaternion rot = (Quaternion::fromUnitVectors(prevDir, dir) * prevRot).renormalized();
+        Quaternion rot = (Quaternion::fromUnitVectors(prevDir, dir) * prevRot).normalized();
         result[i] = QuatPos{rot, pts[i]};
         result[i].pos = result[i] * Float3{0, -a->bad.tongueBones[i].length * 0.5f, 0};
     }

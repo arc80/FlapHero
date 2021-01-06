@@ -552,7 +552,7 @@ void updateMovement(UpdateContext* uc) {
 
         auto free = falling->mode.free();
         Quaternion dampedDelta = mix(Quaternion::identity(), uc->deltaRot, 0.99f);
-        gs->bird.rot[1] = (dampedDelta * gs->bird.rot[0]).renormalized();
+        gs->bird.rot[1] = (dampedDelta * gs->bird.rot[0]).normalized();
 
         // Check for obstacle collisions
         auto bounce = [&](const Obstacle::Hit& hit) { //
