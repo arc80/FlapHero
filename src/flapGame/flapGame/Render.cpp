@@ -162,7 +162,7 @@ Array<Float4x4> composeBirdBones(const GameState* gs, float intervalFrac) {
         for (u32 i = 0; i < tonguePts.numItems(); i++) {
             u32 bi = a->bad.tongueBones[i].boneIndex;
             curBoneToModel[bi] =
-                tongueXforms[i].toFloat4x4() * Float4x4::makeScale({1.f, 0.5f, 1.f});
+                Float4x4::fromQuatPos(tongueXforms[i]) * Float4x4::makeScale({1.f, 0.5f, 1.f});
         }
     }
 
@@ -306,7 +306,7 @@ void renderGamePanel(const DrawContext* dc) {
     Float3 birdRelWorld = mix(gs->bird.pos[0], gs->bird.pos[1], dc->intervalFrac);
     QuatPos camToWorld = {mix(gs->camToWorld[0].quat, gs->camToWorld[1].quat, dc->intervalFrac),
                           mix(gs->camToWorld[0].pos, gs->camToWorld[1].pos, dc->intervalFrac)};
-    Float4x4 worldToCamera = camToWorld.inverted().toFloat4x4();
+    Float4x4 worldToCamera = Float4x4::fromQuatPos(camToWorld.inverted());
     {
         Quaternion birdRot = mix(gs->bird.finalRot[0], gs->bird.finalRot[1], dc->intervalFrac);
         Array<Float4x4> boneToModel = composeBirdBones(gs, dc->intervalFrac);
