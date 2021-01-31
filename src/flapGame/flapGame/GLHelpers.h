@@ -41,7 +41,7 @@ struct GLBuffer {
         }
     }
 
-    static GLBuffer create(ConstBufferView data);
+    static GLBuffer create(StringView data);
 };
 
 struct DynamicArrayBuffers {
@@ -63,7 +63,7 @@ struct DynamicArrayBuffers {
     static const s32 KeepAliveFrames = 10;
     static const s32 KeepAliveSize = 5000000;
 
-    GLuint upload(ConstBufferView data);
+    GLuint upload(StringView data);
     void beginFrame();
 
     static DynamicArrayBuffers* instance;

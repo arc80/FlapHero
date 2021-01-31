@@ -31,12 +31,12 @@ void premultiplySRGB(image::Image& dst) {
     }
 }
 
-image::OwnImage loadPNG(ConstBufferView src, bool premultiply) {
+image::OwnImage loadPNG(StringView src, bool premultiply) {
     s32 w = 0;
     s32 h = 0;
     s32 numChannels = 0;
     stbi_set_flip_vertically_on_load(true);
-    u8* data = stbi_load_from_memory(src.bytes, src.numBytes, &w, &h, &numChannels, 0);
+    u8* data = stbi_load_from_memory((const stbi_uc*) src.bytes, src.numBytes, &w, &h, &numChannels, 0);
     if (!data)
         return {};
 

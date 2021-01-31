@@ -139,7 +139,7 @@ PLY_NO_INLINE Owned<SDFOutline> SDFOutline::create() {
     return outline;
 }
 
-PLY_NO_INLINE Owned<SDFFont> SDFFont::bake(ConstBufferView ttfBuffer, float pixelHeight) {
+PLY_NO_INLINE Owned<SDFFont> SDFFont::bake(StringView ttfBuffer, float pixelHeight) {
     Owned<SDFFont> sdfFont = new SDFFont;
 
     s32 padding = 8;
@@ -153,7 +153,7 @@ PLY_NO_INLINE Owned<SDFFont> SDFFont::bake(ConstBufferView ttfBuffer, float pixe
 
     stbtt_fontinfo stbFont;
     stbFont.userdata = nullptr;
-    int rc = stbtt_InitFont(&stbFont, ttfBuffer.bytes, 0);
+    int rc = stbtt_InitFont(&stbFont, (const unsigned char*) ttfBuffer.bytes, 0);
     PLY_ASSERT(rc);
     PLY_UNUSED(rc);
 
@@ -266,8 +266,8 @@ PLY_NO_INLINE TextBuffers generateTextBuffers(const SDFFont* sdfFont, StringView
         indices.append(safeDemote<u16>(base));
     }
 
-    tb.indices = DynamicArrayBuffers::instance->upload(indices.view().bufferView());
-    tb.vbo = DynamicArrayBuffers::instance->upload(vertices.view().bufferView());
+    tb.indices = DynamicArrayBuffers::instance->upload(indices.view().stringView());
+    tb.vbo = DynamicArrayBuffers::instance->upload(vertices.view().stringView());
     tb.numIndices = indices.numItems();
     if (tb.xMin == Limits<float>::Max) {
         tb.xMin = 0;

@@ -3,7 +3,7 @@
 
 namespace flap {
 
-PLY_NO_INLINE GLBuffer GLBuffer::create(ConstBufferView data) {
+PLY_NO_INLINE GLBuffer GLBuffer::create(StringView data) {
     GLBuffer result;
     GL_CHECK(GenBuffers(1, &result.id));
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, result.id));
@@ -13,7 +13,7 @@ PLY_NO_INLINE GLBuffer GLBuffer::create(ConstBufferView data) {
 
 DynamicArrayBuffers* DynamicArrayBuffers::instance = nullptr;
 
-PLY_NO_INLINE GLuint DynamicArrayBuffers::upload(ConstBufferView data) {
+PLY_NO_INLINE GLuint DynamicArrayBuffers::upload(StringView data) {
     Array<Item>& curInUse = this->inUse[frameNumber & 1];
     Item* item = nullptr;
     for (u32 i = 0; i < this->available.numItems(); i++) {

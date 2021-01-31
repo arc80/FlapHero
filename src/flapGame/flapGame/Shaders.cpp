@@ -346,17 +346,17 @@ PLY_NO_INLINE Owned<UberShader> UberShader::create(u32 flags) {
     uberShader->flags = flags;
     {
         String defines = [&] {
-            StringWriter sw;
+            MemOutStream mout;
             if (skinned) {
-                sw << "#define SKINNED 1\n";
+                mout << "#define SKINNED 1\n";
                 if (skinnedCompat) {
-                    sw << "#define SKINNED_COMPAT 1\n";
+                    mout << "#define SKINNED_COMPAT 1\n";
                 }
             }
             if (duotone) {
-                sw << "#define DUOTONE 1\n";
+                mout << "#define DUOTONE 1\n";
             }
-            return sw.moveToString();
+            return mout.moveToString();
         }();
 
         Shader vertexShader = Shader::compile(GL_VERTEX_SHADER, defines + R"(
@@ -765,9 +765,9 @@ PLY_NO_INLINE Owned<FlatShader> FlatShader::create() {
         {1.f, 1.f, 0.f},
         {-1.f, 1.f, 0.f},
     };
-    flatShader->quadVBO = GLBuffer::create(vertices.view().bufferView());
+    flatShader->quadVBO = GLBuffer::create(vertices.view().stringView());
     Array<u16> indices = {(u16) 0, 1, 2, 2, 3, 0};
-    flatShader->quadIndices = GLBuffer::create(indices.view().bufferView());
+    flatShader->quadIndices = GLBuffer::create(indices.view().stringView());
     flatShader->quadNumIndices = indices.numItems();
 
     return flatShader;
@@ -908,7 +908,7 @@ PLY_NO_INLINE void StarShader::draw(const DrawMesh* drawMesh, GLuint textureID,
     GL_CHECK(Uniform1i(this->textureUniform, 0));
 
     // Instance attributes
-    GLuint ibo = DynamicArrayBuffers::instance->upload(instanceData.bufferView());
+    GLuint ibo = DynamicArrayBuffers::instance->upload(instanceData.stringView());
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, ibo));
     for (u32 c = 0; c < 4; c++) {
         GL_CHECK(EnableVertexAttribArray(this->instModelToViewportAttrib + c));
@@ -1065,9 +1065,9 @@ PLY_NO_INLINE Owned<FlashShader> FlashShader::create() {
         {1.f, 1.f},
         {-1.f, 1.f},
     };
-    result->vbo = GLBuffer::create(vertices.view().bufferView());
+    result->vbo = GLBuffer::create(vertices.view().stringView());
     Array<u16> indices = {(u16) 0, 1, 2, 2, 3, 0};
-    result->indices = GLBuffer::create(indices.view().bufferView());
+    result->indices = GLBuffer::create(indices.view().stringView());
     result->numIndices = indices.numItems();
 
     return result;
@@ -1205,8 +1205,8 @@ void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, con
 void TexturedShader::draw(const Float4x4& modelToViewport, GLuint textureID, const Float4& color,
                           ArrayView<VertexPT> vertices, ArrayView<u16> indices,
                           bool useDstAlpha) const {
-    GLuint vboID = DynamicArrayBuffers::instance->upload(vertices.bufferView());
-    GLuint indicesID = DynamicArrayBuffers::instance->upload(indices.bufferView());
+    GLuint vboID = DynamicArrayBuffers::instance->upload(vertices.stringView());
+    GLuint indicesID = DynamicArrayBuffers::instance->upload(indices.stringView());
     drawTexturedShader(this, modelToViewport, textureID, color, vboID, indicesID, indices.numItems,
                        false, useDstAlpha);
 }
@@ -1285,8 +1285,8 @@ void main() {
             }
         }
     }
-    result->vbo = GLBuffer::create(vertices.view().bufferView());
-    result->indices = GLBuffer::create(indices.view().bufferView());
+    result->vbo = GLBuffer::create(vertices.view().stringView());
+    result->indices = GLBuffer::create(indices.view().stringView());
     result->numIndices = indices.numItems();
 
     return result;
@@ -1319,7 +1319,7 @@ PLY_NO_INLINE void HypnoShader::draw(const Float4x4& modelToViewport, GLuint tex
         }
         exp += 1;
     }
-    GLuint ibo = DynamicArrayBuffers::instance->upload(instAttribs.view().bufferView());
+    GLuint ibo = DynamicArrayBuffers::instance->upload(instAttribs.view().stringView());
 
     GL_CHECK(UseProgram(this->shader.id));
     GL_CHECK(Enable(GL_DEPTH_TEST));
@@ -1425,9 +1425,9 @@ PLY_NO_INLINE Owned<CopyShader> CopyShader::create() {
         {{1.f, 1.f, 0.f}, {1.f, 1.f}},
         {{-1.f, 1.f, 0.f}, {0.f, 1.f}},
     };
-    copyShader->quadVBO = GLBuffer::create(vertices.view().bufferView());
+    copyShader->quadVBO = GLBuffer::create(vertices.view().stringView());
     Array<u16> indices = {(u16) 0, 1, 2, 2, 3, 0};
-    copyShader->quadIndices = GLBuffer::create(indices.view().bufferView());
+    copyShader->quadIndices = GLBuffer::create(indices.view().stringView());
     copyShader->quadNumIndices = indices.numItems();
 
     return copyShader;
@@ -1606,9 +1606,9 @@ void main() {
         {1.f, 1.f},
         {-1.f, 1.f},
     };
-    puffShader->quadVBO = GLBuffer::create(vertices.view().bufferView());
+    puffShader->quadVBO = GLBuffer::create(vertices.view().stringView());
     Array<u16> indices = {(u16) 0, 1, 2, 2, 3, 0};
-    puffShader->quadIndices = GLBuffer::create(indices.view().bufferView());
+    puffShader->quadIndices = GLBuffer::create(indices.view().stringView());
     puffShader->quadNumIndices = indices.numItems();
 
     return puffShader;
@@ -1633,7 +1633,7 @@ PLY_NO_INLINE void PuffShader::draw(const Float4x4& worldToViewport, GLuint text
     GL_CHECK(Uniform1i(this->textureUniform, 0));
 
     // Instance attributes
-    GLuint ibo = DynamicArrayBuffers::instance->upload(instanceData.bufferView());
+    GLuint ibo = DynamicArrayBuffers::instance->upload(instanceData.stringView());
     GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, ibo));
     for (u32 c = 0; c < 4; c++) {
         GL_CHECK(EnableVertexAttribArray(this->instModelToWorldAttrib + c));

@@ -39,7 +39,7 @@ struct SDFFont {
     Texture fontTexture;
     Array<Char> chars;
 
-    static Owned<SDFFont> bake(ConstBufferView ttfBuffer, float pixelHeight);
+    static Owned<SDFFont> bake(StringView ttfBuffer, float pixelHeight);
 };
 
 struct TextBuffers {

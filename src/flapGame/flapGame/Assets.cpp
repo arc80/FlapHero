@@ -90,9 +90,9 @@ Owned<DrawMesh> makeQuadDrawMesh() {
         {{-1.f, 1.f, 0.f}, {0.f, 1.f}},
     };
     quad->vertexType = DrawMesh::VertexType::TexturedFlat;
-    quad->vbo = GLBuffer::create(vertices.view().bufferView());
+    quad->vbo = GLBuffer::create(vertices.view().stringView());
     Array<u16> indices = {(u16) 0, 1, 2, 2, 3, 0};
-    quad->indexBuffer = GLBuffer::create(indices.view().bufferView());
+    quad->indexBuffer = GLBuffer::create(indices.view().stringView());
     quad->numIndices = indices.numItems();
     return quad;
 }
@@ -128,7 +128,7 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
             vertices[j].pos = *(Float3*) (srcMesh->mVertices + j);
             vertices[j].normal = *(Float3*) (srcMesh->mNormals + j);
         }
-        out->vbo = GLBuffer::create(vertices.view().bufferView());
+        out->vbo = GLBuffer::create(vertices.view().stringView());
     } else if (vertexType == DrawMesh::VertexType::Skinned) {
         // Skinned vertices
         PLY_ASSERT(!forSkel.isEmpty());
@@ -175,7 +175,7 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
                 vertex.blendWeights[1] *= ootw;
             }
         }
-        out->vbo = GLBuffer::create(vertices.view().bufferView());
+        out->vbo = GLBuffer::create(vertices.view().stringView());
     } else if (vertexType == DrawMesh::VertexType::TexturedFlat) {
         // Textured vertices (not skinned) without normal
         PLY_ASSERT(forSkel.isEmpty());
@@ -186,7 +186,7 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
             vertices[j].pos = *(Float3*) (srcMesh->mVertices + j);
             vertices[j].uv = *(Float2*) (srcMesh->mTextureCoords[0] + j);
         }
-        out->vbo = GLBuffer::create(vertices.view().bufferView());
+        out->vbo = GLBuffer::create(vertices.view().stringView());
     } else if (vertexType == DrawMesh::VertexType::TexturedNormal) {
         // Textured vertices (not skinned) with normal
         PLY_ASSERT(forSkel.isEmpty());
@@ -198,7 +198,7 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
             vertices[j].normal = *(Float3*) (srcMesh->mNormals + j);
             vertices[j].uv = *(Float2*) (srcMesh->mTextureCoords[0] + j);
         }
-        out->vbo = GLBuffer::create(vertices.view().bufferView());
+        out->vbo = GLBuffer::create(vertices.view().stringView());
     } else {
         PLY_ASSERT(0);
     }
@@ -212,7 +212,7 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
             indices[j * 3 + 1] = srcMesh->mFaces[j].mIndices[1];
             indices[j * 3 + 2] = srcMesh->mFaces[j].mIndices[2];
         }
-        out->indexBuffer = GLBuffer::create(indices.view().bufferView());
+        out->indexBuffer = GLBuffer::create(indices.view().stringView());
         out->numIndices = indices.numItems();
     }
     return out;
@@ -640,14 +640,14 @@ void Assets::load(StringView assetsPath) {
         assets->fallAnim = extractFallAnimation(scene, 35);
     }
     {
-        Buffer pngData =
+        String pngData =
             FileSystem::native()->loadBinary(NativePath::join(assetsPath, "flash.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
         assets->flashTexture.init(im);
     }
     {
-        Buffer pngData =
+        String pngData =
             FileSystem::native()->loadBinary(NativePath::join(assetsPath, "speedlimit.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
@@ -657,7 +657,7 @@ void Assets::load(StringView assetsPath) {
         assets->speedLimitTexture.init(im, 3, params);
     }
     {
-        Buffer pngData = FileSystem::native()->loadBinary(NativePath::join(assetsPath, "wave.png"));
+        String pngData = FileSystem::native()->loadBinary(NativePath::join(assetsPath, "wave.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
         SamplerParams params;
@@ -666,7 +666,7 @@ void Assets::load(StringView assetsPath) {
         assets->waveTexture.init(im, 5, params);
     }
     {
-        Buffer pngData =
+        String pngData =
             FileSystem::native()->loadBinary(NativePath::join(assetsPath, "hypno-palette.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
@@ -676,7 +676,7 @@ void Assets::load(StringView assetsPath) {
         assets->hypnoPaletteTexture.init(im, 5, params);
     }
     {
-        Buffer pngData =
+        String pngData =
             FileSystem::native()->loadBinary(NativePath::join(assetsPath, "Cloud.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
@@ -685,7 +685,7 @@ void Assets::load(StringView assetsPath) {
         assets->cloudTexture.init(im, 3, params);
     }
     {
-        Buffer pngData =
+        String pngData =
             FileSystem::native()->loadBinary(NativePath::join(assetsPath, "FrontCloud.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
@@ -694,35 +694,35 @@ void Assets::load(StringView assetsPath) {
         assets->frontCloudTexture.init(im, 3, params);
     }
     {
-        Buffer pngData =
+        String pngData =
             FileSystem::native()->loadBinary(NativePath::join(assetsPath, "window.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
         assets->windowTexture.init(im, 3, {});
     }
     {
-        Buffer pngData =
+        String pngData =
             FileSystem::native()->loadBinary(NativePath::join(assetsPath, "stripe.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
         assets->stripeTexture.init(im, 3, {});
     }
     {
-        Buffer pngData =
+        String pngData =
             FileSystem::native()->loadBinary(NativePath::join(assetsPath, "Shrub.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
         assets->shrubTexture.init(im, 3, {});
     }
     {
-        Buffer pngData =
+        String pngData =
             FileSystem::native()->loadBinary(NativePath::join(assetsPath, "Shrub2.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
         assets->shrub2Texture.init(im, 3, {});
     }
     {
-        Buffer pngData =
+        String pngData =
             FileSystem::native()->loadBinary(NativePath::join(assetsPath, "pipeEnv.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
@@ -732,7 +732,7 @@ void Assets::load(StringView assetsPath) {
         assets->pipeEnvTexture.init(im, 3, params);
     }
     {
-        Buffer pngData =
+        String pngData =
             FileSystem::native()->loadBinary(NativePath::join(assetsPath, "eyeWhite.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
@@ -742,7 +742,7 @@ void Assets::load(StringView assetsPath) {
         assets->eyeWhiteTexture.init(im, 3, params);
     }
     {
-        Buffer pngData =
+        String pngData =
             FileSystem::native()->loadBinary(NativePath::join(assetsPath, "gradient.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
@@ -751,7 +751,7 @@ void Assets::load(StringView assetsPath) {
         assets->gradientTexture.init(im, 2, params);
     }
     {
-        Buffer pngData = FileSystem::native()->loadBinary(NativePath::join(assetsPath, "star.png"));
+        String pngData = FileSystem::native()->loadBinary(NativePath::join(assetsPath, "star.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData, false);
         SamplerParams params;
@@ -762,13 +762,13 @@ void Assets::load(StringView assetsPath) {
     {
         image::OwnImage im;
         {
-            Buffer pngData =
+            String pngData =
                 FileSystem::native()->loadBinary(NativePath::join(assetsPath, "PuffNormal.png"));
             PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
             im = loadPNG(pngData, false);
         }
         {
-            Buffer pngData =
+            String pngData =
                 FileSystem::native()->loadBinary(NativePath::join(assetsPath, "PuffAlpha.png"));
             PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
             image::OwnImage alphaIm = loadPNG(pngData);
@@ -781,7 +781,7 @@ void Assets::load(StringView assetsPath) {
         assets->puffNormalTexture.init(im, 3, params);
     }
     {
-        Buffer pngData =
+        String pngData =
             FileSystem::native()->loadBinary(NativePath::join(assetsPath, "sweat.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData, false);
@@ -791,7 +791,7 @@ void Assets::load(StringView assetsPath) {
         assets->sweatTexture.init(im, 3, params);
     }
     {
-        Buffer pngData =
+        String pngData =
             FileSystem::native()->loadBinary(NativePath::join(assetsPath, "Arrow.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
@@ -801,7 +801,7 @@ void Assets::load(StringView assetsPath) {
         assets->arrowTexture.init(im, 3, params);
     }
     {
-        Buffer pngData =
+        String pngData =
             FileSystem::native()->loadBinary(NativePath::join(assetsPath, "Circle.png"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         image::OwnImage im = loadPNG(pngData);
@@ -815,7 +815,7 @@ void Assets::load(StringView assetsPath) {
     assets->sdfCommon = SDFCommon::create();
     assets->sdfOutline = SDFOutline::create();
     {
-        Buffer ttfBuffer = FileSystem::native()->loadBinary(
+        String ttfBuffer = FileSystem::native()->loadBinary(
             NativePath::join(assetsPath, "poppins-bold-694-webfont.ttf"));
         PLY_ASSERT(FileSystem::native()->lastResult() == FSResult::OK);
         assets->sdfFont = SDFFont::bake(ttfBuffer, 48.f);
