@@ -15,8 +15,8 @@ namespace flap {
 
 void premultiplySRGB(image::Image& dst) {
     PLY_ASSERT(dst.stride >= dst.width * 4);
-    u8* dstRow = dst.data;
-    u8* dstRowEnd = dstRow + dst.stride * dst.height;
+    char* dstRow = dst.data;
+    char* dstRowEnd = dstRow + dst.stride * dst.height;
     while (dstRow < dstRowEnd) {
         u32* d = (u32*) dstRow;
         u32* dEnd = d + dst.width;
@@ -49,7 +49,7 @@ image::OwnImage loadPNG(StringView src, bool premultiply) {
     u8 bytespp = image::Image::FormatToBPP[(u32) fmt];
 
     image::OwnImage result;
-    result.data = data;
+    result.data = (char*) data;
     result.stride = w * bytespp;
     result.width = w;
     result.height = h;

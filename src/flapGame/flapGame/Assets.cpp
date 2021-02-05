@@ -18,13 +18,13 @@ void applyAlphaChannel(image::Image& dst, image::Image& src) {
     PLY_ASSERT(dst.dims() == src.dims());
     PLY_ASSERT(dst.format == image::Format::RGBA);
     PLY_ASSERT(src.format == image::Format::Byte);
-    u8* dstRow = dst.data;
-    u8* dstRowEnd = dstRow + dst.stride * dst.height;
-    u8* srcRow = src.data;
+    char* dstRow = dst.data;
+    char* dstRowEnd = dstRow + dst.stride * dst.height;
+    char* srcRow = src.data;
     while (dstRow < dstRowEnd) {
-        u8* d = (u8*) dstRow;
-        u8* s = (u8*) srcRow;
-        u8* dEnd = d + dst.width * 4;
+        char* d = (char*) dstRow;
+        char* s = (char*) srcRow;
+        char* dEnd = d + dst.width * 4;
         while (d < dEnd) {
             d[3] = *s;
             d += 4;

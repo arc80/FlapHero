@@ -176,8 +176,8 @@ PLY_NO_INLINE Owned<SDFFont> SDFFont::bake(StringView ttfBuffer, float pixelHeig
         IntVec2 glyphSize = {0, 0};
         image::Image& glyphIm = glyphImages.append(nullptr, 0, 0, 0, image::Format::Byte);
         glyphIm.data =
-            stbtt_GetGlyphSDF(&stbFont, scale, g, padding, onEdgeValue, pixelDistScale,
-                              &glyphSize.x, &glyphSize.y, &glyphOffset.x, &glyphOffset.y);
+            (char*) stbtt_GetGlyphSDF(&stbFont, scale, g, padding, onEdgeValue, pixelDistScale,
+                                      &glyphSize.x, &glyphSize.y, &glyphOffset.x, &glyphOffset.y);
         glyphIm.width = glyphSize.x;
         glyphIm.height = glyphSize.y;
         glyphIm.stride = glyphSize.x;
@@ -227,7 +227,7 @@ PLY_NO_INLINE Owned<SDFFont> SDFFont::bake(StringView ttfBuffer, float pixelHeig
 
     // Manually free temporary glyph images
     for (image::Image& glyphIm : glyphImages) {
-        stbtt_FreeSDF(glyphIm.data, stbFont.userdata);
+        stbtt_FreeSDF((unsigned char*) glyphIm.data, stbFont.userdata);
     }
 
     // Upload atlas to OpenGL
