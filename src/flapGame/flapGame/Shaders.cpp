@@ -765,9 +765,9 @@ PLY_NO_INLINE Owned<FlatShader> FlatShader::create() {
         {1.f, 1.f, 0.f},
         {-1.f, 1.f, 0.f},
     };
-    flatShader->quadVBO = GLBuffer::create(vertices.view().stringView());
+    flatShader->quadVBO = GLBuffer::create(vertices.stringView());
     Array<u16> indices = {(u16) 0, 1, 2, 2, 3, 0};
-    flatShader->quadIndices = GLBuffer::create(indices.view().stringView());
+    flatShader->quadIndices = GLBuffer::create(indices.stringView());
     flatShader->quadNumIndices = indices.numItems();
 
     return flatShader;
@@ -1065,9 +1065,9 @@ PLY_NO_INLINE Owned<FlashShader> FlashShader::create() {
         {1.f, 1.f},
         {-1.f, 1.f},
     };
-    result->vbo = GLBuffer::create(vertices.view().stringView());
+    result->vbo = GLBuffer::create(vertices.stringView());
     Array<u16> indices = {(u16) 0, 1, 2, 2, 3, 0};
-    result->indices = GLBuffer::create(indices.view().stringView());
+    result->indices = GLBuffer::create(indices.stringView());
     result->numIndices = indices.numItems();
 
     return result;
@@ -1285,8 +1285,8 @@ void main() {
             }
         }
     }
-    result->vbo = GLBuffer::create(vertices.view().stringView());
-    result->indices = GLBuffer::create(indices.view().stringView());
+    result->vbo = GLBuffer::create(vertices.stringView());
+    result->indices = GLBuffer::create(indices.stringView());
     result->numIndices = indices.numItems();
 
     return result;
@@ -1319,7 +1319,7 @@ PLY_NO_INLINE void HypnoShader::draw(const Float4x4& modelToViewport, GLuint tex
         }
         exp += 1;
     }
-    GLuint ibo = DynamicArrayBuffers::instance->upload(instAttribs.view().stringView());
+    GLuint ibo = DynamicArrayBuffers::instance->upload(instAttribs.stringView());
 
     GL_CHECK(UseProgram(this->shader.id));
     GL_CHECK(Enable(GL_DEPTH_TEST));
@@ -1425,9 +1425,9 @@ PLY_NO_INLINE Owned<CopyShader> CopyShader::create() {
         {{1.f, 1.f, 0.f}, {1.f, 1.f}},
         {{-1.f, 1.f, 0.f}, {0.f, 1.f}},
     };
-    copyShader->quadVBO = GLBuffer::create(vertices.view().stringView());
+    copyShader->quadVBO = GLBuffer::create(vertices.stringView());
     Array<u16> indices = {(u16) 0, 1, 2, 2, 3, 0};
-    copyShader->quadIndices = GLBuffer::create(indices.view().stringView());
+    copyShader->quadIndices = GLBuffer::create(indices.stringView());
     copyShader->quadNumIndices = indices.numItems();
 
     return copyShader;
@@ -1606,9 +1606,9 @@ void main() {
         {1.f, 1.f},
         {-1.f, 1.f},
     };
-    puffShader->quadVBO = GLBuffer::create(vertices.view().stringView());
+    puffShader->quadVBO = GLBuffer::create(vertices.stringView());
     Array<u16> indices = {(u16) 0, 1, 2, 2, 3, 0};
-    puffShader->quadIndices = GLBuffer::create(indices.view().stringView());
+    puffShader->quadIndices = GLBuffer::create(indices.stringView());
     puffShader->quadNumIndices = indices.numItems();
 
     return puffShader;

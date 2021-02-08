@@ -266,8 +266,8 @@ PLY_NO_INLINE TextBuffers generateTextBuffers(const SDFFont* sdfFont, StringView
         indices.append(safeDemote<u16>(base));
     }
 
-    tb.indices = DynamicArrayBuffers::instance->upload(indices.view().stringView());
-    tb.vbo = DynamicArrayBuffers::instance->upload(vertices.view().stringView());
+    tb.indices = DynamicArrayBuffers::instance->upload(indices.stringView());
+    tb.vbo = DynamicArrayBuffers::instance->upload(vertices.stringView());
     tb.numIndices = indices.numItems();
     if (tb.xMin == Limits<float>::Max) {
         tb.xMin = 0;

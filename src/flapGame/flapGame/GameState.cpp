@@ -240,7 +240,7 @@ Float3 advanceToEjectPos(const Obstacle* startObst) {
     UpdateContext* uc = UpdateContext::instance();
     GameState* gs = uc->gs;
 
-    s32 obstIndex = findItem(gs->playfield.obstacles.view(), startObst);
+    s32 obstIndex = find(gs->playfield.obstacles, startObst);
     PLY_ASSERT(obstIndex >= 0);
     obstIndex++;
     u32 candidateCount = 0;
@@ -535,7 +535,7 @@ void updateMovement(UpdateContext* uc) {
         if (auto animated = falling->mode.animated()) {
             animated->frame += dt * 60.f;
             if (animated->frame + 1 < a->fallAnim.numItems()) {
-                FallAnimFrame pose = sample(a->fallAnim.view(), animated->frame);
+                FallAnimFrame pose = sample(a->fallAnim, animated->frame);
                 gs->bird.pos[1] = animated->startPos + animated->recoilDir * pose.recoilDistance +
                                   Float3{0, 0, pose.verticalDrop};
                 gs->bird.rot[1] =

@@ -90,9 +90,9 @@ Owned<DrawMesh> makeQuadDrawMesh() {
         {{-1.f, 1.f, 0.f}, {0.f, 1.f}},
     };
     quad->vertexType = DrawMesh::VertexType::TexturedFlat;
-    quad->vbo = GLBuffer::create(vertices.view().stringView());
+    quad->vbo = GLBuffer::create(vertices.stringView());
     Array<u16> indices = {(u16) 0, 1, 2, 2, 3, 0};
-    quad->indexBuffer = GLBuffer::create(indices.view().stringView());
+    quad->indexBuffer = GLBuffer::create(indices.stringView());
     quad->numIndices = indices.numItems();
     return quad;
 }
@@ -128,7 +128,7 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
             vertices[j].pos = *(Float3*) (srcMesh->mVertices + j);
             vertices[j].normal = *(Float3*) (srcMesh->mNormals + j);
         }
-        out->vbo = GLBuffer::create(vertices.view().stringView());
+        out->vbo = GLBuffer::create(vertices.stringView());
     } else if (vertexType == DrawMesh::VertexType::Skinned) {
         // Skinned vertices
         PLY_ASSERT(!forSkel.isEmpty());
@@ -175,7 +175,7 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
                 vertex.blendWeights[1] *= ootw;
             }
         }
-        out->vbo = GLBuffer::create(vertices.view().stringView());
+        out->vbo = GLBuffer::create(vertices.stringView());
     } else if (vertexType == DrawMesh::VertexType::TexturedFlat) {
         // Textured vertices (not skinned) without normal
         PLY_ASSERT(forSkel.isEmpty());
@@ -186,7 +186,7 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
             vertices[j].pos = *(Float3*) (srcMesh->mVertices + j);
             vertices[j].uv = *(Float2*) (srcMesh->mTextureCoords[0] + j);
         }
-        out->vbo = GLBuffer::create(vertices.view().stringView());
+        out->vbo = GLBuffer::create(vertices.stringView());
     } else if (vertexType == DrawMesh::VertexType::TexturedNormal) {
         // Textured vertices (not skinned) with normal
         PLY_ASSERT(forSkel.isEmpty());
@@ -198,7 +198,7 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
             vertices[j].normal = *(Float3*) (srcMesh->mNormals + j);
             vertices[j].uv = *(Float2*) (srcMesh->mTextureCoords[0] + j);
         }
-        out->vbo = GLBuffer::create(vertices.view().stringView());
+        out->vbo = GLBuffer::create(vertices.stringView());
     } else {
         PLY_ASSERT(0);
     }
@@ -212,7 +212,7 @@ Owned<DrawMesh> toDrawMesh(MeshMap* mm, const aiScene* srcScene, const aiMesh* s
             indices[j * 3 + 1] = srcMesh->mFaces[j].mIndices[1];
             indices[j * 3 + 2] = srcMesh->mFaces[j].mIndices[2];
         }
-        out->indexBuffer = GLBuffer::create(indices.view().stringView());
+        out->indexBuffer = GLBuffer::create(indices.stringView());
         out->numIndices = indices.numItems();
     }
     return out;
@@ -238,8 +238,7 @@ Array<Owned<DrawMesh>> getMeshes(MeshMap* mm, const aiScene* srcScene, const aiN
         }
     }
     for (u32 c = 0; c < srcNode->mNumChildren; c++) {
-        result.moveExtend(
-            getMeshes(mm, srcScene, srcNode->mChildren[c], vertexType, forSkel, filter).view());
+        result.extend(getMeshes(mm, srcScene, srcNode->mChildren[c], vertexType, forSkel, filter));
     }
     return result;
 }
@@ -323,23 +322,23 @@ void extractBirdAnimData(BirdAnimData* bad, const aiScene* scene) {
     PLY_UNUSED(basePoseFromNode);
     extractBones(&bad->birdSkel, scene->mRootNode->FindNode("BirdSkel"));
     PLY_ASSERT(scene->mNumAnimations == 1);
-    bad->loWingPose = extractPose(bad->birdSkel.view(), scene->mAnimations[0], 0,
+    bad->loWingPose = extractPose(bad->birdSkel, scene->mAnimations[0], 0,
                                   {"W0_L", "W1_L", "W2_L", "W0_R", "W1_R", "W2_R"});
-    bad->hiWingPose = extractPose(bad->birdSkel.view(), scene->mAnimations[0], 8,
+    bad->hiWingPose = extractPose(bad->birdSkel, scene->mAnimations[0], 8,
                                   {"W0_L", "W1_L", "W2_L", "W0_R", "W1_R", "W2_R"});
     bad->eyePoses[0] =
-        extractPose(bad->birdSkel.view(), scene->mAnimations[0], 0, {"Pupil_L", "Pupil_R"});
+        extractPose(bad->birdSkel, scene->mAnimations[0], 0, {"Pupil_L", "Pupil_R"});
     bad->eyePoses[1] =
-        extractPose(bad->birdSkel.view(), scene->mAnimations[0], 8, {"Pupil_L", "Pupil_R"});
+        extractPose(bad->birdSkel, scene->mAnimations[0], 8, {"Pupil_L", "Pupil_R"});
     bad->eyePoses[2] =
-        extractPose(bad->birdSkel.view(), scene->mAnimations[0], 16, {"Pupil_L", "Pupil_R"});
+        extractPose(bad->birdSkel, scene->mAnimations[0], 16, {"Pupil_L", "Pupil_R"});
     bad->eyePoses[3] =
-        extractPose(bad->birdSkel.view(), scene->mAnimations[0], 24, {"Pupil_L", "Pupil_R"});
+        extractPose(bad->birdSkel, scene->mAnimations[0], 24, {"Pupil_L", "Pupil_R"});
     for (u32 i = 0; i < 5; i++) {
         TongueBone& tongueBone = bad->tongueBones.append();
         String boneName = String::format("T{}", i);
         tongueBone.boneIndex = safeDemote<u32>(
-            find(bad->birdSkel.view(), [&](const Bone& bone) { return bone.name == boneName; }));
+            find(bad->birdSkel, [&](const Bone& bone) { return bone.name == boneName; }));
         if (i > 0) {
             const Bone& parentBone = bad->birdSkel[bad->tongueBones[i - 1].boneIndex];
             const Bone& curBone = bad->birdSkel[tongueBone.boneIndex];
@@ -427,7 +426,7 @@ void Assets::load(StringView assetsPath) {
                                StringView materialName, VT vt) -> UberShader::Props* {
             ArrayView<Bone> bones;
             if (vt == VT::Skinned) {
-                bones = assets->bad.birdSkel.view();
+                bones = assets->bad.birdSkel;
             }
             Array<Owned<DrawMesh>> meshes = getMeshes(
                 nullptr, scene, src, vt, bones, [&](StringView m) { return materialName == m; });

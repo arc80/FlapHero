@@ -36,7 +36,7 @@ void drawRoundedRect(const TexturedShader* shader, const Float4x4& modelToViewpo
     addQuad({bounds.topLeft() + Float2{r, -r}, bounds.maxs + Float2{-r, 0}}, {{1, 1}, {1, 0}});
     addQuad({bounds.maxs + Float2{-r, -r}, bounds.maxs}, {{1, 1}, {0, 0}});
 
-    shader->draw(modelToViewport, textureID, color, verts.view(), indices.view(), true);
+    shader->draw(modelToViewport, textureID, color, verts, indices, true);
 }
 
 void drawScoreSign(const Float4x4& cameraToViewport, const Float2& pos, float scale,
@@ -119,8 +119,8 @@ Array<Float4x4> composeBirdBones(const GameState* gs, float intervalFrac) {
 
     // Apply eye pose
     {
-        ArrayView<const PoseBone> from = a->bad.eyePoses[gs->birdAnim.eyePos[0]].view();
-        ArrayView<const PoseBone> to = a->bad.eyePoses[gs->birdAnim.eyePos[1]].view();
+        ArrayView<const PoseBone> from = a->bad.eyePoses[gs->birdAnim.eyePos[0]];
+        ArrayView<const PoseBone> to = a->bad.eyePoses[gs->birdAnim.eyePos[1]];
         float f = 1;
         if (gs->birdAnim.eyeMoving) {
             float eyeTime = mix(gs->birdAnim.eyeTime[0], gs->birdAnim.eyeTime[1], intervalFrac);
@@ -158,7 +158,7 @@ Array<Float4x4> composeBirdBones(const GameState* gs, float intervalFrac) {
         for (u32 i = 0; i < tonguePts.numItems(); i++) {
             tonguePts[i] = worldToBirdRot * mix(prevState.pts[i], curState.pts[i], f);
         }
-        Array<QuatPos> tongueXforms = tonguePtsToXforms(tonguePts.view());
+        Array<QuatPos> tongueXforms = tonguePtsToXforms(tonguePts);
         for (u32 i = 0; i < tonguePts.numItems(); i++) {
             u32 bi = a->bad.tongueBones[i].boneIndex;
             curBoneToModel[bi] =
@@ -250,7 +250,7 @@ void drawStars(const TitleScreen* titleScreen, const Float4x4& extraZoom) {
         ins.color.a() *= alpha;
     }
     GL_CHECK(DepthRange(0.5, 1.0));
-    a->starShader->draw(a->star[0], a->starTexture.id, insData.view());
+    a->starShader->draw(a->star[0], a->starTexture.id, insData);
 }
 
 void applyTitleScreen(const DrawContext* dc, float opacity, float premul) {
@@ -328,12 +328,12 @@ void renderGamePanel(const DrawContext* dc) {
 
             for (const Assets::MeshWithMaterial* mm : a->sickBirdMeshes) {
                 a->skinnedShader->draw(cameraToViewport, modelToCamera, &mm->mesh,
-                                       boneToModel.view(), &mm->matProps);
+                                       boneToModel, &mm->matProps);
             }
         } else {
             for (const Assets::MeshWithMaterial* mm : a->birdMeshes) {
                 a->skinnedShader->draw(cameraToViewport, modelToCamera, &mm->mesh,
-                                       boneToModel.view(), &mm->matProps);
+                                       boneToModel, &mm->matProps);
             }
             for (const DrawMesh* dm : a->eyeWhite) {
                 a->pipeShader->draw(cameraToViewport, modelToCamera, {0, 0}, dm,
@@ -457,7 +457,7 @@ void renderGamePanel(const DrawContext* dc) {
                 puffs->addInstances(instances);
             }
             a->puffShader->draw(cameraToViewport * worldToCamera, a->puffNormalTexture.id,
-                                instances.view());
+                                instances);
         }
 
         // Draw bird sweat
@@ -467,7 +467,7 @@ void renderGamePanel(const DrawContext* dc) {
                 cameraToViewport * worldToCamera * Float4x4::makeTranslation(birdRelWorld);
             gs->sweat.addInstances(birdToViewport, insData);
             if (!insData.isEmpty()) {
-                a->starShader->draw(a->quad, a->sweatTexture.id, insData.view());
+                a->starShader->draw(a->quad, a->sweatTexture.id, insData);
             }
         }
 

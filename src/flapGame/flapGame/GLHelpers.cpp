@@ -40,7 +40,7 @@ PLY_NO_INLINE GLuint DynamicArrayBuffers::upload(StringView data) {
 PLY_NO_INLINE void DynamicArrayBuffers::beginFrame() {
     frameNumber++;
     Array<Item>& curInUse = this->inUse[frameNumber & 1];
-    this->available.moveExtend(curInUse.view());
+    this->available.extend(std::move(curInUse));
     curInUse.clear();
 
     u32 numAvailBytes = 0;
@@ -56,7 +56,7 @@ PLY_NO_INLINE void DynamicArrayBuffers::beginFrame() {
     }
 
     if (numAvailBytes >= KeepAliveSize) {
-        sort(this->available.view());
+        sort(this->available);
         u32 i = 0;
         while (i < this->available.numItems()) {
             PLY_ASSERT(numAvailBytes >= this->available[i].numBytes);
