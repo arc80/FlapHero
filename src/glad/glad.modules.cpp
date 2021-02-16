@@ -14,6 +14,10 @@ ExternResult extern_assimp_vcpkg(ExternCommand cmd, ExternProviderArgs* args) {
             args->dep->libs.append(NativePath::join(prefix, "x64-windows/lib/assimp-vc142-mt.lib"));
             args->dep->dlls.append(NativePath::join(prefix, "x64-windows/bin/assimp-vc142-mt.dll"));
             args->dep->dlls.append(NativePath::join(prefix, "x64-windows/bin/zlib1.dll"));
+            args->dep->dlls.append(NativePath::join(prefix, "x64-windows/bin/Irrlicht.dll"));
+            args->dep->dlls.append(NativePath::join(prefix, "x64-windows/bin/libpng16.dll"));
+            args->dep->dlls.append(NativePath::join(prefix, "x64-windows/bin/jpeg62.dll"));
+            args->dep->dlls.append(NativePath::join(prefix, "x64-windows/bin/bz2.dll"));
         }};
     return prov.handle(cmd, args);
 }
