@@ -86,7 +86,7 @@ If you don't already have Vcpkg installed somewhere, go ahead and install it und
 Now, from the workspace root folder, update your `PATH` environment variable so that PlyTool is able to locate `vcpkg.exe`. (If you have Vcpkg installed to a different path, specify that path instead. Make sure you've installed Assimp in that instance of Vcpkg, too.)
 
     (from the workspace root)
-    > set PATH="%CD%\data\vcpkg";%PATH%
+    > set "PATH=%CD%\data\vcpkg;%PATH%"
 
 Finally, tell PlyTool that the current build folder should use the `assimp.vcpkg` provider:
 
